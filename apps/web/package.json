@@ -7,6 +7,8 @@
     "dev": "portless",
     "dev:app": "next dev --turbopack",
     "build": "next build --turbopack",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:deploy": "opennextjs-cloudflare deploy",
     "deploy": "alchemy deploy --app web",
     "destroy": "alchemy destroy --app web",
     "db:generate": "drizzle-kit generate",

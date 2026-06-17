@@ -16,6 +16,9 @@ export const createAuth = (env: AuthEnv) =>
     basePath: "/api/auth",
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
+    emailAndPassword: {
+      enabled: true,
+    },
     database: drizzleAdapter(createDb(env.DB), {
       provider: "sqlite",
       schema,

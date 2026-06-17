@@ -13,6 +13,8 @@
   "name": "media-cdn-service",
   "scripts": {
     "build": "turbo build",
+    "cf:build": "turbo cf:build",
+    "cf:deploy": "turbo cf:deploy",
     "deploy": "turbo deploy",
     "destroy": "turbo destroy",
     "dev": "turbo dev",

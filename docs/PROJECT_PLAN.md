@@ -100,6 +100,7 @@ HTTP API:
 ### Progress
 
 - Phase 1 foundation started: Alchemy/OpenNext Cloudflare wiring, D1/R2 resource definitions, Drizzle schema/migration, Better Auth route skeleton and monorepo deploy scripts are in place.
+- Phase 2 upload MVP started: authenticated dashboard shell, asset list query, upload intent API, app-mediated R2 object write route, upload completion route, and private download route are in place.
 
 ### Phase 1: Foundation
 
@@ -110,10 +111,12 @@ HTTP API:
 
 ### Phase 2: Upload MVP
 
-- Собрать authenticated dashboard shell.
-- Реализовать upload intent, object write, completion и file list.
-- Сохранять MIME type, size, hash, CDN flag и R2 key.
-- Добавить direct/private download route.
+- [x] Собрать authenticated dashboard shell.
+- [x] Реализовать upload intent, object write, completion и file list.
+- [x] Сохранять MIME type, size, hash, CDN flag и R2 key.
+- [x] Добавить direct/private download route.
+- [ ] Добавить client-side upload UI поверх новых API routes.
+- [ ] Добавить workspace creation/onboarding для первого пользователя.
 
 ### Phase 3: CDN Publishing
 
