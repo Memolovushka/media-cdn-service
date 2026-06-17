@@ -10,9 +10,11 @@
     "typescript": "6.0.3",
     "ultracite": "7.7.0"
   },
-  "name": "netxjs-monorepo",
+  "name": "media-cdn-service",
   "scripts": {
     "build": "turbo build",
+    "deploy": "turbo deploy",
+    "destroy": "turbo destroy",
     "dev": "turbo dev",
     "lint": "bun run check",
     "typecheck": "turbo typecheck",

@@ -1,6 +1,7 @@
 {
   "extends": "@workspace/typescript-config/nextjs.json",
   "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "./types/env.d.ts"],
     "paths": {
       "@/*": ["./src/*"],
       "@workspace/ui/*": ["../../packages/ui/src/*"],
@@ -19,7 +20,10 @@
     "next.config.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "types/**/*.d.ts",
+    "alchemy.run.ts",
+    "drizzle.config.ts"
   ],
   "exclude": ["node_modules"]
 }

@@ -1,3 +1,4 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import type { NextConfig } from "next";
 import "@workspace/env/web";
 
@@ -12,5 +13,7 @@ const nextConfig: NextConfig = {
     turbopackFileSystemCacheForBuild: true,
   },
 };
+
+initOpenNextCloudflareForDev();
 
 export default nextConfig;

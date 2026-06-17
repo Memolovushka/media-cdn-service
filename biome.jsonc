@@ -29,8 +29,21 @@
           }
         }
       }
+    },
+    {
+      "includes": ["apps/web/types/env.d.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNamespace": "off"
+          }
+        }
+      }
     }
   ],
+  "javascript": {
+    "globals": ["CloudflareEnv", "D1Database", "R2Bucket"]
+  },
   "linter": {
     "enabled": true,
     "rules": {
