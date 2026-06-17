@@ -8,11 +8,13 @@
     "portless": "^0.13.0",
     "turbo": "^2.9.14",
     "typescript": "6.0.3",
-    "ultracite": "7.7.0"
+    "ultracite": "7.7.0",
+    "wrangler": "^4.101.0"
   },
   "name": "media-cdn-service",
   "scripts": {
-    "build": "turbo build",
+    "build": "turbo cf:build",
+    "next:build": "turbo build",
     "cf:build": "turbo cf:build",
     "cf:deploy": "turbo cf:deploy",
     "deploy": "turbo deploy",
