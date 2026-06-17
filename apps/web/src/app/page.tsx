@@ -46,11 +46,41 @@ const formatBytes = (bytes: number) => {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 };
 
+const SetupRequired = ({ message }: { message: string }) => (
+  <main className="flex min-h-svh items-center justify-center bg-background p-6">
+    <Card className="w-full max-w-lg">
+      <CardHeader>
+        <CardTitle>Production setup required</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-muted-foreground text-sm">
+          The app is deployed, but Cloudflare bindings or auth secrets are not
+          available yet.
+        </p>
+        <p className="rounded-md border bg-muted px-3 py-2 font-mono text-xs">
+          {message}
+        </p>
+      </CardContent>
+    </Card>
+  </main>
+);
+
 const Page = async () => {
-  const ctx = await getAppContext();
-  const session = await ctx.auth.api.getSession({
-    headers: await headers(),
-  });
+  const ctx = await getAppContext().catch(() => null);
+  const session = ctx
+    ? await ctx.auth.api
+        .getSession({
+          headers: await headers(),
+        })
+        .catch((error: unknown) => {
+          console.error(error);
+          return null;
+        })
+    : null;
+
+  if (!ctx) {
+    return <SetupRequired message="Missing Cloudflare runtime context." />;
+  }
 
   if (!session) {
     return (
