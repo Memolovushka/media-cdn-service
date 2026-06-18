@@ -91,10 +91,10 @@ const Page = async () => {
             </p>
             <div className="flex gap-2">
               <Button asChild>
-                <a href="/api/auth/sign-in/email">Sign in</a>
+                <a href="/auth?mode=signin">Sign in</a>
               </Button>
               <Button asChild variant="outline">
-                <a href="/api/auth/sign-up/email">Create account</a>
+                <a href="/auth?mode=signup">Create account</a>
               </Button>
             </div>
           </CardContent>
