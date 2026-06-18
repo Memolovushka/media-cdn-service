@@ -1,3 +1,4 @@
+import { dash } from "@better-auth/infra";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -24,7 +25,7 @@ export const createAuth = (env: AuthEnv) =>
       schema,
       usePlural: true,
     }),
-    plugins: [nextCookies()],
+    plugins: [dash(), nextCookies()],
   });
 
 export type Auth = ReturnType<typeof createAuth>;

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.19",
+    "@better-auth/infra": "^0.2.14",
     "@opennextjs/cloudflare": "^1.19.11",
     "@orpc/server": "^1.13.5",
     "@workspace/api": "workspace:*",
