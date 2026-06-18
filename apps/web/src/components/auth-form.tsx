@@ -15,7 +15,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@workspace/ui/components/tabs";
-import { LogInIcon, UserPlusIcon } from "lucide-react";
+import { GlobeIcon, LogInIcon, UserPlusIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { authClient } from "@/auth/client";
@@ -76,6 +76,21 @@ export const AuthForm = () => {
     });
   };
 
+  const signInWithGoogle = () => {
+    setError(null);
+
+    startTransition(async () => {
+      const result = await authClient.signIn.social({
+        callbackURL: "/",
+        provider: "google",
+      });
+
+      if (result.error) {
+        setError(getAuthErrorMessage(result.error));
+      }
+    });
+  };
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
@@ -93,6 +108,16 @@ export const AuthForm = () => {
             <TabsTrigger value="signin">Sign in</TabsTrigger>
             <TabsTrigger value="signup">Create account</TabsTrigger>
           </TabsList>
+
+          <Button
+            className="mb-4 w-full"
+            disabled={isPending}
+            onClick={signInWithGoogle}
+            variant="outline"
+          >
+            <GlobeIcon />
+            Continue with Google
+          </Button>
 
           <TabsContent className="space-y-4" value="signin">
             <div className="space-y-2">
