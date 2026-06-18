@@ -43,6 +43,7 @@ export const website = await Nextjs("website", {
   bindings: {
     DB: database,
     MEDIA_BUCKET: mediaBucket,
+    BETTER_AUTH_API_KEY: alchemy.secret.env("BETTER_AUTH_API_KEY"),
     BETTER_AUTH_SECRET: alchemy.secret.env("BETTER_AUTH_SECRET"),
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
     PUBLIC_MEDIA_BASE_URL:

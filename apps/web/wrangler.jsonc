@@ -8,6 +8,10 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "vars": {
+    "BETTER_AUTH_URL": "https://media-cdn-service.gabolov3.workers.dev",
+    "PUBLIC_MEDIA_BASE_URL": "https://media-cdn-service.gabolov3.workers.dev/cdn"
+  },
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",

@@ -8,7 +8,7 @@ import { schema } from "@/db/schema";
 
 type AuthEnv = Pick<
   AppCloudflareEnv,
-  "BETTER_AUTH_SECRET" | "BETTER_AUTH_URL" | "DB"
+  "BETTER_AUTH_API_KEY" | "BETTER_AUTH_SECRET" | "BETTER_AUTH_URL" | "DB"
 >;
 
 export const createAuth = (env: AuthEnv) =>
@@ -25,7 +25,7 @@ export const createAuth = (env: AuthEnv) =>
       schema,
       usePlural: true,
     }),
-    plugins: [dash(), nextCookies()],
+    plugins: [dash({ apiKey: env.BETTER_AUTH_API_KEY }), nextCookies()],
   });
 
 export type Auth = ReturnType<typeof createAuth>;
