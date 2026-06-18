@@ -15,14 +15,10 @@ import {
   TableRow,
 } from "@workspace/ui/components/table";
 import { eq } from "drizzle-orm";
-import {
-  CloudUploadIcon,
-  CopyIcon,
-  FileIcon,
-  KeyRoundIcon,
-  SearchIcon,
-} from "lucide-react";
+import { DownloadIcon, FileIcon, KeyRoundIcon, SearchIcon } from "lucide-react";
 import { headers } from "next/headers";
+import { AssetUploadDialog } from "@/components/asset-upload-dialog";
+import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
 import { listWorkspaceAssets } from "@/server/assets";
 import { getAppContext } from "@/server/context";
@@ -151,109 +147,126 @@ const Page = async () => {
               <KeyRoundIcon />
               <span className="sr-only">API tokens</span>
             </Button>
-            <Button disabled={!activeWorkspace}>
-              <CloudUploadIcon />
-              Upload
-            </Button>
+            <AssetUploadDialog
+              disabled={!activeWorkspace}
+              workspaceId={activeWorkspace?.workspaceId}
+            />
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Assets</CardTitle>
-            </CardHeader>
-            <CardContent className="font-semibold text-2xl">
-              {assets?.length ?? 0}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Workspace</CardTitle>
-            </CardHeader>
-            <CardContent className="truncate font-medium">
-              {activeWorkspace?.workspaceSlug ?? "No workspace"}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">CDN-ready</CardTitle>
-            </CardHeader>
-            <CardContent className="font-semibold text-2xl">
-              {assets?.filter((asset) => asset.cdnEnabled).length ?? 0}
-            </CardContent>
-          </Card>
-        </section>
+        {activeWorkspace ? (
+          <>
+            <section className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Assets</CardTitle>
+                </CardHeader>
+                <CardContent className="font-semibold text-2xl">
+                  {assets?.length ?? 0}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Workspace</CardTitle>
+                </CardHeader>
+                <CardContent className="truncate font-medium">
+                  {activeWorkspace.workspaceSlug}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">CDN-ready</CardTitle>
+                </CardHeader>
+                <CardContent className="font-semibold text-2xl">
+                  {assets?.filter((asset) => asset.cdnEnabled).length ?? 0}
+                </CardContent>
+              </Card>
+            </section>
 
-        <section className="overflow-hidden rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>CDN</TableHead>
-                <TableHead className="w-12" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assets?.length ? (
-                assets.map((asset) => {
-                  const latestVersion =
-                    "versions" in asset ? asset.versions.at(0) : null;
+            <section className="overflow-hidden rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>CDN</TableHead>
+                    <TableHead className="w-12" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assets?.length ? (
+                    assets.map((asset) => {
+                      const latestVersion =
+                        "versions" in asset ? asset.versions.at(0) : null;
+                      const downloadUrl =
+                        latestVersion?.uploadStatus === "ready"
+                          ? `/api/assets/${asset.id}/download?versionId=${latestVersion.id}`
+                          : null;
 
-                  return (
-                    <TableRow key={asset.id}>
-                      <TableCell>
-                        <div className="flex min-w-0 items-center gap-3">
-                          <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-                          <div className="min-w-0">
-                            <div className="truncate font-medium">
-                              {asset.filename}
+                      return (
+                        <TableRow key={asset.id}>
+                          <TableCell>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+                              <div className="min-w-0">
+                                <div className="truncate font-medium">
+                                  {asset.filename}
+                                </div>
+                                <div className="truncate text-muted-foreground text-xs">
+                                  {asset.mimeType}
+                                </div>
+                              </div>
                             </div>
-                            <div className="truncate text-muted-foreground text-xs">
-                              {asset.mimeType}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {latestVersion?.uploadStatus ?? "pending"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
-                      <TableCell>
-                        {asset.cdnEnabled ? (
-                          <Badge>Enabled</Badge>
-                        ) : (
-                          <Badge variant="outline">Private</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button size="icon" variant="ghost">
-                          <CopyIcon />
-                          <span className="sr-only">Copy URL</span>
-                        </Button>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {latestVersion?.uploadStatus ?? "pending"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
+                          <TableCell>
+                            {asset.cdnEnabled ? (
+                              <Badge>Enabled</Badge>
+                            ) : (
+                              <Badge variant="outline">Private</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {downloadUrl ? (
+                              <Button asChild size="icon" variant="ghost">
+                                <a href={downloadUrl}>
+                                  <DownloadIcon />
+                                  <span className="sr-only">Download</span>
+                                </a>
+                              </Button>
+                            ) : (
+                              <Button disabled size="icon" variant="ghost">
+                                <DownloadIcon />
+                                <span className="sr-only">Download</span>
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        className="h-32 text-center text-muted-foreground text-sm"
+                        colSpan={5}
+                      >
+                        No assets uploaded yet.
                       </TableCell>
                     </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell
-                    className="h-32 text-center text-muted-foreground text-sm"
-                    colSpan={5}
-                  >
-                    {activeWorkspace
-                      ? "No assets uploaded yet."
-                      : "Create or join a workspace to start uploading."}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </section>
+                  )}
+                </TableBody>
+              </Table>
+            </section>
+          </>
+        ) : (
+          <WorkspaceOnboarding />
+        )}
       </div>
     </main>
   );
