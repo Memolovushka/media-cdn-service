@@ -24,6 +24,12 @@ const getErrorMessage = async (response: Response) => {
   return payload?.error ?? "Folder creation failed";
 };
 
+interface FolderCreateResponse {
+  folder?: {
+    path: string;
+  };
+}
+
 export const FolderCreateDialog = ({
   disabled,
   parentPath,
@@ -65,8 +71,19 @@ export const FolderCreateDialog = ({
         return;
       }
 
+      const payload = (await response
+        .json()
+        .catch(() => null)) as FolderCreateResponse | null;
+      const nextFolderPath = payload?.folder?.path;
+
       setName("");
       setOpen(false);
+
+      if (nextFolderPath) {
+        router.push(`/?folder=${encodeURIComponent(nextFolderPath)}`);
+        return;
+      }
+
       router.refresh();
     });
   };
