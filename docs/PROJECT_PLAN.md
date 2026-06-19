@@ -102,8 +102,10 @@ HTTP API:
 - Phase 1 foundation completed: Alchemy/OpenNext Cloudflare wiring, D1/R2 resource definitions, Drizzle schema/migration, Better Auth route skeleton and monorepo deploy scripts are in place.
 - Phase 2 upload MVP started: authenticated dashboard shell, asset list query, upload intent API, app-mediated R2 object write route, upload completion route, and private download route are in place.
 - Phase 2 upload UI path continued: first-workspace onboarding, workspace creation API, client upload dialog, upload progress/error states, dashboard refresh, and private download action are in place.
-- Production deploy path started: OpenNext/Wrangler Cloudflare build scripts, root deploy fallback config, Worker variables guidance, and generated artifact ignores are in place.
+- Production deploy path completed for current workflow: GitHub Actions builds on Ubuntu, applies D1 migrations, and deploys with Wrangler because local Windows OpenNext builds are unreliable.
 - Better Auth Infra connected: Dash server plugin, Sentinel client plugin, `BETTER_AUTH_API_KEY` wiring, and production `BETTER_AUTH_SECRET` setup are confirmed.
+- Auth UI continued: email/password auth page and Google sign-in button/provider wiring are in place.
+- Production auth/setup unblocked: latest deployed commit reports healthy setup status, email signup works, workspace creation works, and dashboard render after workspace creation returns `200`.
 
 ### Phase 1: Foundation
 
@@ -197,6 +199,12 @@ Acceptance criteria:
 - [x] Подключить Better Auth Infra Dash для production auth visibility.
 - [x] Подключить Better Auth Sentinel client для security telemetry/challenges.
 - [x] Настроить обязательные production auth secrets: `BETTER_AUTH_SECRET` и `BETTER_AUTH_API_KEY`.
+- [x] Добавить email/password auth UI через Better Auth client.
+- [x] Добавить Google OAuth wiring через `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET`.
+- [x] Добавить production setup diagnostic endpoint `GET /api/setup/status`.
+- [x] Подтвердить production Worker deploy последнего commit после изменения env/bindings.
+- [x] Подтвердить Cloudflare bindings: `DB` D1 database и `MEDIA_BUCKET` R2 bucket.
+- [x] Применить/подтвердить D1 migrations на production DB.
 - [ ] Добавить audit log UI.
 - [ ] Добавить background cleanup для abandoned uploads и deleted objects.
 - [ ] Покрыть тестами permissions, CDN state transitions и upload edge cases.
@@ -216,6 +224,12 @@ Security и reliability задачи лучше вводить после UI hap
 - [ ] Добавить soft-delete cleanup для R2 objects после retention window.
 - [ ] Добавить audit log page с фильтром по asset и event type.
 - [ ] Подключить OpenTelemetry spans для upload intent, R2 put, complete и CDN publish.
+- [x] После каждого production env/binding change проверять `GET /api/setup/status`:
+  - `bindings.DB=true`
+  - `bindings.MEDIA_BUCKET=true`
+  - `bindings.GOOGLE=true`
+  - `database.ready=true`
+  - `database.missingTables=[]`
 
 Test plan:
 
@@ -224,18 +238,25 @@ Test plan:
 - [ ] Size mismatch и MIME rejection.
 - [ ] Private download для ready only.
 - [ ] CDN publish для ready only и immutable URL behavior.
-- [ ] Workspace onboarding для первого пользователя.
+- [x] Workspace onboarding для первого пользователя.
 
 ### Phase 5: Developer Experience
 
 - [x] Добавить OpenNext/Wrangler scripts для Cloudflare build/deploy из monorepo.
+- [x] Добавить GitHub Actions deploy flow для Linux-сборки OpenNext и Wrangler deploy.
 - [ ] Документировать local setup, Cloudflare auth, Alchemy stages и deploy flow.
+- [ ] Документировать Cloudflare manual setup: D1 binding `DB`, R2 binding `MEDIA_BUCKET`, Better Auth secrets, Google OAuth env и required redeploy.
 - [ ] Добавить seed/demo data.
 - [ ] Добавить API docs и snippets для Next.js, plain HTML и server uploads.
 
 #### Phase 5 Implementation Notes
 
 - [ ] Описать required env: `BETTER_AUTH_SECRET`, `BETTER_AUTH_API_KEY`, Cloudflare account auth и public media base URL.
+- [ ] Описать Google OAuth setup:
+  - Google Cloud OAuth client type: Web application;
+  - redirect URI: `https://media-cdn-service.gabolov3.workers.dev/api/auth/callback/google`;
+  - Worker env: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`;
+  - redeploy after env changes.
 - [ ] Описать локальный D1 migration flow: generate, local migrate, remote migrate.
 - [ ] Описать Cloudflare deploy flow: `bun run cf:build`, `bun run cf:deploy`, `bun run deploy`.
 - [ ] Добавить troubleshooting для missing Cloudflare bindings и auth secret errors.
@@ -251,7 +272,26 @@ Test plan:
 2. CDN UI: switch, public URL, copy button.
 3. Human-friendly asset status labels and optional drag-and-drop upload polish.
 4. Permission and state-transition tests.
-5. Local setup/deploy documentation.
+5. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
+
+## Production Auth/Setup Status
+
+Current known state:
+
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `613c0c3`.
+- `GET /api/setup/status` returns `ok=true`.
+- Confirmed production bindings:
+  - `bindings.DB=true`
+  - `bindings.MEDIA_BUCKET=true`
+  - `bindings.GOOGLE=true`
+- Confirmed production database:
+  - `database.ready=true`
+  - `database.missingTables=[]`
+- Confirmed production happy path:
+  - email signup returns `200`;
+  - `POST /api/workspaces` returns `201`;
+  - dashboard render after workspace creation returns `200`.
+- Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP
 
