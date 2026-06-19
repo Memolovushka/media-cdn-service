@@ -267,6 +267,7 @@ const Page = async () => {
                               publicUrl={latestVersion?.publicUrl}
                               ready={latestVersion?.uploadStatus === "ready"}
                               tags={"tags" in asset ? asset.tags : []}
+                              workspaceId={asset.workspaceId}
                             />
                           </TableCell>
                           <TableCell>

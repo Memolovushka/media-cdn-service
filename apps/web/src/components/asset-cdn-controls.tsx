@@ -25,6 +25,7 @@ interface AssetCdnControlsProps {
   publicUrl?: null | string;
   ready: boolean;
   tags: string[];
+  workspaceId: string;
 }
 
 const getErrorMessage = async (response: Response) => {
@@ -42,6 +43,7 @@ const parseTags = (value: string) =>
     .filter(Boolean);
 
 const copiedResetDelayMs = 1600;
+const httpsProtocol = "https:";
 
 interface AssetPatchResponse {
   publicUrl?: null | string;
@@ -53,6 +55,7 @@ export const AssetCdnControls = ({
   publicUrl,
   ready,
   tags,
+  workspaceId,
 }: AssetCdnControlsProps) => {
   const router = useRouter();
   const [enabled, setEnabled] = useState(cdnEnabled);
@@ -62,6 +65,24 @@ export const AssetCdnControls = ({
   const [tagValue, setTagValue] = useState(tags.join(", "));
   const [isPending, startTransition] = useTransition();
   const currentTags = useMemo(() => parseTags(tagValue), [tagValue]);
+  const nextImageConfig = useMemo(() => {
+    if (!currentPublicUrl) {
+      return null;
+    }
+
+    const url = new URL(currentPublicUrl);
+    const protocol = url.protocol === httpsProtocol ? "https" : "http";
+
+    return `images: {
+  remotePatterns: [
+    {
+      protocol: "${protocol}",
+      hostname: "${url.hostname}",
+      pathname: "/cdn/${workspaceId}/**",
+    },
+  ],
+},`;
+  }, [currentPublicUrl, workspaceId]);
 
   const patchAsset = ({
     body,
@@ -120,6 +141,18 @@ export const AssetCdnControls = ({
     });
   };
 
+  const copyNextImageConfig = () => {
+    if (!nextImageConfig) {
+      return;
+    }
+
+    startTransition(async () => {
+      await navigator.clipboard.writeText(nextImageConfig);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), copiedResetDelayMs);
+    });
+  };
+
   let cdnUrlContent = (
     <p className="text-muted-foreground text-xs">
       Upload must finish before CDN publishing.
@@ -128,12 +161,36 @@ export const AssetCdnControls = ({
 
   if (currentPublicUrl) {
     cdnUrlContent = (
-      <Input
-        aria-label="Public CDN URL"
-        className="h-7 max-w-96 font-mono text-xs"
-        readOnly
-        value={currentPublicUrl}
-      />
+      <div className="flex max-w-96 flex-col gap-2">
+        <Input
+          aria-label="Public CDN URL"
+          className="h-7 font-mono text-xs"
+          readOnly
+          value={currentPublicUrl}
+        />
+        {nextImageConfig ? (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground text-xs">
+                Next.js image allowlist
+              </span>
+              <Button
+                disabled={isPending}
+                onClick={copyNextImageConfig}
+                size="xs"
+                type="button"
+                variant="outline"
+              >
+                <ClipboardIcon />
+                Copy config
+              </Button>
+            </div>
+            <pre className="overflow-x-auto rounded-md border bg-muted/40 p-2 font-mono text-[0.625rem] text-muted-foreground">
+              {nextImageConfig}
+            </pre>
+          </div>
+        ) : null}
+      </div>
     );
   } else if (ready) {
     cdnUrlContent = (

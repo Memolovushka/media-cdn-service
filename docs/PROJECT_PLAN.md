@@ -53,6 +53,8 @@
 ## CDN Rules
 
 - CDN URLs должны быть versioned и стабильными: новые байты = новый URL.
+- CDN URL path начинается с tenant boundary `workspaceId`: `/cdn/{workspaceId}/{assetId}/v{version}/{filename}`.
+- Next.js `images.remotePatterns` для consumer-сайтов должен быть workspace-scoped: `/cdn/{workspaceId}/**`, не `/cdn/**` и не global wildcard.
 - Public ассеты получают `Cache-Control: public, max-age=31536000, immutable`.
 - Private downloads получают `Cache-Control: private, no-store`.
 - SVG требует sanitization или строгих serving headers.
@@ -108,7 +110,7 @@ HTTP API:
 - Auth UI continued: email/password auth page and Google sign-in button/provider wiring are in place.
 - Production auth/setup unblocked: latest deployed commit reports healthy setup status, email signup works, workspace creation works, and dashboard render after workspace creation returns `200`.
 - Phase 3 CDN backend started: public R2 key/URL helpers, authenticated asset PATCH route, ready-version publish copy, immutable cache metadata, MIME safety guard, and CDN audit events are in place.
-- Phase 3 CDN product path continued: dashboard CDN switch, public URL display/copy button, not-ready disabled state, tags update support, and Worker-controlled `/cdn/:workspace/:asset/:version/:filename` fallback route are in place.
+- Phase 3 CDN product path continued: dashboard CDN switch, public URL display/copy button, workspace-scoped Next.js image config snippet, not-ready disabled state, tags update support, and Worker-controlled `/cdn/:workspace/:asset/:version/:filename` fallback route are in place.
 - Account settings started: dashboard settings panel, sign out action, and email/password change form are in place.
 
 ### Phase 1: Foundation
@@ -165,6 +167,7 @@ Acceptance criteria:
 
 - [x] Добавить CDN toggle и versioned public object keys.
 - [x] Генерировать public URL и copy-to-clipboard.
+- [x] Генерировать workspace-scoped Next.js `images.remotePatterns` snippet.
 - [x] Настроить cache headers и CORS для embedding на сайтах.
 - [ ] Добавить delete/disable поведение с сохранением audit history.
 
