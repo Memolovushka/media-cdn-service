@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
   assets,
@@ -232,14 +232,37 @@ export const listWorkspaceAssets = async ({
     return null;
   }
 
-  return db.query.assets.findMany({
+  const assetRows = await db.query.assets.findMany({
     where: and(eq(assets.workspaceId, workspaceId), isNull(assets.deletedAt)),
     orderBy: [desc(assets.createdAt)],
-    with: {
-      versions: {
-        orderBy: [desc(assetVersions.version)],
-        limit: 1,
-      },
-    },
   });
+
+  if (assetRows.length === 0) {
+    return [];
+  }
+
+  const versionRows = await db
+    .select()
+    .from(assetVersions)
+    .where(
+      inArray(
+        assetVersions.assetId,
+        assetRows.map((asset) => asset.id)
+      )
+    )
+    .orderBy(desc(assetVersions.version));
+  const latestVersions = new Map<string, (typeof versionRows)[number]>();
+
+  for (const version of versionRows) {
+    if (!latestVersions.has(version.assetId)) {
+      latestVersions.set(version.assetId, version);
+    }
+  }
+
+  return assetRows.map((asset) => ({
+    ...asset,
+    versions: latestVersions.has(asset.id)
+      ? [latestVersions.get(asset.id) as (typeof versionRows)[number]]
+      : [],
+  }));
 };

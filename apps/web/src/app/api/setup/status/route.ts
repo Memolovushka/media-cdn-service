@@ -1,4 +1,5 @@
-import { getAppContext } from "@/server/context";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import type { AppCloudflareEnv } from "@/cloudflare-env";
 import { HTTP_STATUS, jsonError } from "@/server/http";
 
 interface TableRow {
@@ -7,11 +8,12 @@ interface TableRow {
 
 export const GET = async () => {
   try {
-    const ctx = await getAppContext();
-    const hasDbBinding = Boolean(ctx.env.DB);
-    const hasMediaBucketBinding = Boolean(ctx.env.MEDIA_BUCKET);
+    const { env } = await getCloudflareContext({ async: true });
+    const appEnv = env as AppCloudflareEnv;
+    const hasDbBinding = Boolean(appEnv.DB);
+    const hasMediaBucketBinding = Boolean(appEnv.MEDIA_BUCKET);
     const hasGoogleCredentials = Boolean(
-      ctx.env.GOOGLE_CLIENT_ID && ctx.env.GOOGLE_CLIENT_SECRET
+      appEnv.GOOGLE_CLIENT_ID && appEnv.GOOGLE_CLIENT_SECRET
     );
 
     if (!hasDbBinding) {
@@ -29,7 +31,7 @@ export const GET = async () => {
       });
     }
 
-    const result = await ctx.env.DB.prepare(
+    const result = await appEnv.DB.prepare(
       "select name from sqlite_master where type = 'table' order by name"
     ).all<TableRow>();
     const tables = result.results.map((row) => row.name);

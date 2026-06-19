@@ -12,6 +12,21 @@
     "BETTER_AUTH_URL": "https://media-cdn-service.gabolov3.workers.dev",
     "PUBLIC_MEDIA_BASE_URL": "https://media-cdn-service.gabolov3.workers.dev/cdn"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "base",
+      "database_id": "916186c6-bc5e-4d7b-82d4-0b76f345a9a2",
+      "migrations_dir": "drizzle/migrations",
+      "migrations_table": "__drizzle_migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "bucket"
+    }
+  ],
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
