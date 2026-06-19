@@ -16,6 +16,14 @@ type AuthEnv = Pick<
   | "GOOGLE_CLIENT_SECRET"
 >;
 
+const secondsPerMinute = 60;
+const minutesPerHour = 60;
+const hoursPerDay = 24;
+const sessionDays = 30;
+const sessionExpiresInSeconds =
+  secondsPerMinute * minutesPerHour * hoursPerDay * sessionDays;
+const sessionUpdateAgeSeconds = secondsPerMinute * minutesPerHour * hoursPerDay;
+
 export const createAuth = (env: AuthEnv) => {
   const hasGoogleCredentials = Boolean(
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
@@ -26,6 +34,10 @@ export const createAuth = (env: AuthEnv) => {
     basePath: "/api/auth",
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
+    session: {
+      expiresIn: sessionExpiresInSeconds,
+      updateAge: sessionUpdateAgeSeconds,
+    },
     emailAndPassword: {
       enabled: true,
     },

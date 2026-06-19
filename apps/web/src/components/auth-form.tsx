@@ -17,10 +17,11 @@ import {
 } from "@workspace/ui/components/tabs";
 import { GlobeIcon, LogInIcon, UserPlusIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { authClient } from "@/auth/client";
 
 type AuthMode = "signin" | "signup";
+const lastEmailStorageKey = "media-cdn:last-email";
 
 const getAuthErrorMessage = (error: unknown) => {
   if (
@@ -50,6 +51,10 @@ export const AuthForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setEmail(window.localStorage.getItem(lastEmailStorageKey) ?? "");
+  }, []);
+
   const submit = () => {
     setError(null);
 
@@ -64,6 +69,7 @@ export const AuthForm = () => {
           : await authClient.signIn.email({
               email,
               password,
+              rememberMe: true,
             });
 
       if (result.error) {
@@ -71,6 +77,7 @@ export const AuthForm = () => {
         return;
       }
 
+      window.localStorage.setItem(lastEmailStorageKey, email);
       router.push("/");
       router.refresh();
     });
