@@ -3,14 +3,19 @@
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Switch } from "@workspace/ui/components/switch";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip";
-import { CheckIcon, ClipboardIcon, SaveIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ClipboardIcon,
+  Globe2Icon,
+  SaveIcon,
+  UnlinkIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
@@ -38,6 +43,10 @@ const parseTags = (value: string) =>
 
 const copiedResetDelayMs = 1600;
 
+interface AssetPatchResponse {
+  publicUrl?: null | string;
+}
+
 export const AssetCdnControls = ({
   assetId,
   cdnEnabled,
@@ -47,13 +56,20 @@ export const AssetCdnControls = ({
 }: AssetCdnControlsProps) => {
   const router = useRouter();
   const [enabled, setEnabled] = useState(cdnEnabled);
+  const [currentPublicUrl, setCurrentPublicUrl] = useState(publicUrl ?? null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tagValue, setTagValue] = useState(tags.join(", "));
   const [isPending, startTransition] = useTransition();
   const currentTags = useMemo(() => parseTags(tagValue), [tagValue]);
 
-  const patchAsset = (body: Record<string, unknown>) => {
+  const patchAsset = ({
+    body,
+    nextEnabled,
+  }: {
+    body: Record<string, unknown>;
+    nextEnabled?: boolean;
+  }) => {
     setError(null);
 
     startTransition(async () => {
@@ -67,8 +83,25 @@ export const AssetCdnControls = ({
 
       if (!response.ok) {
         setEnabled(cdnEnabled);
+        setCurrentPublicUrl(publicUrl ?? null);
         setError(await getErrorMessage(response));
         return;
+      }
+
+      const payload = (await response
+        .json()
+        .catch(() => null)) as AssetPatchResponse | null;
+
+      if (nextEnabled !== undefined) {
+        setEnabled(nextEnabled);
+      }
+
+      if (nextEnabled === false) {
+        setCurrentPublicUrl(null);
+      }
+
+      if (payload?.publicUrl) {
+        setCurrentPublicUrl(payload.publicUrl);
       }
 
       router.refresh();
@@ -76,65 +109,104 @@ export const AssetCdnControls = ({
   };
 
   const copyUrl = () => {
-    if (!publicUrl) {
+    if (!currentPublicUrl) {
       return;
     }
 
     startTransition(async () => {
-      await navigator.clipboard.writeText(publicUrl);
+      await navigator.clipboard.writeText(currentPublicUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), copiedResetDelayMs);
     });
   };
 
+  let cdnUrlContent = (
+    <p className="text-muted-foreground text-xs">
+      Upload must finish before CDN publishing.
+    </p>
+  );
+
+  if (currentPublicUrl) {
+    cdnUrlContent = (
+      <Input
+        aria-label="Public CDN URL"
+        className="h-7 max-w-96 font-mono text-xs"
+        readOnly
+        value={currentPublicUrl}
+      />
+    );
+  } else if (ready) {
+    cdnUrlContent = (
+      <p className="text-muted-foreground text-xs">
+        Publish to get a public URL for your site.
+      </p>
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className="flex min-w-72 flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Switch
-                checked={enabled}
-                disabled={isPending || !ready}
-                onCheckedChange={(nextEnabled) => {
-                  setEnabled(nextEnabled);
-                  patchAsset({ cdnEnabled: nextEnabled });
-                }}
-              />
-            </TooltipTrigger>
-            <TooltipContent>
-              {ready ? "Publish to CDN" : "Asset version is not ready"}
-            </TooltipContent>
-          </Tooltip>
+        <div className="flex flex-wrap items-center gap-2">
           {enabled ? (
             <Badge>Enabled</Badge>
           ) : (
             <Badge variant="outline">Private</Badge>
           )}
+
+          {enabled ? (
+            <Button
+              disabled={isPending}
+              onClick={() => {
+                setEnabled(false);
+                patchAsset({
+                  body: { cdnEnabled: false },
+                  nextEnabled: false,
+                });
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <UnlinkIcon />
+              Disable CDN
+            </Button>
+          ) : (
+            <Button
+              disabled={isPending || !ready}
+              onClick={() => {
+                patchAsset({
+                  body: { cdnEnabled: true },
+                  nextEnabled: true,
+                });
+              }}
+              size="sm"
+              type="button"
+            >
+              <Globe2Icon />
+              Publish to CDN
+            </Button>
+          )}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                disabled={isPending || !publicUrl}
+                disabled={isPending || !currentPublicUrl}
                 onClick={copyUrl}
-                size="icon"
+                size="sm"
                 type="button"
                 variant="ghost"
               >
                 {copied ? <CheckIcon /> : <ClipboardIcon />}
-                <span className="sr-only">Copy public URL</span>
+                Copy URL
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {publicUrl ? "Copy public URL" : "No public URL yet"}
+              {currentPublicUrl ? "Copy public URL" : "Publish first"}
             </TooltipContent>
           </Tooltip>
         </div>
 
-        {publicUrl ? (
-          <div className="max-w-80 truncate font-mono text-muted-foreground text-xs">
-            {publicUrl}
-          </div>
-        ) : null}
+        {cdnUrlContent}
 
         <div className="flex max-w-80 items-center gap-1">
           <Input
@@ -149,7 +221,7 @@ export const AssetCdnControls = ({
             <TooltipTrigger asChild>
               <Button
                 disabled={isPending}
-                onClick={() => patchAsset({ tags: currentTags })}
+                onClick={() => patchAsset({ body: { tags: currentTags } })}
                 size="icon"
                 type="button"
                 variant="outline"

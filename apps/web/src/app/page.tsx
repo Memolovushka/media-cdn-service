@@ -17,6 +17,7 @@ import {
 import { eq } from "drizzle-orm";
 import { DownloadIcon, FileIcon, KeyRoundIcon, SearchIcon } from "lucide-react";
 import { headers } from "next/headers";
+import { AccountMenu } from "@/components/account-menu";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
@@ -167,7 +168,7 @@ const Page = async () => {
               ) : null}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button size="icon" variant="outline">
               <SearchIcon />
               <span className="sr-only">Search</span>
@@ -180,6 +181,7 @@ const Page = async () => {
               disabled={!activeWorkspace}
               workspaceId={activeWorkspace?.workspaceId}
             />
+            <AccountMenu email={session.user.email} name={session.user.name} />
           </div>
         </header>
 
