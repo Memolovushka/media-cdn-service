@@ -1,14 +1,83 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
-import { LogOutIcon, SettingsIcon } from "lucide-react";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
+import {
+  CheckIcon,
+  KeyRoundIcon,
+  LogOutIcon,
+  SettingsIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { authClient } from "@/auth/client";
 
-export const AccountActions = () => {
+interface AccountActionsProps {
+  email?: null | string;
+}
+
+const minPasswordLength = 8;
+
+const getAuthErrorMessage = (error: unknown) => {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+
+  return "Account update failed";
+};
+
+export const AccountActions = ({ email }: AccountActionsProps) => {
   const router = useRouter();
+  const currentPasswordId = useId();
+  const newPasswordId = useId();
+  const confirmPasswordId = useId();
+  const [open, setOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const changePassword = () => {
+    setError(null);
+    setSuccess(null);
+
+    if (newPassword.length < minPasswordLength) {
+      setError(`New password must be at least ${minPasswordLength} characters`);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("New passwords do not match");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await authClient.changePassword({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: true,
+      });
+
+      if (result.error) {
+        setError(getAuthErrorMessage(result.error));
+        return;
+      }
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setSuccess("Password updated");
+      router.refresh();
+    });
+  };
 
   const signOut = () => {
     startTransition(async () => {
@@ -19,12 +88,15 @@ export const AccountActions = () => {
   };
 
   return (
-    <>
-      <Button asChild size="icon" variant="outline">
-        <a href="/settings/account">
-          <SettingsIcon />
-          <span className="sr-only">Account settings</span>
-        </a>
+    <div className="relative flex gap-2">
+      <Button
+        onClick={() => setOpen((currentOpen) => !currentOpen)}
+        size="icon"
+        type="button"
+        variant="outline"
+      >
+        <SettingsIcon />
+        <span className="sr-only">Account settings</span>
       </Button>
       <Button
         disabled={isPending}
@@ -36,6 +108,66 @@ export const AccountActions = () => {
         <LogOutIcon />
         <span className="sr-only">Sign out</span>
       </Button>
-    </>
+
+      {open ? (
+        <div className="absolute top-9 right-0 z-20 w-80 rounded-md border bg-popover p-4 text-popover-foreground shadow-md">
+          <div className="mb-4 min-w-0">
+            <div className="font-medium text-sm">Account settings</div>
+            <div className="truncate text-muted-foreground text-xs">
+              {email}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={currentPasswordId}>Current password</Label>
+              <Input
+                autoComplete="current-password"
+                id={currentPasswordId}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                type="password"
+                value={currentPassword}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={newPasswordId}>New password</Label>
+              <Input
+                autoComplete="new-password"
+                id={newPasswordId}
+                onChange={(event) => setNewPassword(event.target.value)}
+                type="password"
+                value={newPassword}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={confirmPasswordId}>Confirm password</Label>
+              <Input
+                autoComplete="new-password"
+                id={confirmPasswordId}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                type="password"
+                value={confirmPassword}
+              />
+            </div>
+            {error ? <p className="text-destructive text-xs">{error}</p> : null}
+            {success ? (
+              <p className="flex items-center gap-1 text-primary text-xs">
+                <CheckIcon className="size-3" />
+                {success}
+              </p>
+            ) : null}
+            <Button
+              className="w-full"
+              disabled={isPending || !(currentPassword && newPassword)}
+              onClick={changePassword}
+              type="button"
+            >
+              <KeyRoundIcon />
+              {isPending ? "Updating..." : "Update password"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 };

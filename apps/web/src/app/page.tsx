@@ -181,7 +181,7 @@ const Page = async () => {
               disabled={!activeWorkspace}
               workspaceId={activeWorkspace?.workspaceId}
             />
-            <AccountActions />
+            <AccountActions email={session.user.email} />
           </div>
         </header>
 

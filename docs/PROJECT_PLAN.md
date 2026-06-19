@@ -109,7 +109,7 @@ HTTP API:
 - Production auth/setup unblocked: latest deployed commit reports healthy setup status, email signup works, workspace creation works, and dashboard render after workspace creation returns `200`.
 - Phase 3 CDN backend started: public R2 key/URL helpers, authenticated asset PATCH route, ready-version publish copy, immutable cache metadata, MIME safety guard, and CDN audit events are in place.
 - Phase 3 CDN product path continued: dashboard CDN switch, public URL display/copy button, not-ready disabled state, tags update support, and Worker-controlled `/cdn/:workspace/:asset/:version/:filename` fallback route are in place.
-- Account settings started: dashboard account menu, sign out action, account settings page, and email/password change form are in place.
+- Account settings started: dashboard settings panel, sign out action, and email/password change form are in place.
 
 ### Phase 1: Foundation
 
@@ -206,7 +206,7 @@ Acceptance criteria:
 - [x] Настроить обязательные production auth secrets: `BETTER_AUTH_SECRET` и `BETTER_AUTH_API_KEY`.
 - [x] Добавить email/password auth UI через Better Auth client.
 - [x] Добавить Google OAuth wiring через `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET`.
-- [x] Добавить account menu, sign out и страницу account settings.
+- [x] Добавить account settings panel и sign out.
 - [x] Добавить смену пароля для email/password аккаунтов.
 - [x] Добавить production setup diagnostic endpoint `GET /api/setup/status`.
 - [x] Подтвердить production Worker deploy последнего commit после изменения env/bindings.
