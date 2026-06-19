@@ -83,6 +83,38 @@ const formatBytes = (bytes: number) => {
 type DashboardAsset = NonNullable<
   Awaited<ReturnType<typeof listWorkspaceAssets>>
 >[number];
+type DashboardFolder = NonNullable<
+  Awaited<ReturnType<typeof listWorkspaceFolders>>
+>[number];
+
+const getParentFolderPath = (folderPath: string) =>
+  folderPath.includes("/")
+    ? folderPath.slice(0, folderPath.lastIndexOf("/"))
+    : "";
+
+const folderHref = (folderPath: string) =>
+  folderPath ? `/?folder=${encodeURIComponent(folderPath)}` : "/";
+
+const FolderTableRow = ({ folder }: { folder: DashboardFolder }) => (
+  <TableRow>
+    <TableCell>
+      <Button asChild className="max-w-full px-0" variant="link">
+        <a className="min-w-0 justify-start" href={folderHref(folder.path)}>
+          <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium">{folder.name}</span>
+        </a>
+      </Button>
+    </TableCell>
+    <TableCell>
+      <Badge variant="outline">Folder</Badge>
+    </TableCell>
+    <TableCell>-</TableCell>
+    <TableCell className="text-muted-foreground text-xs">
+      {folder.path}
+    </TableCell>
+    <TableCell />
+  </TableRow>
+);
 
 const AssetTableRow = ({ asset }: { asset: DashboardAsset }) => {
   const latestVersion = "versions" in asset ? asset.versions.at(0) : null;
@@ -252,14 +284,12 @@ const Page = async ({ searchParams }: PageProps) => {
     : [];
   const visibleFolders =
     folders?.filter((folder) => {
-      const parentPath = folder.path.includes("/")
-        ? folder.path.slice(0, folder.path.lastIndexOf("/"))
-        : "";
+      const parentPath = getParentFolderPath(folder.path);
 
       return parentPath === selectedFolderPath;
     }) ?? [];
-  const folderHref = (folderPath: string) =>
-    folderPath ? `/?folder=${encodeURIComponent(folderPath)}` : "/";
+  const parentFolderPath = getParentFolderPath(selectedFolderPath);
+  const hasFileManagerItems = Boolean(visibleFolders.length || assets?.length);
 
   return (
     <main className="min-h-svh bg-background">
@@ -339,19 +369,12 @@ const Page = async ({ searchParams }: PageProps) => {
                 {selectedFolderPath ? (
                   <Badge variant="outline">{selectedFolderPath}</Badge>
                 ) : null}
+                {selectedFolderPath ? (
+                  <Button asChild variant="outline">
+                    <a href={folderHref(parentFolderPath)}>Up</a>
+                  </Button>
+                ) : null}
               </div>
-              {visibleFolders.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {visibleFolders.map((folder) => (
-                    <Button asChild key={folder.id} variant="outline">
-                      <a href={folderHref(folder.path)}>
-                        <FolderIcon />
-                        {folder.name}
-                      </a>
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
             </section>
 
             <section className="overflow-x-auto rounded-lg border">
@@ -366,17 +389,22 @@ const Page = async ({ searchParams }: PageProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assets?.length ? (
-                    assets.map((asset) => (
-                      <AssetTableRow asset={asset} key={asset.id} />
-                    ))
+                  {hasFileManagerItems ? (
+                    <>
+                      {visibleFolders.map((folder) => (
+                        <FolderTableRow folder={folder} key={folder.id} />
+                      ))}
+                      {assets?.map((asset) => (
+                        <AssetTableRow asset={asset} key={asset.id} />
+                      ))}
+                    </>
                   ) : (
                     <TableRow>
                       <TableCell
                         className="h-32 text-center text-muted-foreground text-sm"
                         colSpan={5}
                       >
-                        No assets uploaded yet.
+                        This folder is empty.
                       </TableCell>
                     </TableRow>
                   )}
