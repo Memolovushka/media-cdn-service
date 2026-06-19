@@ -60,11 +60,13 @@ const getErrorMessage = async (response: Response) => {
 const uploadAsset = async ({
   cdnEnabled,
   file,
+  folderPath,
   onProgress,
   workspaceId,
 }: {
   cdnEnabled: boolean;
   file: File;
+  folderPath?: string;
   onProgress: (value: number) => void;
   workspaceId: string;
 }) => {
@@ -84,6 +86,7 @@ const uploadAsset = async ({
     body: JSON.stringify({
       workspaceId,
       filename: file.name,
+      folderPath,
       mimeType: file.type,
       sizeBytes: file.size,
       cdnEnabled,
@@ -131,9 +134,11 @@ const uploadAsset = async ({
 
 export const AssetUploadDialog = ({
   disabled,
+  folderPath,
   workspaceId,
 }: {
   disabled?: boolean;
+  folderPath?: string;
   workspaceId?: string;
 }) => {
   const router = useRouter();
@@ -171,6 +176,7 @@ export const AssetUploadDialog = ({
         await uploadAsset({
           cdnEnabled: false,
           file,
+          folderPath,
           onProgress: setProgress,
           workspaceId,
         });
@@ -207,7 +213,7 @@ export const AssetUploadDialog = ({
         <DialogHeader>
           <DialogTitle>Upload asset</DialogTitle>
           <DialogDescription>
-            Add a private media file to the active workspace.
+            Add a private media file to the active folder.
           </DialogDescription>
         </DialogHeader>
 

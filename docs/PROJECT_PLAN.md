@@ -37,6 +37,7 @@
 - `workspace_members`: роли и доступ в workspace.
 - `assets`: логическая запись файла: owner, workspace, filename, MIME type, size, checksum, dimensions/duration, CDN flag, current version, timestamps.
 - `asset_versions`: immutable R2 object key, content hash, upload status, metadata, cache headers.
+- `asset_folders`: виртуальные папки внутри workspace для организации ассетов.
 - `asset_tags`: метки для поиска.
 - `api_tokens`: scoped tokens для server-to-server интеграций.
 - `audit_events`: upload, delete, CDN enable/disable, token creation, permission changes.
@@ -111,6 +112,7 @@ HTTP API:
 - Production auth/setup unblocked: latest deployed commit reports healthy setup status, email signup works, workspace creation works, and dashboard render after workspace creation returns `200`.
 - Phase 3 CDN backend started: public R2 key/URL helpers, authenticated asset PATCH route, ready-version publish copy, immutable cache metadata, MIME safety guard, and CDN audit events are in place.
 - Phase 3 CDN product path continued: dashboard CDN switch, public URL display/copy button, workspace-scoped Next.js image config snippet, not-ready disabled state, tags update support, and Worker-controlled `/cdn/:workspace/:asset/:version/:filename` fallback route are in place.
+- File manager UX started: virtual folders, upload into current folder, folder-scoped asset list, and authenticated private preview for images/video/audio/pdf/text are in place.
 - Account settings started: dashboard settings panel, sign out action, and email/password change form are in place.
 
 ### Phase 1: Foundation
@@ -128,6 +130,7 @@ HTTP API:
 - [x] Добавить direct/private download route.
 - [x] Добавить client-side upload UI поверх новых API routes.
 - [x] Добавить workspace creation/onboarding для первого пользователя.
+- [x] Добавить базовый file manager: папки и preview файлов.
 
 #### Phase 2 Implementation Notes
 

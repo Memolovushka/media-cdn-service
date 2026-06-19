@@ -169,26 +169,17 @@ export const AssetCdnControls = ({
           value={currentPublicUrl}
         />
         {nextImageConfig ? (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground text-xs">
-                Next.js image allowlist
-              </span>
-              <Button
-                disabled={isPending}
-                onClick={copyNextImageConfig}
-                size="xs"
-                type="button"
-                variant="outline"
-              >
-                <ClipboardIcon />
-                Copy config
-              </Button>
-            </div>
-            <pre className="overflow-x-auto rounded-md border bg-muted/40 p-2 font-mono text-[0.625rem] text-muted-foreground">
-              {nextImageConfig}
-            </pre>
-          </div>
+          <Button
+            className="w-fit"
+            disabled={isPending}
+            onClick={copyNextImageConfig}
+            size="xs"
+            type="button"
+            variant="outline"
+          >
+            <ClipboardIcon />
+            Copy Next config
+          </Button>
         ) : null}
       </div>
     );

@@ -35,7 +35,13 @@ export const GET = async () => {
       "select name from sqlite_master where type = 'table' order by name"
     ).all<TableRow>();
     const tables = result.results.map((row) => row.name);
-    const requiredTables = ["users", "accounts", "sessions", "workspaces"];
+    const requiredTables = [
+      "users",
+      "accounts",
+      "sessions",
+      "workspaces",
+      "asset_folders",
+    ];
     const missingTables = requiredTables.filter(
       (table) => !tables.includes(table)
     );

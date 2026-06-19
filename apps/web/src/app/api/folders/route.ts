@@ -1,4 +1,4 @@
-import { createUploadIntent, listWorkspaceAssets } from "@/server/assets";
+import { createWorkspaceFolder, listWorkspaceFolders } from "@/server/assets";
 import { getSessionUser } from "@/server/auth";
 import { getAppContext } from "@/server/context";
 import { forbidden, HTTP_STATUS, jsonError, unauthorized } from "@/server/http";
@@ -13,24 +13,22 @@ export const GET = async (request: Request) => {
 
   const url = new URL(request.url);
   const workspaceId = url.searchParams.get("workspaceId");
-  const folderPath = url.searchParams.get("folderPath") ?? undefined;
 
   if (!workspaceId) {
     return jsonError("workspaceId is required", HTTP_STATUS.badRequest);
   }
 
-  const assets = await listWorkspaceAssets({
+  const folders = await listWorkspaceFolders({
     db: ctx.db,
-    folderPath,
     workspaceId,
     userId: user.id,
   });
 
-  if (!assets) {
+  if (!folders) {
     return forbidden();
   }
 
-  return Response.json({ assets });
+  return Response.json({ folders });
 };
 
 export const POST = async (request: Request) => {
@@ -51,36 +49,22 @@ export const POST = async (request: Request) => {
   }
 
   try {
-    const intent = await createUploadIntent({
+    const folder = await createWorkspaceFolder({
       db: ctx.db,
-      user,
-      input: {
-        workspaceId: String(body.workspaceId ?? ""),
-        filename: String(body.filename ?? ""),
-        folderPath: String(body.folderPath ?? ""),
-        mimeType: String(body.mimeType ?? ""),
-        sizeBytes: Number(body.sizeBytes),
-        cdnEnabled: Boolean(body.cdnEnabled ?? false),
-      },
+      workspaceId: String(body.workspaceId ?? ""),
+      parentPath: String(body.parentPath ?? ""),
+      name: String(body.name ?? ""),
+      userId: user.id,
     });
 
-    if (!intent) {
+    if (!folder) {
       return forbidden();
     }
 
-    return Response.json(
-      {
-        ...intent,
-        upload: {
-          method: "PUT",
-          url: `/api/assets/${intent.assetId}/content?versionId=${intent.versionId}`,
-        },
-      },
-      { status: HTTP_STATUS.created }
-    );
+    return Response.json({ folder }, { status: HTTP_STATUS.created });
   } catch (error) {
     return jsonError(
-      error instanceof Error ? error.message : "Upload failed",
+      error instanceof Error ? error.message : "Folder creation failed",
       HTTP_STATUS.badRequest
     );
   }

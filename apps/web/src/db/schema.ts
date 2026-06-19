@@ -136,6 +136,7 @@ export const assets = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     filename: text("filename").notNull(),
+    folderPath: text("folder_path").notNull().default(""),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     checksumSha256: text("checksum_sha256"),
@@ -151,8 +152,35 @@ export const assets = sqliteTable(
   },
   (table) => [
     index("assets_workspace_id_idx").on(table.workspaceId),
+    index("assets_workspace_folder_idx").on(
+      table.workspaceId,
+      table.folderPath
+    ),
     index("assets_owner_id_idx").on(table.ownerId),
     index("assets_cdn_enabled_idx").on(table.cdnEnabled),
+  ]
+);
+
+export const assetFolders = sqliteTable(
+  "asset_folders",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    name: text("name").notNull(),
+    createdByUserId: text("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("asset_folders_workspace_path_idx").on(
+      table.workspaceId,
+      table.path
+    ),
+    index("asset_folders_workspace_id_idx").on(table.workspaceId),
   ]
 );
 
@@ -274,6 +302,7 @@ export const workspacesRelations = relations(workspaces, ({ many, one }) => ({
   }),
   members: many(workspaceMembers),
   assets: many(assets),
+  folders: many(assetFolders),
   apiTokens: many(apiTokens),
   auditEvents: many(auditEvents),
 }));
@@ -292,6 +321,17 @@ export const assetsRelations = relations(assets, ({ many, one }) => ({
   auditEvents: many(auditEvents),
 }));
 
+export const assetFoldersRelations = relations(assetFolders, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [assetFolders.workspaceId],
+    references: [workspaces.id],
+  }),
+  createdBy: one(users, {
+    fields: [assetFolders.createdByUserId],
+    references: [users.id],
+  }),
+}));
+
 export const schema = {
   users,
   sessions,
@@ -300,6 +340,7 @@ export const schema = {
   workspaces,
   workspaceMembers,
   assets,
+  assetFolders,
   assetVersions,
   assetTags,
   apiTokens,

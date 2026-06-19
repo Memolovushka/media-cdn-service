@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
+  assetFolders,
   assets,
   assetTags,
   assetVersions,
@@ -12,6 +13,7 @@ const bytesPerKilobyte = 1024;
 const kilobytesPerMegabyte = 1024;
 const maxUploadMegabytes = 250;
 const maxFilenameLength = 180;
+const maxFolderPathLength = 240;
 const hexRadix = 16;
 const hexByteLength = 2;
 const firstVersion = 1;
@@ -37,6 +39,7 @@ export interface AuthUser {
 export interface UploadIntentInput {
   cdnEnabled?: boolean;
   filename: string;
+  folderPath?: string;
   mimeType: string;
   sizeBytes: number;
   workspaceId: string;
@@ -50,6 +53,16 @@ export const sanitizeFilename = (filename: string) => {
   }
 
   return trimmed.replace(/[/\\?%*:|"<>]/g, "-").slice(0, maxFilenameLength);
+};
+
+export const normalizeFolderPath = (path: string) => {
+  const normalized = path
+    .split("/")
+    .map((segment) => sanitizeFilename(segment).trim())
+    .filter(Boolean)
+    .join("/");
+
+  return normalized.slice(0, maxFolderPathLength);
 };
 
 export const assertUploadInput = (input: UploadIntentInput) => {
@@ -86,6 +99,83 @@ export const getWorkspaceMembership = async ({
 
 export const canWriteWorkspace = (role: string) =>
   role === "owner" || role === "admin" || role === "member";
+
+export const listWorkspaceFolders = async ({
+  db,
+  workspaceId,
+  userId,
+}: {
+  db: Db;
+  workspaceId: string;
+  userId: string;
+}) => {
+  const membership = await getWorkspaceMembership({ db, workspaceId, userId });
+
+  if (!membership) {
+    return null;
+  }
+
+  return db
+    .select()
+    .from(assetFolders)
+    .where(eq(assetFolders.workspaceId, workspaceId))
+    .orderBy(asc(assetFolders.path));
+};
+
+export const createWorkspaceFolder = async ({
+  db,
+  name,
+  parentPath,
+  userId,
+  workspaceId,
+}: {
+  db: Db;
+  name: string;
+  parentPath?: string;
+  userId: string;
+  workspaceId: string;
+}) => {
+  const membership = await getWorkspaceMembership({ db, workspaceId, userId });
+
+  if (!(membership && canWriteWorkspace(membership.role))) {
+    return null;
+  }
+
+  const safeName = normalizeFolderPath(name);
+
+  if (!safeName || safeName.includes("/")) {
+    throw new Error("Folder name must be a single non-empty path segment");
+  }
+
+  const normalizedParentPath = normalizeFolderPath(parentPath ?? "");
+  const path = normalizeFolderPath(
+    normalizedParentPath ? `${normalizedParentPath}/${safeName}` : safeName
+  );
+  const now = new Date();
+
+  await db
+    .insert(assetFolders)
+    .values({
+      id: crypto.randomUUID(),
+      workspaceId,
+      path,
+      name: safeName,
+      createdByUserId: userId,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing();
+
+  await db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    workspaceId,
+    actorUserId: userId,
+    eventType: "folder.created",
+    metadataJson: JSON.stringify({ path }),
+  });
+
+  return { path, name: safeName };
+};
 
 export const makePrivateR2Key = ({
   workspaceId,
@@ -166,6 +256,7 @@ export const createUploadIntent = async ({
   const assetId = crypto.randomUUID();
   const versionId = crypto.randomUUID();
   const filename = sanitizeFilename(input.filename);
+  const folderPath = normalizeFolderPath(input.folderPath ?? "");
   const version = firstVersion;
   const r2Key = makePrivateR2Key({
     workspaceId: input.workspaceId,
@@ -179,6 +270,7 @@ export const createUploadIntent = async ({
     workspaceId: input.workspaceId,
     ownerId: user.id,
     filename,
+    folderPath,
     mimeType: input.mimeType,
     sizeBytes: input.sizeBytes,
     cdnEnabled: input.cdnEnabled ?? false,
@@ -254,6 +346,49 @@ export const getWritableAssetVersion = async ({
   return { asset, version };
 };
 
+export const getReadableAssetVersion = async ({
+  db,
+  assetId,
+  versionId,
+  userId,
+}: {
+  db: Db;
+  assetId: string;
+  versionId: string;
+  userId: string;
+}) => {
+  const asset = await db.query.assets.findFirst({
+    where: and(eq(assets.id, assetId), isNull(assets.deletedAt)),
+  });
+
+  if (!asset) {
+    return null;
+  }
+
+  const membership = await getWorkspaceMembership({
+    db,
+    workspaceId: asset.workspaceId,
+    userId,
+  });
+
+  if (!membership) {
+    return null;
+  }
+
+  const version = await db.query.assetVersions.findFirst({
+    where: and(
+      eq(assetVersions.id, versionId),
+      eq(assetVersions.assetId, assetId)
+    ),
+  });
+
+  if (!version) {
+    return null;
+  }
+
+  return { asset, version };
+};
+
 export const getWritableAsset = async ({
   db,
   assetId,
@@ -286,10 +421,12 @@ export const getWritableAsset = async ({
 
 export const listWorkspaceAssets = async ({
   db,
+  folderPath,
   workspaceId,
   userId,
 }: {
   db: Db;
+  folderPath?: string;
   workspaceId: string;
   userId: string;
 }) => {
@@ -299,8 +436,16 @@ export const listWorkspaceAssets = async ({
     return null;
   }
 
+  const normalizedFolderPath =
+    folderPath === undefined ? undefined : normalizeFolderPath(folderPath);
   const assetRows = await db.query.assets.findMany({
-    where: and(eq(assets.workspaceId, workspaceId), isNull(assets.deletedAt)),
+    where: and(
+      eq(assets.workspaceId, workspaceId),
+      normalizedFolderPath === undefined
+        ? undefined
+        : eq(assets.folderPath, normalizedFolderPath),
+      isNull(assets.deletedAt)
+    ),
     orderBy: [desc(assets.createdAt)],
   });
 

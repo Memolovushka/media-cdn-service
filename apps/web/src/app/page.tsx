@@ -15,14 +15,22 @@ import {
   TableRow,
 } from "@workspace/ui/components/table";
 import { eq } from "drizzle-orm";
-import { DownloadIcon, FileIcon, KeyRoundIcon, SearchIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  FileIcon,
+  FolderIcon,
+  KeyRoundIcon,
+  SearchIcon,
+} from "lucide-react";
 import { headers } from "next/headers";
 import { AccountActions } from "@/components/account-actions";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
+import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
+import { FolderCreateDialog } from "@/components/folder-create-dialog";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
-import { listWorkspaceAssets } from "@/server/assets";
+import { listWorkspaceAssets, listWorkspaceFolders } from "@/server/assets";
 import { getAppContext } from "@/server/context";
 
 const bytesPerUnit = 1024;
@@ -72,6 +80,81 @@ const formatBytes = (bytes: number) => {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 };
 
+type DashboardAsset = NonNullable<
+  Awaited<ReturnType<typeof listWorkspaceAssets>>
+>[number];
+
+const AssetTableRow = ({ asset }: { asset: DashboardAsset }) => {
+  const latestVersion = "versions" in asset ? asset.versions.at(0) : null;
+  const isReady = latestVersion?.uploadStatus === "ready";
+  const downloadUrl = isReady
+    ? `/api/assets/${asset.id}/download?versionId=${latestVersion.id}`
+    : null;
+  const previewUrl = isReady
+    ? `/api/assets/${asset.id}/preview?versionId=${latestVersion.id}`
+    : null;
+
+  return (
+    <TableRow key={asset.id}>
+      <TableCell>
+        <div className="flex min-w-0 items-center gap-3">
+          <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <div className="truncate font-medium">{asset.filename}</div>
+            <div className="truncate text-muted-foreground text-xs">
+              {asset.mimeType}
+            </div>
+            {asset.folderPath ? (
+              <div className="truncate text-muted-foreground text-xs">
+                {asset.folderPath}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
+          {getAssetStatusLabel(latestVersion?.uploadStatus)}
+        </Badge>
+      </TableCell>
+      <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
+      <TableCell>
+        <AssetCdnControls
+          assetId={asset.id}
+          cdnEnabled={asset.cdnEnabled}
+          publicUrl={latestVersion?.publicUrl}
+          ready={isReady}
+          tags={"tags" in asset ? asset.tags : []}
+          workspaceId={asset.workspaceId}
+        />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <AssetPreviewDialog
+            disabled={!previewUrl}
+            filename={asset.filename}
+            mimeType={asset.mimeType}
+            previewUrl={previewUrl}
+          />
+          {downloadUrl ? (
+            <Button asChild size="icon" variant="ghost">
+              <a href={downloadUrl}>
+                <DownloadIcon />
+                <span className="sr-only">Download</span>
+              </a>
+            </Button>
+          ) : (
+            <Button disabled size="icon" variant="ghost">
+              <DownloadIcon />
+              <span className="sr-only">Download</span>
+            </Button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+};
+
 const SetupRequired = ({ message }: { message: string }) => (
   <main className="flex min-h-svh items-center justify-center bg-background p-6">
     <Card className="w-full max-w-lg">
@@ -91,7 +174,14 @@ const SetupRequired = ({ message }: { message: string }) => (
   </main>
 );
 
-const Page = async () => {
+interface PageProps {
+  searchParams?: Promise<{
+    folder?: string;
+  }>;
+}
+
+const Page = async ({ searchParams }: PageProps) => {
+  const selectedFolderPath = (await searchParams)?.folder ?? "";
   const ctx = await getAppContext().catch(() => null);
   const session = ctx
     ? await ctx.auth.api
@@ -148,10 +238,28 @@ const Page = async () => {
   const assets = activeWorkspace
     ? await listWorkspaceAssets({
         db: ctx.db,
+        folderPath: selectedFolderPath,
         workspaceId: activeWorkspace.workspaceId,
         userId: session.user.id,
       })
     : [];
+  const folders = activeWorkspace
+    ? await listWorkspaceFolders({
+        db: ctx.db,
+        workspaceId: activeWorkspace.workspaceId,
+        userId: session.user.id,
+      })
+    : [];
+  const visibleFolders =
+    folders?.filter((folder) => {
+      const parentPath = folder.path.includes("/")
+        ? folder.path.slice(0, folder.path.lastIndexOf("/"))
+        : "";
+
+      return parentPath === selectedFolderPath;
+    }) ?? [];
+  const folderHref = (folderPath: string) =>
+    folderPath ? `/?folder=${encodeURIComponent(folderPath)}` : "/";
 
   return (
     <main className="min-h-svh bg-background">
@@ -179,6 +287,12 @@ const Page = async () => {
             </Button>
             <AssetUploadDialog
               disabled={!activeWorkspace}
+              folderPath={selectedFolderPath}
+              workspaceId={activeWorkspace?.workspaceId}
+            />
+            <FolderCreateDialog
+              disabled={!activeWorkspace}
+              parentPath={selectedFolderPath}
               workspaceId={activeWorkspace?.workspaceId}
             />
             <AccountActions email={session.user.email} />
@@ -214,6 +328,32 @@ const Page = async () => {
               </Card>
             </section>
 
+            <section className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Button
+                  asChild
+                  variant={selectedFolderPath ? "outline" : "default"}
+                >
+                  <a href="/">Root</a>
+                </Button>
+                {selectedFolderPath ? (
+                  <Badge variant="outline">{selectedFolderPath}</Badge>
+                ) : null}
+              </div>
+              {visibleFolders.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {visibleFolders.map((folder) => (
+                    <Button asChild key={folder.id} variant="outline">
+                      <a href={folderHref(folder.path)}>
+                        <FolderIcon />
+                        {folder.name}
+                      </a>
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+
             <section className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
@@ -227,67 +367,9 @@ const Page = async () => {
                 </TableHeader>
                 <TableBody>
                   {assets?.length ? (
-                    assets.map((asset) => {
-                      const latestVersion =
-                        "versions" in asset ? asset.versions.at(0) : null;
-                      const downloadUrl =
-                        latestVersion?.uploadStatus === "ready"
-                          ? `/api/assets/${asset.id}/download?versionId=${latestVersion.id}`
-                          : null;
-
-                      return (
-                        <TableRow key={asset.id}>
-                          <TableCell>
-                            <div className="flex min-w-0 items-center gap-3">
-                              <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-                              <div className="min-w-0">
-                                <div className="truncate font-medium">
-                                  {asset.filename}
-                                </div>
-                                <div className="truncate text-muted-foreground text-xs">
-                                  {asset.mimeType}
-                                </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={getAssetStatusVariant(
-                                latestVersion?.uploadStatus
-                              )}
-                            >
-                              {getAssetStatusLabel(latestVersion?.uploadStatus)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
-                          <TableCell>
-                            <AssetCdnControls
-                              assetId={asset.id}
-                              cdnEnabled={asset.cdnEnabled}
-                              publicUrl={latestVersion?.publicUrl}
-                              ready={latestVersion?.uploadStatus === "ready"}
-                              tags={"tags" in asset ? asset.tags : []}
-                              workspaceId={asset.workspaceId}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {downloadUrl ? (
-                              <Button asChild size="icon" variant="ghost">
-                                <a href={downloadUrl}>
-                                  <DownloadIcon />
-                                  <span className="sr-only">Download</span>
-                                </a>
-                              </Button>
-                            ) : (
-                              <Button disabled size="icon" variant="ghost">
-                                <DownloadIcon />
-                                <span className="sr-only">Download</span>
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                    assets.map((asset) => (
+                      <AssetTableRow asset={asset} key={asset.id} />
+                    ))
                   ) : (
                     <TableRow>
                       <TableCell
