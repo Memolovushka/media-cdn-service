@@ -74,7 +74,7 @@ HTTP API:
 - `GET /api/assets` возвращает список ассетов.
 - `PATCH /api/assets/:id` обновляет имя, tags или CDN flag.
 - `DELETE /api/assets/:id` soft-delete ассета и планирует R2 cleanup.
-- `GET /cdn/:workspace/:asset/:filename` публичная delivery route, если понадобится Worker fallback.
+- `GET /cdn/:workspace/:asset/:version/:filename` публичная delivery route, если понадобится Worker fallback.
 
 ## Provisioning Через Alchemy
 
@@ -102,12 +102,13 @@ HTTP API:
 - Phase 1 foundation completed: Alchemy/OpenNext Cloudflare wiring, D1/R2 resource definitions, Drizzle schema/migration, Better Auth route skeleton and monorepo deploy scripts are in place.
 - Phase 2 upload MVP started: authenticated dashboard shell, asset list query, upload intent API, app-mediated R2 object write route, upload completion route, and private download route are in place.
 - Phase 2 upload UI path continued: first-workspace onboarding, workspace creation API, client upload dialog, upload progress/error states, dashboard refresh, and private download action are in place.
-- Phase 2 polish completed: drag-and-drop uploads, friendly asset status labels, and private download audit events are in place.
+- Phase 2 Upload MVP completed: onboarding, upload happy path, drag-and-drop UI, friendly status labels, private downloads, and download audit events are in place.
 - Production deploy path completed for current workflow: GitHub Actions builds on Ubuntu, applies D1 migrations, and deploys with Wrangler because local Windows OpenNext builds are unreliable.
 - Better Auth Infra connected: Dash server plugin, Sentinel client plugin, `BETTER_AUTH_API_KEY` wiring, and production `BETTER_AUTH_SECRET` setup are confirmed.
 - Auth UI continued: email/password auth page and Google sign-in button/provider wiring are in place.
 - Production auth/setup unblocked: latest deployed commit reports healthy setup status, email signup works, workspace creation works, and dashboard render after workspace creation returns `200`.
 - Phase 3 CDN backend started: public R2 key/URL helpers, authenticated asset PATCH route, ready-version publish copy, immutable cache metadata, MIME safety guard, and CDN audit events are in place.
+- Phase 3 CDN product path continued: dashboard CDN switch, public URL display/copy button, not-ready disabled state, tags update support, and Worker-controlled `/cdn/:workspace/:asset/:version/:filename` fallback route are in place.
 
 ### Phase 1: Foundation
 
@@ -116,7 +117,7 @@ HTTP API:
 - [x] Подключить better-auth с D1-backed adapter.
 - [x] Provision R2 и D1 для stage-specific окружений.
 
-### Phase 2: Upload MVP
+### Phase 2: Upload MVP - completed
 
 - [x] Собрать authenticated dashboard shell.
 - [x] Реализовать upload intent, object write, completion и file list.
@@ -153,17 +154,17 @@ Upload MVP должен закрыть полный happy path без ручны
 
 Acceptance criteria:
 
-- Новый пользователь может создать workspace без seed data.
-- Пользователь может загрузить файл через UI и увидеть его в списке без перезагрузки вручную.
-- Ready asset скачивается через authenticated private download.
-- Пользователь без membership получает `403` на list/upload/complete/download.
-- Ошибки upload не оставляют UI в вечном loading state.
+- [x] Новый пользователь может создать workspace без seed data.
+- [x] Пользователь может загрузить файл через UI и увидеть его в списке без перезагрузки вручную.
+- [x] Ready asset скачивается через authenticated private download.
+- [x] Пользователь без membership получает `403` на list/upload/complete/download.
+- [x] Ошибки upload не оставляют UI в вечном loading state.
 
 ### Phase 3: CDN Publishing
 
-- [ ] Добавить CDN toggle и versioned public object keys.
-- [ ] Генерировать public URL и copy-to-clipboard.
-- [ ] Настроить cache headers и CORS для embedding на сайтах.
+- [x] Добавить CDN toggle и versioned public object keys.
+- [x] Генерировать public URL и copy-to-clipboard.
+- [x] Настроить cache headers и CORS для embedding на сайтах.
 - [ ] Добавить delete/disable поведение с сохранением audit history.
 
 #### Phase 3 Implementation Notes
@@ -179,13 +180,13 @@ Public key format:
 
 - [x] Добавить helper `makePublicR2Key` рядом с `makePrivateR2Key`.
 - [x] Добавить route/action `PATCH /api/assets/:id` для `cdnEnabled` и filename.
-- [ ] Добавить tags update в `PATCH /api/assets/:id`.
+- [x] Добавить tags update в `PATCH /api/assets/:id`.
 - [x] При включении CDN копировать current ready version из private key в public key.
 - [x] В `asset_versions` сохранять `publicKey`, `publicUrl`, `cacheControl`.
 - [x] Выставлять `Cache-Control: public, max-age=31536000, immutable` для public object.
 - [x] При выключении CDN убирать public URL из активного состояния, но не ломать audit/history.
-- [ ] Добавить public delivery fallback route `GET /cdn/:workspace/:asset/:filename` только если direct R2 custom domain не закрывает access control/headers.
-- [ ] Добавить UI: CDN switch, public URL cell, copy button, disabled state для not-ready versions.
+- [x] Добавить public delivery fallback route `GET /cdn/:workspace/:asset/:version/:filename` только если direct R2 custom domain не закрывает access control/headers.
+- [x] Добавить UI: CDN switch, public URL cell, copy button, disabled state для not-ready versions.
 - [x] Запретить CDN publish для неподготовленных или потенциально опасных MIME types до safety policy.
 
 Acceptance criteria:
@@ -271,17 +272,17 @@ Test plan:
 
 ## Ближайший порядок работ
 
-1. CDN toggle backend: public key helper, publish/copy metadata, audit event.
-2. CDN UI: switch, public URL, copy button.
-3. Human-friendly asset status labels and optional drag-and-drop upload polish.
-4. Permission and state-transition tests.
-5. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
+1. Permission and state-transition tests.
+2. CDN delete behavior and production browser verification.
+3. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
+4. Audit log UI.
+5. API token and server-to-server upload path.
 
 ## Production Auth/Setup Status
 
 Current known state:
 
-- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `613c0c3`.
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `dfa5e3a`.
 - `GET /api/setup/status` returns `ok=true`.
 - Confirmed production bindings:
   - `bindings.DB=true`
@@ -294,6 +295,13 @@ Current known state:
   - email signup returns `200`;
   - `POST /api/workspaces` returns `201`;
   - dashboard render after workspace creation returns `200`.
+- Confirmed latest production setup check after commit `dfa5e3a`:
+  - `ok=true`;
+  - `bindings.DB=true`;
+  - `bindings.MEDIA_BUCKET=true`;
+  - `bindings.GOOGLE=true`;
+  - `database.ready=true`;
+  - `database.missingTables=[]`.
 - Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP

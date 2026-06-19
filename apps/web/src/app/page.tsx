@@ -17,6 +17,7 @@ import {
 import { eq } from "drizzle-orm";
 import { DownloadIcon, FileIcon, KeyRoundIcon, SearchIcon } from "lucide-react";
 import { headers } from "next/headers";
+import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
@@ -211,14 +212,14 @@ const Page = async () => {
               </Card>
             </section>
 
-            <section className="overflow-hidden rounded-lg border">
+            <section className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Size</TableHead>
-                    <TableHead>CDN</TableHead>
+                    <TableHead className="min-w-80">CDN</TableHead>
                     <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
@@ -258,11 +259,13 @@ const Page = async () => {
                           </TableCell>
                           <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
                           <TableCell>
-                            {asset.cdnEnabled ? (
-                              <Badge>Enabled</Badge>
-                            ) : (
-                              <Badge variant="outline">Private</Badge>
-                            )}
+                            <AssetCdnControls
+                              assetId={asset.id}
+                              cdnEnabled={asset.cdnEnabled}
+                              publicUrl={latestVersion?.publicUrl}
+                              ready={latestVersion?.uploadStatus === "ready"}
+                              tags={"tags" in asset ? asset.tags : []}
+                            />
                           </TableCell>
                           <TableCell>
                             {downloadUrl ? (
