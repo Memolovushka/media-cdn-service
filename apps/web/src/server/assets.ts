@@ -14,8 +14,10 @@ const maxFilenameLength = 180;
 const hexRadix = 16;
 const hexByteLength = 2;
 const firstVersion = 1;
+const trailingSlashesPattern = /\/+$/;
 const maxUploadBytes =
   bytesPerKilobyte * kilobytesPerMegabyte * maxUploadMegabytes;
+export const publicAssetCacheControl = "public, max-age=31536000, immutable";
 
 const allowedMimePrefixes = [
   "image/",
@@ -96,6 +98,40 @@ export const makePrivateR2Key = ({
   filename: string;
 }) =>
   `private/${workspaceId}/${assetId}/v${version}/${sanitizeFilename(filename)}`;
+
+export const makePublicR2Key = ({
+  workspaceId,
+  assetId,
+  version,
+  filename,
+}: {
+  workspaceId: string;
+  assetId: string;
+  version: number;
+  filename: string;
+}) => `cdn/${workspaceId}/${assetId}/v${version}/${sanitizeFilename(filename)}`;
+
+export const makePublicAssetUrl = ({
+  baseUrl,
+  workspaceId,
+  assetId,
+  version,
+  filename,
+}: {
+  baseUrl: string;
+  workspaceId: string;
+  assetId: string;
+  version: number;
+  filename: string;
+}) => {
+  const normalizedBaseUrl = baseUrl.replace(trailingSlashesPattern, "");
+  const safeFilename = encodeURIComponent(sanitizeFilename(filename));
+
+  return `${normalizedBaseUrl}/${encodeURIComponent(workspaceId)}/${encodeURIComponent(assetId)}/v${version}/${safeFilename}`;
+};
+
+export const canPublishToCdn = (mimeType: string) =>
+  mimeType !== "image/svg+xml";
 
 export const sha256Hex = async (bytes: ArrayBuffer) => {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -215,6 +251,36 @@ export const getWritableAssetVersion = async ({
   }
 
   return { asset, version };
+};
+
+export const getWritableAsset = async ({
+  db,
+  assetId,
+  userId,
+}: {
+  db: Db;
+  assetId: string;
+  userId: string;
+}) => {
+  const asset = await db.query.assets.findFirst({
+    where: and(eq(assets.id, assetId), isNull(assets.deletedAt)),
+  });
+
+  if (!asset) {
+    return null;
+  }
+
+  const membership = await getWorkspaceMembership({
+    db,
+    workspaceId: asset.workspaceId,
+    userId,
+  });
+
+  if (!(membership && canWriteWorkspace(membership.role))) {
+    return null;
+  }
+
+  return asset;
 };
 
 export const listWorkspaceAssets = async ({

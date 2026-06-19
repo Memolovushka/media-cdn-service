@@ -106,6 +106,7 @@ HTTP API:
 - Better Auth Infra connected: Dash server plugin, Sentinel client plugin, `BETTER_AUTH_API_KEY` wiring, and production `BETTER_AUTH_SECRET` setup are confirmed.
 - Auth UI continued: email/password auth page and Google sign-in button/provider wiring are in place.
 - Production auth/setup unblocked: latest deployed commit reports healthy setup status, email signup works, workspace creation works, and dashboard render after workspace creation returns `200`.
+- Phase 3 CDN backend started: public R2 key/URL helpers, authenticated asset PATCH route, ready-version publish copy, immutable cache metadata, MIME safety guard, and CDN audit events are in place.
 
 ### Phase 1: Foundation
 
@@ -175,15 +176,16 @@ Public key format:
 
 Технические задачи:
 
-- [ ] Добавить helper `makePublicR2Key` рядом с `makePrivateR2Key`.
-- [ ] Добавить route/action `PATCH /api/assets/:id` для `cdnEnabled`, filename и tags.
-- [ ] При включении CDN копировать current ready version из private key в public key.
-- [ ] В `asset_versions` сохранять `publicKey`, `publicUrl`, `cacheControl`.
-- [ ] Выставлять `Cache-Control: public, max-age=31536000, immutable` для public object.
-- [ ] При выключении CDN убирать public URL из активного состояния, но не ломать audit/history.
+- [x] Добавить helper `makePublicR2Key` рядом с `makePrivateR2Key`.
+- [x] Добавить route/action `PATCH /api/assets/:id` для `cdnEnabled` и filename.
+- [ ] Добавить tags update в `PATCH /api/assets/:id`.
+- [x] При включении CDN копировать current ready version из private key в public key.
+- [x] В `asset_versions` сохранять `publicKey`, `publicUrl`, `cacheControl`.
+- [x] Выставлять `Cache-Control: public, max-age=31536000, immutable` для public object.
+- [x] При выключении CDN убирать public URL из активного состояния, но не ломать audit/history.
 - [ ] Добавить public delivery fallback route `GET /cdn/:workspace/:asset/:filename` только если direct R2 custom domain не закрывает access control/headers.
 - [ ] Добавить UI: CDN switch, public URL cell, copy button, disabled state для not-ready versions.
-- [ ] Запретить CDN publish для неподготовленных или потенциально опасных MIME types до safety policy.
+- [x] Запретить CDN publish для неподготовленных или потенциально опасных MIME types до safety policy.
 
 Acceptance criteria:
 
