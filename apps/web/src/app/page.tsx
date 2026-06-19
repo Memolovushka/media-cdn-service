@@ -109,14 +109,79 @@ const FolderTableRow = ({ folder }: { folder: DashboardFolder }) => (
       <Badge variant="outline">Folder</Badge>
     </TableCell>
     <TableCell>-</TableCell>
-    <TableCell className="text-muted-foreground text-xs">
-      {folder.path}
-    </TableCell>
-    <TableCell />
   </TableRow>
 );
 
-const AssetTableRow = ({ asset }: { asset: DashboardAsset }) => {
+const assetHref = ({
+  assetId,
+  folderPath,
+}: {
+  assetId: string;
+  folderPath: string;
+}) => {
+  const params = new URLSearchParams();
+
+  if (folderPath) {
+    params.set("folder", folderPath);
+  }
+
+  params.set("asset", assetId);
+
+  return `/?${params.toString()}`;
+};
+
+const AssetTableRow = ({
+  asset,
+  href,
+  selected,
+}: {
+  asset: DashboardAsset;
+  href: string;
+  selected: boolean;
+}) => {
+  const latestVersion = "versions" in asset ? asset.versions.at(0) : null;
+
+  return (
+    <TableRow className={selected ? "bg-muted/60" : undefined} key={asset.id}>
+      <TableCell>
+        <Button asChild className="h-auto max-w-full px-0" variant="link">
+          <a className="min-w-0 justify-start text-left" href={href}>
+            <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <div className="truncate font-medium">{asset.filename}</div>
+              <div className="truncate text-muted-foreground text-xs">
+                {asset.mimeType}
+              </div>
+              {asset.folderPath ? (
+                <div className="truncate text-muted-foreground text-xs">
+                  {asset.folderPath}
+                </div>
+              ) : null}
+            </div>
+          </a>
+        </Button>
+      </TableCell>
+      <TableCell>
+        <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
+          {getAssetStatusLabel(latestVersion?.uploadStatus)}
+        </Badge>
+      </TableCell>
+      <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
+    </TableRow>
+  );
+};
+
+const AssetDetailsPanel = ({ asset }: { asset?: DashboardAsset | null }) => {
+  if (!asset) {
+    return (
+      <section className="rounded-lg border p-4">
+        <div className="flex h-44 items-center justify-center text-center text-muted-foreground text-sm">
+          Select a file to manage preview, download, and CDN settings.
+        </div>
+      </section>
+    );
+  }
+
   const latestVersion = "versions" in asset ? asset.versions.at(0) : null;
   const isReady = latestVersion?.uploadStatus === "ready";
   const downloadUrl = isReady
@@ -127,63 +192,110 @@ const AssetTableRow = ({ asset }: { asset: DashboardAsset }) => {
     : null;
 
   return (
-    <TableRow key={asset.id}>
-      <TableCell>
-        <div className="flex min-w-0 items-center gap-3">
-          <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0">
-            <div className="truncate font-medium">{asset.filename}</div>
-            <div className="truncate text-muted-foreground text-xs">
-              {asset.mimeType}
-            </div>
-            {asset.folderPath ? (
-              <div className="truncate text-muted-foreground text-xs">
-                {asset.folderPath}
-              </div>
-            ) : null}
+    <section className="flex flex-col gap-4 rounded-lg border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-semibold">{asset.filename}</div>
+          <div className="mt-1 truncate text-muted-foreground text-xs">
+            {asset.mimeType} - {formatBytes(asset.sizeBytes)}
           </div>
         </div>
-      </TableCell>
-      <TableCell>
         <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
           {getAssetStatusLabel(latestVersion?.uploadStatus)}
         </Badge>
-      </TableCell>
-      <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
-      <TableCell>
-        <AssetCdnControls
-          assetId={asset.id}
-          cdnEnabled={asset.cdnEnabled}
-          publicUrl={latestVersion?.publicUrl}
-          ready={isReady}
-          tags={"tags" in asset ? asset.tags : []}
-          workspaceId={asset.workspaceId}
+      </div>
+
+      <div className="flex items-center gap-1">
+        <AssetPreviewDialog
+          disabled={!previewUrl}
+          filename={asset.filename}
+          mimeType={asset.mimeType}
+          previewUrl={previewUrl}
         />
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-1">
-          <AssetPreviewDialog
-            disabled={!previewUrl}
-            filename={asset.filename}
-            mimeType={asset.mimeType}
-            previewUrl={previewUrl}
-          />
-          {downloadUrl ? (
-            <Button asChild size="icon" variant="ghost">
-              <a href={downloadUrl}>
-                <DownloadIcon />
-                <span className="sr-only">Download</span>
-              </a>
-            </Button>
-          ) : (
-            <Button disabled size="icon" variant="ghost">
+        {downloadUrl ? (
+          <Button asChild size="icon" variant="ghost">
+            <a href={downloadUrl}>
               <DownloadIcon />
               <span className="sr-only">Download</span>
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
+            </a>
+          </Button>
+        ) : (
+          <Button disabled size="icon" variant="ghost">
+            <DownloadIcon />
+            <span className="sr-only">Download</span>
+          </Button>
+        )}
+      </div>
+
+      <AssetCdnControls
+        assetId={asset.id}
+        cdnEnabled={asset.cdnEnabled}
+        publicUrl={latestVersion?.publicUrl}
+        ready={isReady}
+        tags={"tags" in asset ? asset.tags : []}
+        workspaceId={asset.workspaceId}
+      />
+    </section>
+  );
+};
+
+const FileManager = ({
+  assets,
+  selectedAsset,
+  selectedFolderPath,
+  visibleFolders,
+}: {
+  assets: DashboardAsset[];
+  selectedAsset?: DashboardAsset | null;
+  selectedFolderPath: string;
+  visibleFolders: DashboardFolder[];
+}) => {
+  const hasFileManagerItems = Boolean(visibleFolders.length || assets.length);
+
+  return (
+    <section className="grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]">
+      <div className="min-h-96 overflow-x-auto rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Size</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {hasFileManagerItems ? (
+              <>
+                {visibleFolders.map((folder) => (
+                  <FolderTableRow folder={folder} key={folder.id} />
+                ))}
+                {assets.map((asset) => (
+                  <AssetTableRow
+                    asset={asset}
+                    href={assetHref({
+                      assetId: asset.id,
+                      folderPath: selectedFolderPath,
+                    })}
+                    key={asset.id}
+                    selected={selectedAsset?.id === asset.id}
+                  />
+                ))}
+              </>
+            ) : (
+              <TableRow>
+                <TableCell
+                  className="h-32 text-center text-muted-foreground text-sm"
+                  colSpan={3}
+                >
+                  This folder is empty.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <AssetDetailsPanel asset={selectedAsset} />
+    </section>
   );
 };
 
@@ -208,12 +320,15 @@ const SetupRequired = ({ message }: { message: string }) => (
 
 interface PageProps {
   searchParams?: Promise<{
+    asset?: string;
     folder?: string;
   }>;
 }
 
 const Page = async ({ searchParams }: PageProps) => {
-  const selectedFolderPath = (await searchParams)?.folder ?? "";
+  const params = await searchParams;
+  const selectedFolderPath = params?.folder ?? "";
+  const selectedAssetId = params?.asset ?? "";
   const ctx = await getAppContext().catch(() => null);
   const session = ctx
     ? await ctx.auth.api
@@ -289,7 +404,8 @@ const Page = async ({ searchParams }: PageProps) => {
       return parentPath === selectedFolderPath;
     }) ?? [];
   const parentFolderPath = getParentFolderPath(selectedFolderPath);
-  const hasFileManagerItems = Boolean(visibleFolders.length || assets?.length);
+  const selectedAsset =
+    assets?.find((asset) => asset.id === selectedAssetId) ?? assets?.at(0);
 
   return (
     <main className="min-h-svh bg-background">
@@ -377,40 +493,12 @@ const Page = async ({ searchParams }: PageProps) => {
               </div>
             </section>
 
-            <section className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead className="min-w-80">CDN</TableHead>
-                    <TableHead className="w-12" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {hasFileManagerItems ? (
-                    <>
-                      {visibleFolders.map((folder) => (
-                        <FolderTableRow folder={folder} key={folder.id} />
-                      ))}
-                      {assets?.map((asset) => (
-                        <AssetTableRow asset={asset} key={asset.id} />
-                      ))}
-                    </>
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        className="h-32 text-center text-muted-foreground text-sm"
-                        colSpan={5}
-                      >
-                        This folder is empty.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </section>
+            <FileManager
+              assets={assets ?? []}
+              selectedAsset={selectedAsset}
+              selectedFolderPath={selectedFolderPath}
+              visibleFolders={visibleFolders}
+            />
           </>
         ) : (
           <WorkspaceOnboarding />
