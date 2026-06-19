@@ -13,9 +13,10 @@ import {
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Progress } from "@workspace/ui/components/progress";
+import { cn } from "@workspace/ui/lib/utils";
 import { CloudUploadIcon, FileIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 
 const bytesPerKilobyte = 1024;
 const kilobytesPerMegabyte = 1024;
@@ -137,14 +138,22 @@ export const AssetUploadDialog = ({
 }) => {
   const router = useRouter();
   const fileInputId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [isPending, startTransition] = useTransition();
 
+  const selectFile = (nextFile: File | null) => {
+    setFile(nextFile);
+    setError(null);
+  };
+
   const reset = () => {
     setFile(null);
+    setIsDragging(false);
     setError(null);
     setProgress(0);
   };
@@ -207,14 +216,53 @@ export const AssetUploadDialog = ({
             <Label htmlFor={fileInputId}>File</Label>
             <Input
               accept="image/*,video/*,audio/*,application/pdf,text/plain"
+              className="sr-only"
               disabled={isPending}
               id={fileInputId}
               onChange={(event) => {
-                setFile(event.target.files?.item(0) ?? null);
-                setError(null);
+                selectFile(event.target.files?.item(0) ?? null);
               }}
+              ref={fileInputRef}
+              tabIndex={-1}
               type="file"
             />
+            <button
+              className={cn(
+                "flex min-h-36 w-full flex-col items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-center transition-colors",
+                isDragging && "border-primary bg-primary/5",
+                isPending && "cursor-not-allowed opacity-60"
+              )}
+              disabled={isPending}
+              onClick={() => fileInputRef.current?.click()}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+
+                if (isPending) {
+                  return;
+                }
+
+                selectFile(event.dataTransfer.files.item(0));
+              }}
+              type="button"
+            >
+              <CloudUploadIcon className="size-8 text-muted-foreground" />
+              <span className="font-medium text-sm">Drop a file or browse</span>
+              <span className="text-muted-foreground text-xs">
+                Images, video, audio, PDF, or text up to {maxUploadMegabytes} MB
+              </span>
+            </button>
           </div>
 
           {file ? (

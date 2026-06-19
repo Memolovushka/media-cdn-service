@@ -25,6 +25,34 @@ import { getAppContext } from "@/server/context";
 
 const bytesPerUnit = 1024;
 
+const assetStatusLabels = {
+  abandoned: "Abandoned",
+  failed: "Failed",
+  pending: "Pending upload",
+  ready: "Ready",
+  uploaded: "Processing",
+} as const;
+
+const assetStatusVariants = {
+  abandoned: "outline",
+  failed: "destructive",
+  pending: "secondary",
+  ready: "default",
+  uploaded: "secondary",
+} as const;
+
+type AssetStatus = keyof typeof assetStatusLabels;
+
+const getAssetStatusLabel = (status?: string) =>
+  status && status in assetStatusLabels
+    ? assetStatusLabels[status as AssetStatus]
+    : assetStatusLabels.pending;
+
+const getAssetStatusVariant = (status?: string) =>
+  status && status in assetStatusVariants
+    ? assetStatusVariants[status as AssetStatus]
+    : assetStatusVariants.pending;
+
 const formatBytes = (bytes: number) => {
   if (bytes < bytesPerUnit) {
     return `${bytes} B`;
@@ -220,8 +248,12 @@ const Page = async () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="secondary">
-                              {latestVersion?.uploadStatus ?? "pending"}
+                            <Badge
+                              variant={getAssetStatusVariant(
+                                latestVersion?.uploadStatus
+                              )}
+                            >
+                              {getAssetStatusLabel(latestVersion?.uploadStatus)}
                             </Badge>
                           </TableCell>
                           <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>

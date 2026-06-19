@@ -102,6 +102,7 @@ HTTP API:
 - Phase 1 foundation completed: Alchemy/OpenNext Cloudflare wiring, D1/R2 resource definitions, Drizzle schema/migration, Better Auth route skeleton and monorepo deploy scripts are in place.
 - Phase 2 upload MVP started: authenticated dashboard shell, asset list query, upload intent API, app-mediated R2 object write route, upload completion route, and private download route are in place.
 - Phase 2 upload UI path continued: first-workspace onboarding, workspace creation API, client upload dialog, upload progress/error states, dashboard refresh, and private download action are in place.
+- Phase 2 polish completed: drag-and-drop uploads, friendly asset status labels, and private download audit events are in place.
 - Production deploy path completed for current workflow: GitHub Actions builds on Ubuntu, applies D1 migrations, and deploys with Wrangler because local Windows OpenNext builds are unreliable.
 - Better Auth Infra connected: Dash server plugin, Sentinel client plugin, `BETTER_AUTH_API_KEY` wiring, and production `BETTER_AUTH_SECRET` setup are confirmed.
 - Auth UI continued: email/password auth page and Google sign-in button/provider wiring are in place.
@@ -141,14 +142,14 @@ Upload MVP должен закрыть полный happy path без ручны
 - [x] Добавить server action или route для создания workspace + owner membership.
 - [x] На первом входе показывать empty state с формой `workspace name` и автогенерацией slug.
 - [x] Вынести dashboard upload в client component с `useTransition`/локальным upload state.
-- [ ] Добавить drag-and-drop upload область поверх текущего file picker.
+- [x] Добавить drag-and-drop upload область поверх текущего file picker.
 - [x] Добавить file picker, progress states и error states.
 - [x] После upload completion делать refresh списка через `router.refresh()`.
 - [x] Для private ассетов добавить кнопку download, которая открывает authenticated download route.
-- [ ] Для таблицы добавить human-friendly status mapping: `pending`, `uploaded`, `ready`, `failed`, `abandoned`.
+- [x] Для таблицы добавить human-friendly status mapping: `pending`, `uploaded`, `ready`, `failed`, `abandoned`.
 - [x] Добавить минимальную валидацию на клиенте: max 250 MB и allowed MIME families.
 - [x] Записывать audit events для workspace creation.
-- [ ] Записывать audit events для private download, если download events нужны в MVP.
+- [x] Записывать audit events для private download, если download events нужны в MVP.
 
 Acceptance criteria:
 

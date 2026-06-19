@@ -1,3 +1,4 @@
+import { auditEvents } from "@/db/schema";
 import { getWritableAssetVersion } from "@/server/assets";
 import { getSessionUser } from "@/server/auth";
 import { getAppContext } from "@/server/context";
@@ -44,6 +45,15 @@ export const GET = async (request: Request, context: RouteContext) => {
   if (!object) {
     return notFound();
   }
+
+  await ctx.db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    workspaceId: record.asset.workspaceId,
+    actorUserId: user.id,
+    assetId: record.asset.id,
+    eventType: "asset.private_downloaded",
+    metadataJson: JSON.stringify({ versionId: record.version.id }),
+  });
 
   return new Response(object.body, {
     headers: {
