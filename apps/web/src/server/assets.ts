@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, like } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
   assetFolders,
@@ -175,6 +175,83 @@ export const createWorkspaceFolder = async ({
   });
 
   return { path, name: safeName };
+};
+
+export const deleteWorkspaceFolder = async ({
+  db,
+  path,
+  userId,
+  workspaceId,
+}: {
+  db: Db;
+  path: string;
+  userId: string;
+  workspaceId: string;
+}) => {
+  const membership = await getWorkspaceMembership({ db, workspaceId, userId });
+
+  if (!(membership && canWriteWorkspace(membership.role))) {
+    return null;
+  }
+
+  const normalizedPath = normalizeFolderPath(path);
+
+  if (!normalizedPath) {
+    throw new Error("Folder path is required");
+  }
+
+  const folder = await db.query.assetFolders.findFirst({
+    where: and(
+      eq(assetFolders.workspaceId, workspaceId),
+      eq(assetFolders.path, normalizedPath)
+    ),
+  });
+
+  if (!folder) {
+    throw new Error("Folder not found");
+  }
+
+  const childFolder = await db.query.assetFolders.findFirst({
+    where: and(
+      eq(assetFolders.workspaceId, workspaceId),
+      like(assetFolders.path, `${normalizedPath}/%`)
+    ),
+  });
+
+  if (childFolder) {
+    throw new Error("Folder must be empty before it can be deleted");
+  }
+
+  const containedAsset = await db.query.assets.findFirst({
+    where: and(
+      eq(assets.workspaceId, workspaceId),
+      eq(assets.folderPath, normalizedPath),
+      isNull(assets.deletedAt)
+    ),
+  });
+
+  if (containedAsset) {
+    throw new Error("Folder must be empty before it can be deleted");
+  }
+
+  await db
+    .delete(assetFolders)
+    .where(
+      and(
+        eq(assetFolders.workspaceId, workspaceId),
+        eq(assetFolders.path, normalizedPath)
+      )
+    );
+
+  await db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    workspaceId,
+    actorUserId: userId,
+    eventType: "folder.deleted",
+    metadataJson: JSON.stringify({ path: normalizedPath }),
+  });
+
+  return { path: normalizedPath };
 };
 
 export const makePrivateR2Key = ({

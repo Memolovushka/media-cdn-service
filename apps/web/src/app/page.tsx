@@ -28,6 +28,7 @@ import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { FolderCreateDialog } from "@/components/folder-create-dialog";
+import { FolderDeleteButton } from "@/components/folder-delete-button";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
 import { listWorkspaceAssets, listWorkspaceFolders } from "@/server/assets";
@@ -95,7 +96,13 @@ const getParentFolderPath = (folderPath: string) =>
 const folderHref = (folderPath: string) =>
   folderPath ? `/?folder=${encodeURIComponent(folderPath)}` : "/";
 
-const FolderTableRow = ({ folder }: { folder: DashboardFolder }) => (
+const FolderTableRow = ({
+  folder,
+  workspaceId,
+}: {
+  folder: DashboardFolder;
+  workspaceId: string;
+}) => (
   <TableRow>
     <TableCell>
       <Button asChild className="max-w-full px-0" variant="link">
@@ -109,6 +116,9 @@ const FolderTableRow = ({ folder }: { folder: DashboardFolder }) => (
       <Badge variant="outline">Folder</Badge>
     </TableCell>
     <TableCell>-</TableCell>
+    <TableCell className="text-right">
+      <FolderDeleteButton folderPath={folder.path} workspaceId={workspaceId} />
+    </TableCell>
   </TableRow>
 );
 
@@ -167,6 +177,7 @@ const AssetTableRow = ({
         </Badge>
       </TableCell>
       <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
+      <TableCell />
     </TableRow>
   );
 };
@@ -244,11 +255,13 @@ const FileManager = ({
   selectedAsset,
   selectedFolderPath,
   visibleFolders,
+  workspaceId,
 }: {
   assets: DashboardAsset[];
   selectedAsset?: DashboardAsset | null;
   selectedFolderPath: string;
   visibleFolders: DashboardFolder[];
+  workspaceId: string;
 }) => {
   const hasFileManagerItems = Boolean(visibleFolders.length || assets.length);
 
@@ -261,13 +274,20 @@ const FileManager = ({
               <TableHead>Name</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Size</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {hasFileManagerItems ? (
               <>
                 {visibleFolders.map((folder) => (
-                  <FolderTableRow folder={folder} key={folder.id} />
+                  <FolderTableRow
+                    folder={folder}
+                    key={folder.id}
+                    workspaceId={workspaceId}
+                  />
                 ))}
                 {assets.map((asset) => (
                   <AssetTableRow
@@ -285,7 +305,7 @@ const FileManager = ({
               <TableRow>
                 <TableCell
                   className="h-32 text-center text-muted-foreground text-sm"
-                  colSpan={3}
+                  colSpan={4}
                 >
                   This folder is empty.
                 </TableCell>
@@ -498,6 +518,7 @@ const Page = async ({ searchParams }: PageProps) => {
               selectedAsset={selectedAsset}
               selectedFolderPath={selectedFolderPath}
               visibleFolders={visibleFolders}
+              workspaceId={activeWorkspace.workspaceId}
             />
           </>
         ) : (
