@@ -20,6 +20,7 @@ const firstVersion = 1;
 const trailingSlashesPattern = /\/+$/;
 const maxUploadBytes =
   bytesPerKilobyte * kilobytesPerMegabyte * maxUploadMegabytes;
+const syntheticFolderIdPrefix = "asset-path";
 export const publicAssetCacheControl = "public, max-age=31536000, immutable";
 
 const allowedMimePrefixes = [
@@ -42,6 +43,16 @@ export interface UploadIntentInput {
   folderPath?: string;
   mimeType: string;
   sizeBytes: number;
+  workspaceId: string;
+}
+
+export interface WorkspaceFolderItem {
+  createdAt: Date;
+  createdByUserId: string | null;
+  id: string;
+  name: string;
+  path: string;
+  updatedAt: Date;
   workspaceId: string;
 }
 
@@ -115,11 +126,52 @@ export const listWorkspaceFolders = async ({
     return null;
   }
 
-  return db
+  const folderRows = await db
     .select()
     .from(assetFolders)
     .where(eq(assetFolders.workspaceId, workspaceId))
     .orderBy(asc(assetFolders.path));
+  const assetFolderRows = await db
+    .select({ folderPath: assets.folderPath })
+    .from(assets)
+    .where(and(eq(assets.workspaceId, workspaceId), isNull(assets.deletedAt)));
+  const foldersByPath = new Map<string, WorkspaceFolderItem>();
+
+  for (const folder of folderRows) {
+    foldersByPath.set(folder.path, folder);
+  }
+
+  for (const asset of assetFolderRows) {
+    const folderPath = normalizeFolderPath(asset.folderPath);
+
+    if (!folderPath) {
+      continue;
+    }
+
+    const segments = folderPath.split("/");
+
+    for (let index = 0; index < segments.length; index += 1) {
+      const path = segments.slice(0, index + 1).join("/");
+
+      if (foldersByPath.has(path)) {
+        continue;
+      }
+
+      foldersByPath.set(path, {
+        id: `${syntheticFolderIdPrefix}:${workspaceId}:${path}`,
+        workspaceId,
+        path,
+        name: segments[index] ?? path,
+        createdByUserId: null,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      });
+    }
+  }
+
+  return [...foldersByPath.values()].sort((left, right) =>
+    left.path.localeCompare(right.path)
+  );
 };
 
 export const createWorkspaceFolder = async ({
@@ -200,17 +252,6 @@ export const deleteWorkspaceFolder = async ({
     throw new Error("Folder path is required");
   }
 
-  const folder = await db.query.assetFolders.findFirst({
-    where: and(
-      eq(assetFolders.workspaceId, workspaceId),
-      eq(assetFolders.path, normalizedPath)
-    ),
-  });
-
-  if (!folder) {
-    throw new Error("Folder not found");
-  }
-
   const childFolder = await db.query.assetFolders.findFirst({
     where: and(
       eq(assetFolders.workspaceId, workspaceId),
@@ -219,6 +260,18 @@ export const deleteWorkspaceFolder = async ({
   });
 
   if (childFolder) {
+    throw new Error("Folder must be empty before it can be deleted");
+  }
+
+  const childAsset = await db.query.assets.findFirst({
+    where: and(
+      eq(assets.workspaceId, workspaceId),
+      like(assets.folderPath, `${normalizedPath}/%`),
+      isNull(assets.deletedAt)
+    ),
+  });
+
+  if (childAsset) {
     throw new Error("Folder must be empty before it can be deleted");
   }
 
@@ -232,6 +285,17 @@ export const deleteWorkspaceFolder = async ({
 
   if (containedAsset) {
     throw new Error("Folder must be empty before it can be deleted");
+  }
+
+  const folder = await db.query.assetFolders.findFirst({
+    where: and(
+      eq(assetFolders.workspaceId, workspaceId),
+      eq(assetFolders.path, normalizedPath)
+    ),
+  });
+
+  if (!folder) {
+    throw new Error("Folder not found");
   }
 
   await db
