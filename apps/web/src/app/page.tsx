@@ -27,6 +27,10 @@ import { AccountActions } from "@/components/account-actions";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
+import {
+  AssetContextMenu,
+  FolderContextMenu,
+} from "@/components/file-manager-context-menu";
 import { FolderCreateDialog } from "@/components/folder-create-dialog";
 import { FolderDeleteButton } from "@/components/folder-delete-button";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
@@ -102,25 +106,38 @@ const FolderTableRow = ({
 }: {
   folder: DashboardFolder;
   workspaceId: string;
-}) => (
-  <TableRow>
-    <TableCell>
-      <Button asChild className="max-w-full px-0" variant="link">
-        <a className="min-w-0 justify-start" href={folderHref(folder.path)}>
-          <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate font-medium">{folder.name}</span>
-        </a>
-      </Button>
-    </TableCell>
-    <TableCell>
-      <Badge variant="outline">Folder</Badge>
-    </TableCell>
-    <TableCell>-</TableCell>
-    <TableCell className="text-right">
-      <FolderDeleteButton folderPath={folder.path} workspaceId={workspaceId} />
-    </TableCell>
-  </TableRow>
-);
+}) => {
+  const href = folderHref(folder.path);
+
+  return (
+    <FolderContextMenu
+      folderHref={href}
+      folderPath={folder.path}
+      workspaceId={workspaceId}
+    >
+      <TableRow>
+        <TableCell>
+          <Button asChild className="max-w-full px-0" variant="link">
+            <a className="min-w-0 justify-start" href={href}>
+              <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate font-medium">{folder.name}</span>
+            </a>
+          </Button>
+        </TableCell>
+        <TableCell>
+          <Badge variant="outline">Folder</Badge>
+        </TableCell>
+        <TableCell>-</TableCell>
+        <TableCell className="text-right">
+          <FolderDeleteButton
+            folderPath={folder.path}
+            workspaceId={workspaceId}
+          />
+        </TableCell>
+      </TableRow>
+    </FolderContextMenu>
+  );
+};
 
 const assetHref = ({
   assetId,
@@ -150,35 +167,48 @@ const AssetTableRow = ({
   selected: boolean;
 }) => {
   const latestVersion = "versions" in asset ? asset.versions.at(0) : null;
+  const isReady = latestVersion?.uploadStatus === "ready";
+  const downloadUrl = isReady
+    ? `/api/assets/${asset.id}/download?versionId=${latestVersion.id}`
+    : null;
+  const previewUrl = isReady
+    ? `/api/assets/${asset.id}/preview?versionId=${latestVersion.id}`
+    : null;
 
   return (
-    <TableRow className={selected ? "bg-muted/60" : undefined} key={asset.id}>
-      <TableCell>
-        <Button asChild className="h-auto max-w-full px-0" variant="link">
-          <a className="min-w-0 justify-start text-left" href={href}>
-            <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0">
-              <div className="truncate font-medium">{asset.filename}</div>
-              <div className="truncate text-muted-foreground text-xs">
-                {asset.mimeType}
-              </div>
-              {asset.folderPath ? (
+    <AssetContextMenu
+      downloadUrl={downloadUrl}
+      href={href}
+      previewUrl={previewUrl}
+    >
+      <TableRow className={selected ? "bg-muted/60" : undefined} key={asset.id}>
+        <TableCell>
+          <Button asChild className="h-auto max-w-full px-0" variant="link">
+            <a className="min-w-0 justify-start text-left" href={href}>
+              <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <div className="truncate font-medium">{asset.filename}</div>
                 <div className="truncate text-muted-foreground text-xs">
-                  {asset.folderPath}
+                  {asset.mimeType}
                 </div>
-              ) : null}
-            </div>
-          </a>
-        </Button>
-      </TableCell>
-      <TableCell>
-        <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
-          {getAssetStatusLabel(latestVersion?.uploadStatus)}
-        </Badge>
-      </TableCell>
-      <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
-      <TableCell />
-    </TableRow>
+                {asset.folderPath ? (
+                  <div className="truncate text-muted-foreground text-xs">
+                    {asset.folderPath}
+                  </div>
+                ) : null}
+              </div>
+            </a>
+          </Button>
+        </TableCell>
+        <TableCell>
+          <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
+            {getAssetStatusLabel(latestVersion?.uploadStatus)}
+          </Badge>
+        </TableCell>
+        <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
+        <TableCell />
+      </TableRow>
+    </AssetContextMenu>
   );
 };
 
