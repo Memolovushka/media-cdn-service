@@ -15,24 +15,17 @@ import {
   TableRow,
 } from "@workspace/ui/components/table";
 import { eq } from "drizzle-orm";
-import {
-  DownloadIcon,
-  FileIcon,
-  FolderIcon,
-  KeyRoundIcon,
-  SearchIcon,
-} from "lucide-react";
+import { DownloadIcon, KeyRoundIcon, SearchIcon } from "lucide-react";
 import { headers } from "next/headers";
 import { AccountActions } from "@/components/account-actions";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import {
-  AssetContextMenu,
-  FolderContextMenu,
-} from "@/components/file-manager-context-menu";
+  AssetTableRowClient,
+  FolderTableRowClient,
+} from "@/components/file-manager-table-rows";
 import { FolderCreateDialog } from "@/components/folder-create-dialog";
-import { FolderDeleteButton } from "@/components/folder-delete-button";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
 import { listWorkspaceAssets, listWorkspaceFolders } from "@/server/assets";
@@ -110,32 +103,54 @@ const FolderTableRow = ({
   const href = folderHref(folder.path);
 
   return (
-    <FolderContextMenu
+    <FolderTableRowClient
       folderHref={href}
+      folderName={folder.name}
       folderPath={folder.path}
       workspaceId={workspaceId}
-    >
-      <TableRow>
-        <TableCell>
-          <Button asChild className="max-w-full px-0" variant="link">
-            <a className="min-w-0 justify-start" href={href}>
-              <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate font-medium">{folder.name}</span>
-            </a>
-          </Button>
-        </TableCell>
-        <TableCell>
-          <Badge variant="outline">Folder</Badge>
-        </TableCell>
-        <TableCell>-</TableCell>
-        <TableCell className="text-right">
-          <FolderDeleteButton
-            folderPath={folder.path}
-            workspaceId={workspaceId}
-          />
-        </TableCell>
-      </TableRow>
-    </FolderContextMenu>
+    />
+  );
+};
+
+const getAssetUrls = (asset: DashboardAsset) => {
+  const latestVersion = "versions" in asset ? asset.versions.at(0) : null;
+  const isReady = latestVersion?.uploadStatus === "ready";
+
+  return {
+    downloadUrl: isReady
+      ? `/api/assets/${asset.id}/download?versionId=${latestVersion.id}`
+      : null,
+    latestVersion,
+    previewUrl: isReady
+      ? `/api/assets/${asset.id}/preview?versionId=${latestVersion.id}`
+      : null,
+  };
+};
+
+const AssetTableRow = ({
+  asset,
+  href,
+  selected,
+}: {
+  asset: DashboardAsset;
+  href: string;
+  selected: boolean;
+}) => {
+  const { downloadUrl, latestVersion, previewUrl } = getAssetUrls(asset);
+
+  return (
+    <AssetTableRowClient
+      downloadUrl={downloadUrl}
+      filename={asset.filename}
+      folderPath={asset.folderPath}
+      href={href}
+      mimeType={asset.mimeType}
+      previewUrl={previewUrl}
+      selected={selected}
+      sizeLabel={formatBytes(asset.sizeBytes)}
+      statusLabel={getAssetStatusLabel(latestVersion?.uploadStatus)}
+      statusVariant={getAssetStatusVariant(latestVersion?.uploadStatus)}
+    />
   );
 };
 
@@ -156,62 +171,6 @@ const assetHref = ({
 
   return `/?${params.toString()}`;
 };
-
-const AssetTableRow = ({
-  asset,
-  href,
-  selected,
-}: {
-  asset: DashboardAsset;
-  href: string;
-  selected: boolean;
-}) => {
-  const latestVersion = "versions" in asset ? asset.versions.at(0) : null;
-  const isReady = latestVersion?.uploadStatus === "ready";
-  const downloadUrl = isReady
-    ? `/api/assets/${asset.id}/download?versionId=${latestVersion.id}`
-    : null;
-  const previewUrl = isReady
-    ? `/api/assets/${asset.id}/preview?versionId=${latestVersion.id}`
-    : null;
-
-  return (
-    <AssetContextMenu
-      downloadUrl={downloadUrl}
-      href={href}
-      previewUrl={previewUrl}
-    >
-      <TableRow className={selected ? "bg-muted/60" : undefined} key={asset.id}>
-        <TableCell>
-          <Button asChild className="h-auto max-w-full px-0" variant="link">
-            <a className="min-w-0 justify-start text-left" href={href}>
-              <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="truncate font-medium">{asset.filename}</div>
-                <div className="truncate text-muted-foreground text-xs">
-                  {asset.mimeType}
-                </div>
-                {asset.folderPath ? (
-                  <div className="truncate text-muted-foreground text-xs">
-                    {asset.folderPath}
-                  </div>
-                ) : null}
-              </div>
-            </a>
-          </Button>
-        </TableCell>
-        <TableCell>
-          <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
-            {getAssetStatusLabel(latestVersion?.uploadStatus)}
-          </Badge>
-        </TableCell>
-        <TableCell>{formatBytes(asset.sizeBytes)}</TableCell>
-        <TableCell />
-      </TableRow>
-    </AssetContextMenu>
-  );
-};
-
 const AssetDetailsPanel = ({ asset }: { asset?: DashboardAsset | null }) => {
   if (!asset) {
     return (

@@ -9,28 +9,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@workspace/ui/components/alert-dialog";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { TableCell, TableRow } from "@workspace/ui/components/table";
 import {
   DownloadIcon,
   EyeIcon,
+  FileIcon,
+  FolderIcon,
   FolderOpenIcon,
   MousePointerClickIcon,
   TrashIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { MouseEvent, ReactElement, ReactNode } from "react";
-import {
-  cloneElement,
-  useCallback,
-  useEffect,
-  useState,
-  useTransition,
-} from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-
-type ContextMenuChild = ReactElement<{
-  onContextMenu?: (event: MouseEvent) => void;
-}>;
+import { FolderDeleteButton } from "@/components/folder-delete-button";
 
 interface MenuPosition {
   x: number;
@@ -63,21 +58,40 @@ const MenuItem = ({
     data-variant={variant}
     disabled={disabled}
     onClick={onSelect}
+    role="menuitem"
     type="button"
   >
     {children}
   </button>
 );
 
-const LightweightContextMenu = ({
+const FloatingMenu = ({
   children,
-  items,
+  position,
 }: {
-  children: ContextMenuChild;
-  items: (closeMenu: () => void) => ReactNode;
-}) => {
+  children: ReactNode;
+  position: MenuPosition | null;
+}) =>
+  position
+    ? createPortal(
+        <div
+          className="fixed z-50 min-w-36 rounded-lg bg-popover/95 p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 backdrop-blur-sm"
+          role="menu"
+          style={{ left: position.x, top: position.y }}
+        >
+          {children}
+        </div>,
+        document.body
+      )
+    : null;
+
+const useRowContextMenu = () => {
   const [position, setPosition] = useState<MenuPosition | null>(null);
   const closeMenu = useCallback(() => setPosition(null), []);
+  const openMenu = (event: MouseEvent) => {
+    event.preventDefault();
+    setPosition({ x: event.clientX, y: event.clientY });
+  };
 
   useEffect(() => {
     if (!position) {
@@ -101,43 +115,22 @@ const LightweightContextMenu = ({
     };
   }, [closeMenu, position]);
 
-  return (
-    <>
-      {cloneElement(children, {
-        onContextMenu: (event: MouseEvent) => {
-          children.props.onContextMenu?.(event);
-          event.preventDefault();
-          setPosition({ x: event.clientX, y: event.clientY });
-        },
-      })}
-      {position
-        ? createPortal(
-            <div
-              className="fixed z-50 min-w-36 rounded-lg bg-popover/95 p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 backdrop-blur-sm"
-              role="menu"
-              style={{ left: position.x, top: position.y }}
-            >
-              {items(closeMenu)}
-            </div>,
-            document.body
-          )
-        : null}
-    </>
-  );
+  return { closeMenu, openMenu, position };
 };
 
-export const FolderContextMenu = ({
-  children,
+export const FolderTableRowClient = ({
   folderHref,
+  folderName,
   folderPath,
   workspaceId,
 }: {
-  children: ContextMenuChild;
   folderHref: string;
+  folderName: string;
   folderPath: string;
   workspaceId: string;
 }) => {
   const router = useRouter();
+  const { closeMenu, openMenu, position } = useRowContextMenu();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -169,34 +162,49 @@ export const FolderContextMenu = ({
 
   return (
     <>
-      <LightweightContextMenu
-        items={(closeMenu) => (
-          <>
-            <MenuItem
-              onSelect={() => {
-                closeMenu();
-                window.location.href = folderHref;
-              }}
-            >
-              <FolderOpenIcon />
-              Open
-            </MenuItem>
-            <MenuSeparator />
-            <MenuItem
-              onSelect={() => {
-                closeMenu();
-                setDeleteOpen(true);
-              }}
-              variant="destructive"
-            >
-              <TrashIcon />
-              Delete
-            </MenuItem>
-          </>
-        )}
-      >
-        {children}
-      </LightweightContextMenu>
+      <TableRow onContextMenu={openMenu}>
+        <TableCell>
+          <Button asChild className="max-w-full px-0" variant="link">
+            <a className="min-w-0 justify-start" href={folderHref}>
+              <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate font-medium">{folderName}</span>
+            </a>
+          </Button>
+        </TableCell>
+        <TableCell>
+          <Badge variant="outline">Folder</Badge>
+        </TableCell>
+        <TableCell>-</TableCell>
+        <TableCell className="text-right">
+          <FolderDeleteButton
+            folderPath={folderPath}
+            workspaceId={workspaceId}
+          />
+        </TableCell>
+      </TableRow>
+
+      <FloatingMenu position={position}>
+        <MenuItem
+          onSelect={() => {
+            closeMenu();
+            window.location.href = folderHref;
+          }}
+        >
+          <FolderOpenIcon />
+          Open
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem
+          onSelect={() => {
+            closeMenu();
+            setDeleteOpen(true);
+          }}
+          variant="destructive"
+        >
+          <TrashIcon />
+          Delete
+        </MenuItem>
+      </FloatingMenu>
 
       <AlertDialog
         onOpenChange={(nextOpen) => {
@@ -231,20 +239,63 @@ export const FolderContextMenu = ({
   );
 };
 
-export const AssetContextMenu = ({
-  children,
+export const AssetTableRowClient = ({
   downloadUrl,
+  filename,
+  folderPath,
   href,
+  mimeType,
   previewUrl,
+  selected,
+  sizeLabel,
+  statusLabel,
+  statusVariant,
 }: {
-  children: ContextMenuChild;
   downloadUrl?: null | string;
+  filename: string;
+  folderPath: string;
   href: string;
+  mimeType: string;
   previewUrl?: null | string;
-}) => (
-  <LightweightContextMenu
-    items={(closeMenu) => (
-      <>
+  selected: boolean;
+  sizeLabel: string;
+  statusLabel: string;
+  statusVariant: ComponentProps<typeof Badge>["variant"];
+}) => {
+  const { closeMenu, openMenu, position } = useRowContextMenu();
+
+  return (
+    <>
+      <TableRow
+        className={selected ? "bg-muted/60" : undefined}
+        onContextMenu={openMenu}
+      >
+        <TableCell>
+          <Button asChild className="h-auto max-w-full px-0" variant="link">
+            <a className="min-w-0 justify-start text-left" href={href}>
+              <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <div className="truncate font-medium">{filename}</div>
+                <div className="truncate text-muted-foreground text-xs">
+                  {mimeType}
+                </div>
+                {folderPath ? (
+                  <div className="truncate text-muted-foreground text-xs">
+                    {folderPath}
+                  </div>
+                ) : null}
+              </div>
+            </a>
+          </Button>
+        </TableCell>
+        <TableCell>
+          <Badge variant={statusVariant}>{statusLabel}</Badge>
+        </TableCell>
+        <TableCell>{sizeLabel}</TableCell>
+        <TableCell />
+      </TableRow>
+
+      <FloatingMenu position={position}>
         <MenuItem
           onSelect={() => {
             closeMenu();
@@ -279,9 +330,7 @@ export const AssetContextMenu = ({
           <DownloadIcon />
           Download
         </MenuItem>
-      </>
-    )}
-  >
-    {children}
-  </LightweightContextMenu>
-);
+      </FloatingMenu>
+    </>
+  );
+};
