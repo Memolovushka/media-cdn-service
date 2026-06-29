@@ -159,7 +159,6 @@ const AssetTableRow = ({
     <AssetTableRowClient
       downloadUrl={downloadUrl}
       filename={asset.filename}
-      folderPath={asset.folderPath}
       href={href}
       mimeType={asset.mimeType}
       previewUrl={previewUrl}

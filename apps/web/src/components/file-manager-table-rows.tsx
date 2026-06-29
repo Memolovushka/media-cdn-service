@@ -242,7 +242,6 @@ export const FolderTableRowClient = ({
 export const AssetTableRowClient = ({
   downloadUrl,
   filename,
-  folderPath,
   href,
   mimeType,
   previewUrl,
@@ -253,7 +252,6 @@ export const AssetTableRowClient = ({
 }: {
   downloadUrl?: null | string;
   filename: string;
-  folderPath: string;
   href: string;
   mimeType: string;
   previewUrl?: null | string;
@@ -279,11 +277,6 @@ export const AssetTableRowClient = ({
                 <div className="truncate text-muted-foreground text-xs">
                   {mimeType}
                 </div>
-                {folderPath ? (
-                  <div className="truncate text-muted-foreground text-xs">
-                    {folderPath}
-                  </div>
-                ) : null}
               </div>
             </a>
           </Button>
