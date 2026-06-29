@@ -21,9 +21,14 @@ import { AccountActions } from "@/components/account-actions";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { FileManager } from "@/components/file-manager";
 import { FolderCreateDialog } from "@/components/folder-create-dialog";
+import { StorageUsageSummary } from "@/components/storage-usage-summary";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
-import { listWorkspaceAssets, listWorkspaceFolders } from "@/server/assets";
+import {
+  getWorkspaceStorageUsage,
+  listWorkspaceAssets,
+  listWorkspaceFolders,
+} from "@/server/assets";
 import { getAppContext } from "@/server/context";
 
 const fileBrowserRootPath = "asset";
@@ -151,6 +156,13 @@ const Page = async ({ searchParams }: PageProps) => {
         userId: session.user.id,
       })
     : [];
+  const storageUsage = activeWorkspace
+    ? await getWorkspaceStorageUsage({
+        db: ctx.db,
+        workspaceId: activeWorkspace.workspaceId,
+        userId: session.user.id,
+      })
+    : null;
   const visibleFolders =
     folders?.filter((folder) => {
       const parentPath = getParentFolderPath(folder.path);
@@ -234,6 +246,8 @@ const Page = async ({ searchParams }: PageProps) => {
                 />
               </div>
             </section>
+
+            {storageUsage ? <StorageUsageSummary usage={storageUsage} /> : null}
 
             <FileManager
               allFolders={folders ?? []}

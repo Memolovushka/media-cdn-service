@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, like } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
   assetFolders,
@@ -54,6 +54,14 @@ export interface WorkspaceFolderItem {
   path: string;
   updatedAt: Date;
   workspaceId: string;
+}
+
+export interface WorkspaceStorageUsage {
+  cdnCopyCount: number;
+  privateBytes: number;
+  publicBytes: number;
+  readyVersionCount: number;
+  totalBytes: number;
 }
 
 export const sanitizeFilename = (filename: string) => {
@@ -172,6 +180,51 @@ export const listWorkspaceFolders = async ({
   return [...foldersByPath.values()].sort((left, right) =>
     left.path.localeCompare(right.path)
   );
+};
+
+export const getWorkspaceStorageUsage = async ({
+  db,
+  workspaceId,
+  userId,
+}: {
+  db: Db;
+  workspaceId: string;
+  userId: string;
+}): Promise<WorkspaceStorageUsage | null> => {
+  const membership = await getWorkspaceMembership({ db, workspaceId, userId });
+
+  if (!membership) {
+    return null;
+  }
+
+  const objectSize = sql<number>`coalesce(${assetVersions.sizeBytes}, ${assets.sizeBytes}, 0)`;
+  const [usage] = await db
+    .select({
+      cdnCopyCount: sql<number>`coalesce(sum(case when ${assetVersions.publicKey} is not null then 1 else 0 end), 0)`,
+      privateBytes: sql<number>`coalesce(sum(${objectSize}), 0)`,
+      publicBytes: sql<number>`coalesce(sum(case when ${assetVersions.publicKey} is not null then ${objectSize} else 0 end), 0)`,
+      readyVersionCount: sql<number>`count(${assetVersions.id})`,
+    })
+    .from(assets)
+    .innerJoin(assetVersions, eq(assetVersions.assetId, assets.id))
+    .where(
+      and(
+        eq(assets.workspaceId, workspaceId),
+        isNull(assets.deletedAt),
+        eq(assetVersions.uploadStatus, "ready")
+      )
+    );
+
+  const privateBytes = Number(usage?.privateBytes ?? 0);
+  const publicBytes = Number(usage?.publicBytes ?? 0);
+
+  return {
+    cdnCopyCount: Number(usage?.cdnCopyCount ?? 0),
+    privateBytes,
+    publicBytes,
+    readyVersionCount: Number(usage?.readyVersionCount ?? 0),
+    totalBytes: privateBytes + publicBytes,
+  };
 };
 
 export const createWorkspaceFolder = async ({
