@@ -122,6 +122,8 @@ const getAssetUrls = (asset: DashboardAsset) => {
   };
 };
 
+const isImageMimeType = (mimeType: string) => mimeType.startsWith("image/");
+
 const assetHref = ({
   assetId,
   folderPath,
@@ -192,6 +194,10 @@ const AssetDetailsPanel = ({
 
   const { downloadUrl, latestVersion, previewUrl } = getAssetUrls(asset);
   const isReady = latestVersion?.uploadStatus === "ready";
+  const inlineImagePreviewUrl =
+    previewUrl && isReady && isImageMimeType(asset.mimeType)
+      ? previewUrl
+      : null;
   const saveFilename = () => {
     const nextFilename = filename.trim();
 
@@ -266,6 +272,21 @@ const AssetDetailsPanel = ({
           {getAssetStatusLabel(latestVersion?.uploadStatus)}
         </Badge>
       </div>
+
+      {inlineImagePreviewUrl ? (
+        <div className="flex min-h-56 items-center justify-center overflow-hidden rounded-lg border bg-muted/20">
+          <object
+            aria-label={`Preview of ${asset.filename}`}
+            className="h-full max-h-[420px] min-h-56 w-full object-contain"
+            data={inlineImagePreviewUrl}
+            type={asset.mimeType}
+          >
+            <div className="flex min-h-56 items-center justify-center p-4 text-center text-muted-foreground text-sm">
+              Preview is not available for this image.
+            </div>
+          </object>
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-1">
         <AssetPreviewDialog
