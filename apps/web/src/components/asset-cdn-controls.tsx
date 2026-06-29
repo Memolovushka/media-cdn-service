@@ -1,7 +1,12 @@
 "use client";
 
-import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
 import {
   Tooltip,
@@ -15,6 +20,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   Globe2Icon,
+  MoreHorizontalIcon,
   SaveIcon,
   UnlinkIcon,
 } from "lucide-react";
@@ -102,6 +108,36 @@ const PublicUrlCopyRow = ({
       </TooltipContent>
     </Tooltip>
   </div>
+);
+
+const CdnActionsMenu = ({
+  copiedTarget,
+  disabled,
+  onCopyNextImageConfig,
+  showNextImageConfig,
+}: {
+  copiedTarget: "config" | "url" | null;
+  disabled: boolean;
+  onCopyNextImageConfig: () => void;
+  showNextImageConfig: boolean;
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button size="icon-sm" type="button" variant="outline">
+        <MoreHorizontalIcon />
+        <span className="sr-only">CDN actions</span>
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="start" className="w-44">
+      <DropdownMenuItem
+        disabled={disabled || !showNextImageConfig}
+        onSelect={onCopyNextImageConfig}
+      >
+        {copiedTarget === "config" ? <CheckIcon /> : <ClipboardIcon />}
+        Copy Next config
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
 );
 
 export const AssetCdnControls = ({
@@ -229,19 +265,6 @@ export const AssetCdnControls = ({
           }
           url={currentPublicUrl}
         />
-        {nextImageConfig ? (
-          <Button
-            className="w-fit"
-            disabled={isPending}
-            onClick={copyNextImageConfig}
-            size="xs"
-            type="button"
-            variant="outline"
-          >
-            {copiedTarget === "config" ? <CheckIcon /> : <ClipboardIcon />}
-            Copy Next config
-          </Button>
-        ) : null}
       </div>
     );
   } else if (ready) {
@@ -257,12 +280,6 @@ export const AssetCdnControls = ({
       <div className="flex min-w-72 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {enabled ? (
-            <Badge>Enabled</Badge>
-          ) : (
-            <Badge variant="outline">Private</Badge>
-          )}
-
-          {enabled ? (
             <Button
               disabled={isPending}
               onClick={() => {
@@ -274,7 +291,7 @@ export const AssetCdnControls = ({
               }}
               size="sm"
               type="button"
-              variant="outline"
+              variant="destructive"
             >
               <UnlinkIcon />
               Disable CDN
@@ -295,6 +312,15 @@ export const AssetCdnControls = ({
               Publish to CDN
             </Button>
           )}
+
+          {currentPublicUrl ? (
+            <CdnActionsMenu
+              copiedTarget={copiedTarget}
+              disabled={isPending}
+              onCopyNextImageConfig={copyNextImageConfig}
+              showNextImageConfig={Boolean(nextImageConfig)}
+            />
+          ) : null}
 
           {copiedTarget === "url" ? (
             <span className="flex items-center gap-1 text-primary text-xs">
