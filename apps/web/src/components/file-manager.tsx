@@ -480,19 +480,57 @@ export const FileManager = ({
       }}
     >
       {isDraggingFiles || isDropUploading ? (
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-lg border-2 border-primary border-dashed bg-background/80 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-lg border bg-popover p-4 text-center shadow-sm">
-            <CloudUploadIcon className="mx-auto size-8 text-primary" />
-            <div className="mt-3 font-medium text-sm">
-              {isDropUploading ? "Uploading files" : "Drop files to upload"}
+        <div className="pointer-events-none absolute inset-0 z-20 rounded-lg border-2 border-primary border-dashed bg-primary/5 p-4 backdrop-blur-[1px]">
+          <div className="flex items-center gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
+            <CloudUploadIcon className="size-5 text-primary" />
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-sm">
+                {isDropUploading
+                  ? "Uploading files"
+                  : "Drop anywhere to upload"}
+              </div>
+              <div className="truncate text-muted-foreground text-xs">
+                {dropUploadLabel ?? "Files will be added to this folder"}
+              </div>
             </div>
-            <div className="mt-1 truncate text-muted-foreground text-xs">
-              {dropUploadLabel ?? "They will be added to this folder"}
-            </div>
-            {dropProgress > 0 ? (
-              <Progress className="mt-3" value={dropProgress} />
-            ) : null}
           </div>
+          {dropProgress > 0 ? (
+            <Progress className="mt-3 max-w-md" value={dropProgress} />
+          ) : null}
+        </div>
+      ) : null}
+      {moveTargets.length ? (
+        <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap gap-2 rounded-t-lg border-primary/40 border-x border-t bg-background/95 p-2 shadow-sm">
+          {moveTargets.map((folder) => (
+            <button
+              className="rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs hover:border-primary/50 hover:text-foreground"
+              key={folder.path}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (draggedAssetId) {
+                  moveAsset(draggedAssetId, folder.path).catch(
+                    (moveErrorValue: unknown) => {
+                      setMoveError(
+                        moveErrorValue instanceof Error
+                          ? moveErrorValue.message
+                          : "Move failed"
+                      );
+                    }
+                  );
+                }
+                setDraggedAssetId(null);
+              }}
+              type="button"
+            >
+              {folder.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {isDropUploading ? (
+        <div className="sr-only" role="status">
+          Uploading files
         </div>
       ) : null}
       {dropError ? (
@@ -506,35 +544,6 @@ export const FileManager = ({
         </div>
       ) : null}
       <div className="min-h-96 overflow-x-auto rounded-lg border">
-        {moveTargets.length ? (
-          <div className="flex flex-wrap gap-2 border-b bg-muted/30 p-2">
-            {moveTargets.map((folder) => (
-              <button
-                className="rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs hover:border-primary/50 hover:text-foreground"
-                key={folder.path}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  if (draggedAssetId) {
-                    moveAsset(draggedAssetId, folder.path).catch(
-                      (moveErrorValue: unknown) => {
-                        setMoveError(
-                          moveErrorValue instanceof Error
-                            ? moveErrorValue.message
-                            : "Move failed"
-                        );
-                      }
-                    );
-                  }
-                  setDraggedAssetId(null);
-                }}
-                type="button"
-              >
-                {folder.name}
-              </button>
-            ))}
-          </div>
-        ) : null}
         <Table>
           <TableHeader>
             <TableRow>
