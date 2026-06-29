@@ -21,8 +21,14 @@ import {
   MousePointerClickIcon,
   TrashIcon,
 } from "lucide-react";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import type { ComponentProps, MouseEvent, ReactNode } from "react";
+import type {
+  ComponentProps,
+  MouseEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  ReactNode,
+} from "react";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { FolderDeleteButton } from "@/components/folder-delete-button";
@@ -85,6 +91,21 @@ const FloatingMenu = ({
       )
     : null;
 
+const handleRowKeyDown = ({
+  event,
+  onOpen,
+}: {
+  event: ReactKeyboardEvent<HTMLTableRowElement>;
+  onOpen: () => void;
+}) => {
+  if (!(event.key === "Enter" || event.key === " ")) {
+    return;
+  }
+
+  event.preventDefault();
+  onOpen();
+};
+
 const useRowContextMenu = () => {
   const [position, setPosition] = useState<MenuPosition | null>(null);
   const closeMenu = useCallback(() => setPosition(null), []);
@@ -134,6 +155,7 @@ export const FolderTableRowClient = ({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const openFolder = () => router.push(folderHref as Route);
 
   const deleteFolder = () => {
     setError(null);
@@ -162,20 +184,29 @@ export const FolderTableRowClient = ({
 
   return (
     <>
-      <TableRow onContextMenu={openMenu}>
+      <TableRow
+        className="cursor-pointer hover:bg-muted/40"
+        onClick={openFolder}
+        onContextMenu={openMenu}
+        onKeyDown={(event) => handleRowKeyDown({ event, onOpen: openFolder })}
+        role="link"
+        tabIndex={0}
+      >
         <TableCell>
-          <Button asChild className="max-w-full px-0" variant="link">
-            <a className="min-w-0 justify-start" href={folderHref}>
-              <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate font-medium">{folderName}</span>
-            </a>
-          </Button>
+          <div className="flex min-w-0 items-center gap-1 text-primary">
+            <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="truncate font-medium">{folderName}</span>
+          </div>
         </TableCell>
         <TableCell>
           <Badge variant="outline">Folder</Badge>
         </TableCell>
         <TableCell>-</TableCell>
-        <TableCell className="text-right">
+        <TableCell
+          className="text-right"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
           <FolderDeleteButton
             folderPath={folderPath}
             workspaceId={workspaceId}
@@ -260,26 +291,35 @@ export const AssetTableRowClient = ({
   statusLabel: string;
   statusVariant: ComponentProps<typeof Badge>["variant"];
 }) => {
+  const router = useRouter();
   const { closeMenu, openMenu, position } = useRowContextMenu();
+  const openAsset = () => router.push(href as Route);
 
   return (
     <>
       <TableRow
-        className={selected ? "bg-muted/60" : undefined}
+        aria-current={selected ? "page" : undefined}
+        className={
+          selected
+            ? "cursor-pointer bg-muted/60 hover:bg-muted/70"
+            : "cursor-pointer hover:bg-muted/40"
+        }
+        onClick={openAsset}
         onContextMenu={openMenu}
+        onKeyDown={(event) => handleRowKeyDown({ event, onOpen: openAsset })}
+        role="link"
+        tabIndex={0}
       >
         <TableCell>
-          <Button asChild className="h-auto max-w-full px-0" variant="link">
-            <a className="min-w-0 justify-start text-left" href={href}>
-              <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="truncate font-medium">{filename}</div>
-                <div className="truncate text-muted-foreground text-xs">
-                  {mimeType}
-                </div>
+          <div className="flex min-w-0 items-center gap-1 text-left text-primary">
+            <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <div className="truncate font-medium">{filename}</div>
+              <div className="truncate text-muted-foreground text-xs">
+                {mimeType}
               </div>
-            </a>
-          </Button>
+            </div>
+          </div>
         </TableCell>
         <TableCell>
           <Badge variant={statusVariant}>{statusLabel}</Badge>
