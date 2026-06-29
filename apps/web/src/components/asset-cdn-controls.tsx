@@ -12,6 +12,8 @@ import {
 import {
   CheckIcon,
   ClipboardIcon,
+  EyeIcon,
+  EyeOffIcon,
   Globe2Icon,
   SaveIcon,
   UnlinkIcon,
@@ -43,11 +45,62 @@ const parseTags = (value: string) =>
     .filter(Boolean);
 
 const copiedResetDelayMs = 1600;
+const hiddenPublicUrlMaxLength = 42;
 const httpsProtocol = "https:";
 
 interface AssetPatchResponse {
   publicUrl?: null | string;
 }
+
+const getHiddenPublicUrl = (url: string) =>
+  "*".repeat(Math.min(url.length, hiddenPublicUrlMaxLength));
+
+const PublicUrlCopyRow = ({
+  isVisible,
+  onCopy,
+  onToggleVisibility,
+  url,
+}: {
+  isVisible: boolean;
+  onCopy: () => void;
+  onToggleVisibility: () => void;
+  url: string;
+}) => (
+  <div className="flex items-start gap-1">
+    <button
+      aria-label="Copy public CDN URL"
+      className="min-h-10 flex-1 rounded-md border bg-muted/30 px-3 py-2 text-left font-mono text-muted-foreground text-xs transition-colors hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      onClick={onCopy}
+      type="button"
+    >
+      {isVisible ? (
+        <span className="break-all">{url}</span>
+      ) : (
+        <span className="block truncate">{getHiddenPublicUrl(url)}</span>
+      )}
+    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          aria-pressed={isVisible}
+          className="shrink-0"
+          onClick={onToggleVisibility}
+          size="icon"
+          type="button"
+          variant="outline"
+        >
+          {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+          <span className="sr-only">
+            {isVisible ? "Hide public URL" : "Show public URL"}
+          </span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {isVisible ? "Hide public URL" : "Show public URL"}
+      </TooltipContent>
+    </Tooltip>
+  </div>
+);
 
 export const AssetCdnControls = ({
   assetId,
@@ -64,6 +117,7 @@ export const AssetCdnControls = ({
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [isPublicUrlVisible, setIsPublicUrlVisible] = useState(false);
   const [tagValue, setTagValue] = useState(tags.join(", "));
   const [isPending, startTransition] = useTransition();
   const currentTags = useMemo(() => parseTags(tagValue), [tagValue]);
@@ -121,6 +175,7 @@ export const AssetCdnControls = ({
 
       if (nextEnabled === false) {
         setCurrentPublicUrl(null);
+        setIsPublicUrlVisible(false);
       }
 
       if (payload?.publicUrl) {
@@ -164,14 +219,14 @@ export const AssetCdnControls = ({
   if (currentPublicUrl) {
     cdnUrlContent = (
       <div className="flex max-w-96 flex-col gap-2">
-        <button
-          aria-label="Public CDN URL"
-          className="rounded-md border bg-muted/30 px-3 py-2 text-left font-mono text-muted-foreground text-xs transition-colors hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          onClick={copyUrl}
-          type="button"
-        >
-          <span className="break-all">{currentPublicUrl}</span>
-        </button>
+        <PublicUrlCopyRow
+          isVisible={isPublicUrlVisible}
+          onCopy={copyUrl}
+          onToggleVisibility={() =>
+            setIsPublicUrlVisible((visible) => !visible)
+          }
+          url={currentPublicUrl}
+        />
         {nextImageConfig ? (
           <Button
             className="w-fit"
