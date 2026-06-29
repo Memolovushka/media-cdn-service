@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, like } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, like, or } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
   assetFolders,
@@ -252,41 +252,6 @@ export const deleteWorkspaceFolder = async ({
     throw new Error("Folder path is required");
   }
 
-  const childFolder = await db.query.assetFolders.findFirst({
-    where: and(
-      eq(assetFolders.workspaceId, workspaceId),
-      like(assetFolders.path, `${normalizedPath}/%`)
-    ),
-  });
-
-  if (childFolder) {
-    throw new Error("Folder must be empty before it can be deleted");
-  }
-
-  const childAsset = await db.query.assets.findFirst({
-    where: and(
-      eq(assets.workspaceId, workspaceId),
-      like(assets.folderPath, `${normalizedPath}/%`),
-      isNull(assets.deletedAt)
-    ),
-  });
-
-  if (childAsset) {
-    throw new Error("Folder must be empty before it can be deleted");
-  }
-
-  const containedAsset = await db.query.assets.findFirst({
-    where: and(
-      eq(assets.workspaceId, workspaceId),
-      eq(assets.folderPath, normalizedPath),
-      isNull(assets.deletedAt)
-    ),
-  });
-
-  if (containedAsset) {
-    throw new Error("Folder must be empty before it can be deleted");
-  }
-
   const folder = await db.query.assetFolders.findFirst({
     where: and(
       eq(assetFolders.workspaceId, workspaceId),
@@ -294,16 +259,46 @@ export const deleteWorkspaceFolder = async ({
     ),
   });
 
-  if (!folder) {
+  const assetInFolder = await db.query.assets.findFirst({
+    where: and(
+      eq(assets.workspaceId, workspaceId),
+      or(
+        eq(assets.folderPath, normalizedPath),
+        like(assets.folderPath, `${normalizedPath}/%`)
+      ),
+      isNull(assets.deletedAt)
+    ),
+  });
+
+  if (!(folder || assetInFolder)) {
     throw new Error("Folder not found");
   }
+
+  const now = new Date();
+
+  await db
+    .update(assets)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(assets.workspaceId, workspaceId),
+        or(
+          eq(assets.folderPath, normalizedPath),
+          like(assets.folderPath, `${normalizedPath}/%`)
+        ),
+        isNull(assets.deletedAt)
+      )
+    );
 
   await db
     .delete(assetFolders)
     .where(
       and(
         eq(assetFolders.workspaceId, workspaceId),
-        eq(assetFolders.path, normalizedPath)
+        or(
+          eq(assetFolders.path, normalizedPath),
+          like(assetFolders.path, `${normalizedPath}/%`)
+        )
       )
     );
 
@@ -312,7 +307,7 @@ export const deleteWorkspaceFolder = async ({
     workspaceId,
     actorUserId: userId,
     eventType: "folder.deleted",
-    metadataJson: JSON.stringify({ path: normalizedPath }),
+    metadataJson: JSON.stringify({ path: normalizedPath, recursive: true }),
   });
 
   return { path: normalizedPath };

@@ -78,8 +78,8 @@ export const FolderDeleteButton = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete folder</AlertDialogTitle>
           <AlertDialogDescription>
-            Empty folders can be deleted. Files and child folders must be moved
-            or removed first.
+            This deletes the folder, all nested folders, and all files inside
+            them from the workspace file manager.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
