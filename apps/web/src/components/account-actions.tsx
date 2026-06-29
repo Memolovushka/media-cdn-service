@@ -4,6 +4,11 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
+import {
   CheckIcon,
   KeyRoundIcon,
   LogOutIcon,
@@ -88,29 +93,15 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
   };
 
   return (
-    <div className="relative flex gap-2">
-      <Button
-        onClick={() => setOpen((currentOpen) => !currentOpen)}
-        size="icon"
-        type="button"
-        variant="outline"
-      >
-        <SettingsIcon />
-        <span className="sr-only">Account settings</span>
-      </Button>
-      <Button
-        disabled={isPending}
-        onClick={signOut}
-        size="icon"
-        type="button"
-        variant="outline"
-      >
-        <LogOutIcon />
-        <span className="sr-only">Sign out</span>
-      </Button>
-
-      {open ? (
-        <div className="absolute top-9 right-0 z-20 w-80 rounded-md border bg-popover p-4 text-popover-foreground shadow-md">
+    <div className="flex gap-2">
+      <Popover onOpenChange={setOpen} open={open}>
+        <PopoverTrigger asChild>
+          <Button size="icon" type="button" variant="outline">
+            <SettingsIcon />
+            <span className="sr-only">Account settings</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-80 p-4" sideOffset={8}>
           <div className="mb-4 min-w-0">
             <div className="font-medium text-sm">Account settings</div>
             <div className="truncate text-muted-foreground text-xs">
@@ -166,8 +157,18 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
               {isPending ? "Updating..." : "Update password"}
             </Button>
           </div>
-        </div>
-      ) : null}
+        </PopoverContent>
+      </Popover>
+      <Button
+        disabled={isPending}
+        onClick={signOut}
+        size="icon"
+        type="button"
+        variant="outline"
+      >
+        <LogOutIcon />
+        <span className="sr-only">Sign out</span>
+      </Button>
     </div>
   );
 };
