@@ -76,7 +76,9 @@ const PublicUrlCopyRow = ({
       {isVisible ? (
         <span className="break-all">{url}</span>
       ) : (
-        <span className="block truncate">{getHiddenPublicUrl(url)}</span>
+        <span className="block truncate">
+          CDN URL {getHiddenPublicUrl(url)}
+        </span>
       )}
     </button>
     <Tooltip>
