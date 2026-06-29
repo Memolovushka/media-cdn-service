@@ -160,6 +160,7 @@ const Page = async ({ searchParams }: PageProps) => {
   const dashboardAssets = assets ?? [];
   const folderBreadcrumbSegments =
     getFolderBreadcrumbSegments(selectedFolderPath);
+  const isRootFolder = selectedFolderPath === fileBrowserRootPath;
   const cdnReadyAssetCount = dashboardAssets.filter(
     (asset) => asset.cdnEnabled
   ).length;
@@ -199,29 +200,33 @@ const Page = async ({ searchParams }: PageProps) => {
           <>
             <section className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    {folderBreadcrumbSegments.map((segment, index) => {
-                      const isCurrent =
-                        index === folderBreadcrumbSegments.length - 1;
+                {isRootFolder ? (
+                  <div />
+                ) : (
+                  <Breadcrumb>
+                    <BreadcrumbList>
+                      {folderBreadcrumbSegments.map((segment, index) => {
+                        const isCurrent =
+                          index === folderBreadcrumbSegments.length - 1;
 
-                      return (
-                        <Fragment key={segment.href}>
-                          {index > 0 ? <BreadcrumbSeparator /> : null}
-                          <BreadcrumbItem>
-                            {isCurrent ? (
-                              <BreadcrumbPage>{segment.name}</BreadcrumbPage>
-                            ) : (
-                              <BreadcrumbLink href={segment.href}>
-                                {segment.name}
-                              </BreadcrumbLink>
-                            )}
-                          </BreadcrumbItem>
-                        </Fragment>
-                      );
-                    })}
-                  </BreadcrumbList>
-                </Breadcrumb>
+                        return (
+                          <Fragment key={segment.href}>
+                            {index > 0 ? <BreadcrumbSeparator /> : null}
+                            <BreadcrumbItem>
+                              {isCurrent ? (
+                                <BreadcrumbPage>{segment.name}</BreadcrumbPage>
+                              ) : (
+                                <BreadcrumbLink href={segment.href}>
+                                  {segment.name}
+                                </BreadcrumbLink>
+                              )}
+                            </BreadcrumbItem>
+                          </Fragment>
+                        );
+                      })}
+                    </BreadcrumbList>
+                  </Breadcrumb>
+                )}
                 <FolderCreateDialog
                   disabled={!activeWorkspace}
                   parentPath={selectedFolderPath}

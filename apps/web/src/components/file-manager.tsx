@@ -2,6 +2,7 @@
 
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { Progress } from "@workspace/ui/components/progress";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
   Table,
@@ -11,10 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { DownloadIcon } from "lucide-react";
+import { CloudUploadIcon, DownloadIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
+import { uploadFilesSequentially } from "@/components/asset-upload-client";
 import {
   AssetTableRowClient,
   FolderTableRowClient,
@@ -225,10 +228,16 @@ export const FileManager = ({
   visibleFolders: DashboardFolder[];
   workspaceId: string;
 }) => {
+  const router = useRouter();
   const [optimisticAssets, setOptimisticAssets] = useState(assets);
   const [activeAssetId, setActiveAssetId] = useState(
     selectedAssetId || assets.at(0)?.id || ""
   );
+  const [dragDepth, setDragDepth] = useState(0);
+  const [dropError, setDropError] = useState<string | null>(null);
+  const [dropProgress, setDropProgress] = useState(0);
+  const [dropUploadLabel, setDropUploadLabel] = useState<string | null>(null);
+  const [isDropUploading, setIsDropUploading] = useState(false);
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
 
   useEffect(() => {
@@ -259,9 +268,108 @@ export const FileManager = ({
       return nextAssets;
     });
   };
+  const uploadDroppedFiles = async (files: File[]) => {
+    if (!(files.length && workspaceId) || isDropUploading) {
+      return;
+    }
+
+    setDropError(null);
+    setDropProgress(1);
+    setDropUploadLabel(`${files.length} file${files.length === 1 ? "" : "s"}`);
+    setIsDropUploading(true);
+
+    try {
+      await uploadFilesSequentially({
+        cdnEnabled: false,
+        files,
+        folderPath: selectedFolderPath,
+        onFileStart: (file) => setDropUploadLabel(file.name),
+        onProgress: setDropProgress,
+        workspaceId,
+      });
+      setDragDepth(0);
+      setDropProgress(0);
+      setDropUploadLabel(null);
+      setIsDropUploading(false);
+      router.refresh();
+    } catch (uploadError) {
+      setDropError(
+        uploadError instanceof Error ? uploadError.message : "Upload failed"
+      );
+      setDropProgress(0);
+      setIsDropUploading(false);
+    }
+  };
+  const isDraggingFiles = dragDepth > 0;
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]">
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: This surface accepts OS file drops while preserving table semantics inside.
+    // biome-ignore lint/a11y/noStaticElementInteractions: Drag-and-drop has no native semantic container that can wrap the file manager table.
+    <div
+      className="relative grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]"
+      onDragEnter={(event) => {
+        if (!event.dataTransfer.types.includes("Files")) {
+          return;
+        }
+
+        event.preventDefault();
+        setDragDepth((currentDepth) => currentDepth + 1);
+      }}
+      onDragLeave={(event) => {
+        if (!event.dataTransfer.types.includes("Files")) {
+          return;
+        }
+
+        event.preventDefault();
+        setDragDepth((currentDepth) => Math.max(0, currentDepth - 1));
+      }}
+      onDragOver={(event) => {
+        if (!event.dataTransfer.types.includes("Files")) {
+          return;
+        }
+
+        event.preventDefault();
+      }}
+      onDrop={(event) => {
+        if (!event.dataTransfer.types.includes("Files")) {
+          return;
+        }
+
+        event.preventDefault();
+        setDragDepth(0);
+        uploadDroppedFiles(Array.from(event.dataTransfer.files)).catch(
+          (uploadError: unknown) => {
+            setDropError(
+              uploadError instanceof Error
+                ? uploadError.message
+                : "Upload failed"
+            );
+            setIsDropUploading(false);
+          }
+        );
+      }}
+    >
+      {isDraggingFiles || isDropUploading ? (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-lg border-2 border-primary border-dashed bg-background/80 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-lg border bg-popover p-4 text-center shadow-sm">
+            <CloudUploadIcon className="mx-auto size-8 text-primary" />
+            <div className="mt-3 font-medium text-sm">
+              {isDropUploading ? "Uploading files" : "Drop files to upload"}
+            </div>
+            <div className="mt-1 truncate text-muted-foreground text-xs">
+              {dropUploadLabel ?? "They will be added to this folder"}
+            </div>
+            {dropProgress > 0 ? (
+              <Progress className="mt-3" value={dropProgress} />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {dropError ? (
+        <div className="absolute -top-8 right-0 text-destructive text-xs">
+          {dropError}
+        </div>
+      ) : null}
       <div className="min-h-96 overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
@@ -341,6 +449,6 @@ export const FileManager = ({
         asset={selectedAsset}
         isRefreshing={isRefreshingSelection}
       />
-    </section>
+    </div>
   );
 };
