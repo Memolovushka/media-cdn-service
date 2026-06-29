@@ -50,15 +50,11 @@ const parseTags = (value: string) =>
     .filter(Boolean);
 
 const copiedResetDelayMs = 1600;
-const hiddenPublicUrlMaxLength = 16;
 const httpsProtocol = "https:";
 
 interface AssetPatchResponse {
   publicUrl?: null | string;
 }
-
-const getHiddenPublicUrl = (url: string) =>
-  "*".repeat(Math.min(url.length, hiddenPublicUrlMaxLength));
 
 const PublicUrlCopyRow = ({
   isVisible,
@@ -81,9 +77,7 @@ const PublicUrlCopyRow = ({
       {isVisible ? (
         <span className="break-all">{url}</span>
       ) : (
-        <span className="block truncate">
-          CDN URL {getHiddenPublicUrl(url)}
-        </span>
+        <span className="block truncate">CDN URL</span>
       )}
     </button>
     <Tooltip>
