@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@workspace/ui/components/table";
 import { eq } from "drizzle-orm";
-import { DownloadIcon, KeyRoundIcon, SearchIcon } from "lucide-react";
+import { DownloadIcon } from "lucide-react";
 import { headers } from "next/headers";
 import { AccountActions } from "@/components/account-actions";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
@@ -432,22 +432,9 @@ const Page = async ({ searchParams }: PageProps) => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="icon" variant="outline">
-              <SearchIcon />
-              <span className="sr-only">Search</span>
-            </Button>
-            <Button size="icon" variant="outline">
-              <KeyRoundIcon />
-              <span className="sr-only">API tokens</span>
-            </Button>
             <AssetUploadDialog
               disabled={!activeWorkspace}
               folderPath={selectedFolderPath}
-              workspaceId={activeWorkspace?.workspaceId}
-            />
-            <FolderCreateDialog
-              disabled={!activeWorkspace}
-              parentPath={selectedFolderPath}
               workspaceId={activeWorkspace?.workspaceId}
             />
             <AccountActions email={session.user.email} />
@@ -499,6 +486,11 @@ const Page = async ({ searchParams }: PageProps) => {
                     <a href={folderHref(parentFolderPath)}>Up</a>
                   </Button>
                 ) : null}
+                <FolderCreateDialog
+                  disabled={!activeWorkspace}
+                  parentPath={selectedFolderPath}
+                  workspaceId={activeWorkspace?.workspaceId}
+                />
               </div>
             </section>
 
