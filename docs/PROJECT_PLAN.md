@@ -114,6 +114,8 @@ HTTP API:
 - Phase 3 CDN product path continued: dashboard CDN switch, public URL display/copy button, workspace-scoped Next.js image config snippet, not-ready disabled state, tags update support, and Worker-controlled `/cdn/:workspace/:asset/:version/:filename` fallback route are in place.
 - File manager UX started: virtual folders, upload into current folder, folder-scoped asset list, and authenticated private preview for images/video/audio/pdf/text are in place.
 - Account settings started: dashboard settings panel, sign out action, and email/password change form are in place.
+- 2026-06-29 feedback-driven UX pass completed: full-page drag-and-drop upload, upload into any visible folder by dropping onto it, asset drag-move targets, compact header storage usage, inline photo preview in the detail panel, and removal of the redundant preview eye action are deployed.
+- 2026-06-29 work note: today's work followed live product feedback and visual cleanup rather than the planned next-order backlog.
 
 ### Phase 1: Foundation
 
@@ -131,6 +133,9 @@ HTTP API:
 - [x] Добавить client-side upload UI поверх новых API routes.
 - [x] Добавить workspace creation/onboarding для первого пользователя.
 - [x] Добавить базовый file manager: папки и preview файлов.
+- [x] Добавить drag-and-drop на всю страницу с upload в текущую папку.
+- [x] Добавить drop файлов прямо на папку, чтобы загрузить в выбранную папку.
+- [x] Добавить inline preview фотографий в правой asset-панели.
 
 #### Phase 2 Implementation Notes
 
@@ -172,7 +177,7 @@ Acceptance criteria:
 - [x] Генерировать public URL и copy-to-clipboard.
 - [x] Генерировать workspace-scoped Next.js `images.remotePatterns` snippet.
 - [x] Настроить cache headers и CORS для embedding на сайтах.
-- [ ] Добавить delete/disable поведение с сохранением audit history.
+- [x] Добавить delete/disable поведение с сохранением audit history.
 
 #### Phase 3 Implementation Notes
 
@@ -195,6 +200,8 @@ Public key format:
 - [x] Добавить public delivery fallback route `GET /cdn/:workspace/:asset/:version/:filename` только если direct R2 custom domain не закрывает access control/headers.
 - [x] Добавить UI: CDN switch, public URL cell, copy button, disabled state для not-ready versions.
 - [x] Запретить CDN publish для неподготовленных или потенциально опасных MIME types до safety policy.
+- [x] Добавить soft-delete asset behavior с `asset.deleted` audit event.
+- [x] Добавить CDN disable audit path через `asset.cdn_disabled`.
 
 Acceptance criteria:
 
@@ -218,6 +225,7 @@ Acceptance criteria:
 - [x] Подтвердить production Worker deploy последнего commit после изменения env/bindings.
 - [x] Подтвердить Cloudflare bindings: `DB` D1 database и `MEDIA_BUCKET` R2 bucket.
 - [x] Применить/подтвердить D1 migrations на production DB.
+- [x] Добавить компактный dashboard-индикатор R2 storage: used/free remaining.
 - [ ] Добавить audit log UI.
 - [ ] Добавить background cleanup для abandoned uploads и deleted objects.
 - [ ] Покрыть тестами permissions, CDN state transitions и upload edge cases.
@@ -226,7 +234,8 @@ Acceptance criteria:
 
 Security и reliability задачи лучше вводить после UI happy path, но до публичного использования сервиса.
 
-- [ ] Добавить workspace quota fields или отдельную `workspace_usage` модель.
+- [x] Добавить read-only workspace storage usage calculation из D1 metadata для dashboard.
+- [ ] Добавить workspace quota fields или отдельную `workspace_usage` модель для quota enforcement.
 - [ ] Ограничить upload intent по quota до записи `assets`.
 - [ ] Добавить per-user/per-workspace rate limits для upload intent и content upload.
 - [ ] Реализовать API token hashing, prefix display и scoped permissions.
@@ -282,7 +291,7 @@ Test plan:
 ## Ближайший порядок работ
 
 1. Permission and state-transition tests.
-2. CDN delete behavior and production browser verification.
+2. Production browser verification for the latest feedback-driven UX changes.
 3. Account settings polish: email change, profile name update, active sessions.
 4. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
 5. Audit log UI.
@@ -291,7 +300,7 @@ Test plan:
 
 Current known state:
 
-- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `dfa5e3a`.
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `0a2b34e`.
 - `GET /api/setup/status` returns `ok=true`.
 - Confirmed production bindings:
   - `bindings.DB=true`
@@ -304,13 +313,19 @@ Current known state:
   - email signup returns `200`;
   - `POST /api/workspaces` returns `201`;
   - dashboard render after workspace creation returns `200`.
-- Confirmed latest production setup check after commit `dfa5e3a`:
+- Confirmed latest production setup check after commit `0a2b34e`:
   - `ok=true`;
   - `bindings.DB=true`;
   - `bindings.MEDIA_BUCKET=true`;
   - `bindings.GOOGLE=true`;
   - `database.ready=true`;
   - `database.missingTables=[]`.
+- Confirmed feedback-driven production deploys on 2026-06-29:
+  - `452131f`: full-page drag-and-drop uploads;
+  - `5defd22`: storage usage summary;
+  - `d41a12c`: compact header storage usage;
+  - `8e815e5`: inline image previews;
+  - `0a2b34e`: redundant preview action removed.
 - Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP
