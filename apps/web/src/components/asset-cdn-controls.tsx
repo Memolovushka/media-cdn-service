@@ -60,7 +60,9 @@ export const AssetCdnControls = ({
   const router = useRouter();
   const [enabled, setEnabled] = useState(cdnEnabled);
   const [currentPublicUrl, setCurrentPublicUrl] = useState(publicUrl ?? null);
-  const [copied, setCopied] = useState(false);
+  const [copiedTarget, setCopiedTarget] = useState<"config" | "url" | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const [tagValue, setTagValue] = useState(tags.join(", "));
   const [isPending, startTransition] = useTransition();
@@ -136,8 +138,8 @@ export const AssetCdnControls = ({
 
     startTransition(async () => {
       await navigator.clipboard.writeText(currentPublicUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), copiedResetDelayMs);
+      setCopiedTarget("url");
+      window.setTimeout(() => setCopiedTarget(null), copiedResetDelayMs);
     });
   };
 
@@ -148,8 +150,8 @@ export const AssetCdnControls = ({
 
     startTransition(async () => {
       await navigator.clipboard.writeText(nextImageConfig);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), copiedResetDelayMs);
+      setCopiedTarget("config");
+      window.setTimeout(() => setCopiedTarget(null), copiedResetDelayMs);
     });
   };
 
@@ -162,12 +164,14 @@ export const AssetCdnControls = ({
   if (currentPublicUrl) {
     cdnUrlContent = (
       <div className="flex max-w-96 flex-col gap-2">
-        <Input
+        <button
           aria-label="Public CDN URL"
-          className="h-7 font-mono text-xs"
-          readOnly
-          value={currentPublicUrl}
-        />
+          className="rounded-md border bg-muted/30 px-3 py-2 text-left font-mono text-muted-foreground text-xs transition-colors hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          onClick={copyUrl}
+          type="button"
+        >
+          <span className="break-all">{currentPublicUrl}</span>
+        </button>
         {nextImageConfig ? (
           <Button
             className="w-fit"
@@ -177,7 +181,7 @@ export const AssetCdnControls = ({
             type="button"
             variant="outline"
           >
-            <ClipboardIcon />
+            {copiedTarget === "config" ? <CheckIcon /> : <ClipboardIcon />}
             Copy Next config
           </Button>
         ) : null}
@@ -235,23 +239,12 @@ export const AssetCdnControls = ({
             </Button>
           )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                disabled={isPending || !currentPublicUrl}
-                onClick={copyUrl}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {copied ? <CheckIcon /> : <ClipboardIcon />}
-                Copy URL
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {currentPublicUrl ? "Copy public URL" : "Publish first"}
-            </TooltipContent>
-          </Tooltip>
+          {copiedTarget === "url" ? (
+            <span className="flex items-center gap-1 text-primary text-xs">
+              <CheckIcon className="size-3" />
+              Copied
+            </span>
+          ) : null}
         </div>
 
         {cdnUrlContent}
