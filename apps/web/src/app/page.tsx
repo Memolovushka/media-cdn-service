@@ -1,4 +1,12 @@
 import { Badge } from "@workspace/ui/components/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@workspace/ui/components/breadcrumb";
 import { Button } from "@workspace/ui/components/button";
 import {
   Card,
@@ -17,6 +25,7 @@ import {
 import { eq } from "drizzle-orm";
 import { DownloadIcon } from "lucide-react";
 import { headers } from "next/headers";
+import { Fragment } from "react";
 import { AccountActions } from "@/components/account-actions";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
@@ -92,6 +101,14 @@ const getParentFolderPath = (folderPath: string) =>
 
 const folderHref = (folderPath: string) =>
   folderPath ? `/?folder=${encodeURIComponent(folderPath)}` : "/";
+
+const getFolderBreadcrumbSegments = (folderPath: string) =>
+  folderPath
+    ? folderPath.split("/").map((segment, index, segments) => ({
+        href: folderHref(segments.slice(0, index + 1).join("/")),
+        name: segment,
+      }))
+    : [];
 
 const FolderTableRow = ({
   folder,
@@ -413,7 +430,8 @@ const Page = async ({ searchParams }: PageProps) => {
       return parentPath === selectedFolderPath;
     }) ?? [];
   const dashboardAssets = assets ?? [];
-  const parentFolderPath = getParentFolderPath(selectedFolderPath);
+  const folderBreadcrumbSegments =
+    getFolderBreadcrumbSegments(selectedFolderPath);
   const selectedAsset =
     dashboardAssets.find((asset) => asset.id === selectedAssetId) ??
     dashboardAssets.at(0);
@@ -455,21 +473,37 @@ const Page = async ({ searchParams }: PageProps) => {
         {activeWorkspace ? (
           <>
             <section className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Button
-                  asChild
-                  variant={selectedFolderPath ? "outline" : "default"}
-                >
-                  <a href="/">Root</a>
-                </Button>
-                {selectedFolderPath ? (
-                  <Badge variant="outline">{selectedFolderPath}</Badge>
-                ) : null}
-                {selectedFolderPath ? (
-                  <Button asChild variant="outline">
-                    <a href={folderHref(parentFolderPath)}>Up</a>
-                  </Button>
-                ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      {selectedFolderPath ? (
+                        <BreadcrumbLink href="/">Root</BreadcrumbLink>
+                      ) : (
+                        <BreadcrumbPage>Root</BreadcrumbPage>
+                      )}
+                    </BreadcrumbItem>
+                    {folderBreadcrumbSegments.map((segment, index) => {
+                      const isCurrent =
+                        index === folderBreadcrumbSegments.length - 1;
+
+                      return (
+                        <Fragment key={segment.href}>
+                          <BreadcrumbSeparator />
+                          <BreadcrumbItem>
+                            {isCurrent ? (
+                              <BreadcrumbPage>{segment.name}</BreadcrumbPage>
+                            ) : (
+                              <BreadcrumbLink href={segment.href}>
+                                {segment.name}
+                              </BreadcrumbLink>
+                            )}
+                          </BreadcrumbItem>
+                        </Fragment>
+                      );
+                    })}
+                  </BreadcrumbList>
+                </Breadcrumb>
                 <FolderCreateDialog
                   disabled={!activeWorkspace}
                   parentPath={selectedFolderPath}
