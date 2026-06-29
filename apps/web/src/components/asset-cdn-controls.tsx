@@ -45,7 +45,7 @@ const parseTags = (value: string) =>
     .filter(Boolean);
 
 const copiedResetDelayMs = 1600;
-const hiddenPublicUrlMaxLength = 42;
+const hiddenPublicUrlMaxLength = 16;
 const httpsProtocol = "https:";
 
 interface AssetPatchResponse {
@@ -66,10 +66,10 @@ const PublicUrlCopyRow = ({
   onToggleVisibility: () => void;
   url: string;
 }) => (
-  <div className="flex items-start gap-1">
+  <div className="flex flex-wrap items-center gap-1">
     <button
       aria-label="Copy public CDN URL"
-      className="min-h-10 flex-1 rounded-md border bg-muted/30 px-3 py-2 text-left font-mono text-muted-foreground text-xs transition-colors hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      className="min-h-7 max-w-72 rounded-md border bg-muted/30 px-2 py-1 text-left font-mono text-muted-foreground text-xs transition-colors hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       onClick={onCopy}
       type="button"
     >
@@ -218,7 +218,7 @@ export const AssetCdnControls = ({
 
   if (currentPublicUrl) {
     cdnUrlContent = (
-      <div className="flex max-w-96 flex-col gap-2">
+      <div className="flex max-w-96 flex-col gap-1">
         <PublicUrlCopyRow
           isVisible={isPublicUrlVisible}
           onCopy={copyUrl}
