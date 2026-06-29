@@ -142,11 +142,13 @@ export const FolderTableRowClient = ({
   folderHref,
   folderName,
   folderPath,
+  onAssetDrop,
   workspaceId,
 }: {
   folderHref: string;
   folderName: string;
   folderPath: string;
+  onAssetDrop?: (folderPath: string) => void;
   workspaceId: string;
 }) => {
   const router = useRouter();
@@ -187,6 +189,17 @@ export const FolderTableRowClient = ({
         className="cursor-pointer hover:bg-muted/40"
         onClick={openFolder}
         onContextMenu={openMenu}
+        onDragOver={(event) => {
+          if (!onAssetDrop) {
+            return;
+          }
+
+          event.preventDefault();
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          onAssetDrop?.(folderPath);
+        }}
         onKeyDown={(event) => handleRowKeyDown({ event, onOpen: openFolder })}
         role="link"
         tabIndex={0}
@@ -282,6 +295,8 @@ export const AssetTableRowClient = ({
   href,
   mimeType,
   onDeleted,
+  onDragEnd,
+  onDragStart,
   onOpen,
   previewUrl,
   selected,
@@ -295,6 +310,8 @@ export const AssetTableRowClient = ({
   href: string;
   mimeType: string;
   onDeleted?: (assetId: string) => void;
+  onDragEnd?: () => void;
+  onDragStart?: (assetId: string) => void;
   onOpen?: () => void;
   previewUrl?: null | string;
   selected: boolean;
@@ -339,8 +356,14 @@ export const AssetTableRowClient = ({
             ? "cursor-pointer bg-muted/60 hover:bg-muted/70"
             : "cursor-pointer hover:bg-muted/40"
         }
+        draggable
         onClick={openAsset}
         onContextMenu={openMenu}
+        onDragEnd={onDragEnd}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          onDragStart?.(assetId);
+        }}
         onKeyDown={(event) => handleRowKeyDown({ event, onOpen: openAsset })}
         role="link"
         tabIndex={0}

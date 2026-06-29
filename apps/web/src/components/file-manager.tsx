@@ -2,6 +2,7 @@
 
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { Input } from "@workspace/ui/components/input";
 import { Progress } from "@workspace/ui/components/progress";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
@@ -12,9 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { CloudUploadIcon, DownloadIcon } from "lucide-react";
+import { CloudUploadIcon, DownloadIcon, SaveIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
 import { uploadFilesSequentially } from "@/components/asset-upload-client";
@@ -32,6 +33,7 @@ interface DashboardAssetVersion {
 export interface DashboardAsset {
   cdnEnabled: boolean;
   filename: string;
+  folderPath: string;
   id: string;
   mimeType: string;
   sizeBytes: number;
@@ -47,6 +49,7 @@ export interface DashboardFolder {
 }
 
 const bytesPerUnit = 1024;
+const rootFolderPath = "asset";
 
 const assetStatusLabels = {
   abandoned: "Abandoned",
@@ -146,10 +149,22 @@ const AssetDetailsPanelSkeleton = () => (
 const AssetDetailsPanel = ({
   asset,
   isRefreshing,
+  onAssetUpdated,
 }: {
   asset?: DashboardAsset | null;
   isRefreshing: boolean;
+  onAssetUpdated: (asset: DashboardAsset) => void;
 }) => {
+  const router = useRouter();
+  const [filename, setFilename] = useState(asset?.filename ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setFilename(asset?.filename ?? "");
+    setError(null);
+  }, [asset?.filename]);
+
   if (!asset) {
     return (
       <section className="rounded-lg border p-4">
@@ -166,15 +181,73 @@ const AssetDetailsPanel = ({
 
   const { downloadUrl, latestVersion, previewUrl } = getAssetUrls(asset);
   const isReady = latestVersion?.uploadStatus === "ready";
+  const saveFilename = () => {
+    const nextFilename = filename.trim();
+
+    if (!nextFilename || nextFilename === asset.filename) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const response = await fetch(`/api/assets/${asset.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filename: nextFilename }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+
+        setError(payload?.error ?? "Rename failed");
+        setFilename(asset.filename);
+        return;
+      }
+
+      onAssetUpdated({ ...asset, filename: nextFilename });
+      router.refresh();
+    });
+  };
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate font-semibold">{asset.filename}</div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <Input
+              aria-label="Filename"
+              className="h-8 min-w-0 font-semibold text-sm"
+              disabled={isPending}
+              onChange={(event) => setFilename(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  saveFilename();
+                }
+              }}
+              value={filename}
+            />
+            <Button
+              disabled={isPending || !filename.trim()}
+              onClick={saveFilename}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <SaveIcon />
+              <span className="sr-only">Rename file</span>
+            </Button>
+          </div>
           <div className="mt-1 truncate text-muted-foreground text-xs">
             {asset.mimeType} - {formatBytes(asset.sizeBytes)}
           </div>
+          {error ? (
+            <div className="mt-1 text-destructive text-xs">{error}</div>
+          ) : null}
         </div>
         <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
           {getAssetStatusLabel(latestVersion?.uploadStatus)}
@@ -237,7 +310,9 @@ export const FileManager = ({
   const [dropError, setDropError] = useState<string | null>(null);
   const [dropProgress, setDropProgress] = useState(0);
   const [dropUploadLabel, setDropUploadLabel] = useState<string | null>(null);
+  const [draggedAssetId, setDraggedAssetId] = useState<string | null>(null);
   const [isDropUploading, setIsDropUploading] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
 
   useEffect(() => {
@@ -267,6 +342,48 @@ export const FileManager = ({
 
       return nextAssets;
     });
+  };
+  const handleAssetUpdated = (nextAsset: DashboardAsset) => {
+    setOptimisticAssets((currentAssets) =>
+      currentAssets.map((asset) =>
+        asset.id === nextAsset.id ? { ...asset, ...nextAsset } : asset
+      )
+    );
+  };
+  const moveAsset = async (assetId: string, folderPath: string) => {
+    const asset = optimisticAssets.find(
+      (currentAsset) => currentAsset.id === assetId
+    );
+
+    if (!(asset && folderPath !== asset.folderPath)) {
+      return;
+    }
+
+    setMoveError(null);
+    const response = await fetch(`/api/assets/${assetId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ folderPath }),
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+
+      setMoveError(payload?.error ?? "Move failed");
+      return;
+    }
+
+    if (folderPath === selectedFolderPath) {
+      handleAssetUpdated({ ...asset, folderPath });
+    } else {
+      handleDeleted(assetId);
+    }
+
+    router.refresh();
   };
   const uploadDroppedFiles = async (files: File[]) => {
     if (!(files.length && workspaceId) || isDropUploading) {
@@ -301,6 +418,8 @@ export const FileManager = ({
     }
   };
   const isDraggingFiles = dragDepth > 0;
+  const canMoveToRoot =
+    Boolean(draggedAssetId) && selectedFolderPath !== rootFolderPath;
 
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: This surface accepts OS file drops while preserving table semantics inside.
@@ -370,7 +489,36 @@ export const FileManager = ({
           {dropError}
         </div>
       ) : null}
+      {moveError ? (
+        <div className="absolute -top-8 left-0 text-destructive text-xs">
+          {moveError}
+        </div>
+      ) : null}
       <div className="min-h-96 overflow-x-auto rounded-lg border">
+        {canMoveToRoot ? (
+          <button
+            className="block w-full border-b bg-muted/30 px-4 py-2 text-left text-muted-foreground text-xs"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (draggedAssetId) {
+                moveAsset(draggedAssetId, rootFolderPath).catch(
+                  (moveErrorValue: unknown) => {
+                    setMoveError(
+                      moveErrorValue instanceof Error
+                        ? moveErrorValue.message
+                        : "Move failed"
+                    );
+                  }
+                );
+              }
+              setDraggedAssetId(null);
+            }}
+            type="button"
+          >
+            Drop here to move to Main
+          </button>
+        ) : null}
         <Table>
           <TableHeader>
             <TableRow>
@@ -396,6 +544,22 @@ export const FileManager = ({
                     folderName={folder.name}
                     folderPath={folder.path}
                     key={folder.id}
+                    onAssetDrop={(folderPath) => {
+                      if (!draggedAssetId) {
+                        return;
+                      }
+
+                      moveAsset(draggedAssetId, folderPath).catch(
+                        (moveErrorValue: unknown) => {
+                          setMoveError(
+                            moveErrorValue instanceof Error
+                              ? moveErrorValue.message
+                              : "Move failed"
+                          );
+                        }
+                      );
+                      setDraggedAssetId(null);
+                    }}
                     workspaceId={workspaceId}
                   />
                 ))}
@@ -415,6 +579,8 @@ export const FileManager = ({
                       key={asset.id}
                       mimeType={asset.mimeType}
                       onDeleted={handleDeleted}
+                      onDragEnd={() => setDraggedAssetId(null)}
+                      onDragStart={setDraggedAssetId}
                       onOpen={() => {
                         setActiveAssetId(asset.id);
                         setIsRefreshingSelection(true);
@@ -448,6 +614,7 @@ export const FileManager = ({
       <AssetDetailsPanel
         asset={selectedAsset}
         isRefreshing={isRefreshingSelection}
+        onAssetUpdated={handleAssetUpdated}
       />
     </div>
   );

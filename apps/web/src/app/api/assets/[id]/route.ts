@@ -5,6 +5,7 @@ import {
   getWritableAsset,
   makePublicAssetUrl,
   makePublicR2Key,
+  normalizeFolderPath,
   publicAssetCacheControl,
   sanitizeFilename,
 } from "@/server/assets";
@@ -24,6 +25,7 @@ type AssetVersion = typeof assetVersions.$inferSelect;
 interface AssetPatch {
   cdnEnabled?: boolean;
   filename?: string;
+  folderPath?: string;
   tags?: string[];
 }
 
@@ -96,6 +98,10 @@ const parseAssetPatch = (body: Record<string, unknown>): AssetPatch => {
     typeof body.filename === "string"
       ? sanitizeFilename(body.filename)
       : undefined;
+  const folderPath =
+    typeof body.folderPath === "string"
+      ? normalizeFolderPath(body.folderPath)
+      : undefined;
   const tags = parseTagsPatch(body);
 
   if (filename !== undefined && !filename) {
@@ -108,6 +114,7 @@ const parseAssetPatch = (body: Record<string, unknown>): AssetPatch => {
   if (
     cdnEnabled === undefined &&
     filename === undefined &&
+    folderPath === undefined &&
     tags === undefined
   ) {
     throw new AssetPatchError(
@@ -116,7 +123,7 @@ const parseAssetPatch = (body: Record<string, unknown>): AssetPatch => {
     );
   }
 
-  return { cdnEnabled, filename, tags };
+  return { cdnEnabled, filename, folderPath, tags };
 };
 
 const getAuditEventType = (cdnEnabled: boolean | undefined) => {
@@ -265,6 +272,10 @@ const buildAssetUpdates = ({
     assetUpdates.cdnEnabled = patch.cdnEnabled;
   }
 
+  if (patch.folderPath !== undefined && patch.folderPath !== asset.folderPath) {
+    assetUpdates.folderPath = patch.folderPath;
+  }
+
   return assetUpdates;
 };
 
@@ -357,6 +368,7 @@ const updateAsset = async ({
     eventType: getAuditEventType(patch.cdnEnabled),
     metadataJson: JSON.stringify({
       filename: patch.filename === undefined ? undefined : nextFilename,
+      folderPath: patch.folderPath,
       publicKey: publishResult?.publicKey,
       publicUrl: publishResult?.publicUrl,
       tags: patch.tags,
@@ -370,6 +382,7 @@ const updateAsset = async ({
       ...assetUpdates,
       filename: nextFilename,
       cdnEnabled: patch.cdnEnabled ?? asset.cdnEnabled,
+      folderPath: patch.folderPath ?? asset.folderPath,
     },
     publicKey: publishResult?.publicKey ?? null,
     publicUrl: publishResult?.publicUrl ?? null,
