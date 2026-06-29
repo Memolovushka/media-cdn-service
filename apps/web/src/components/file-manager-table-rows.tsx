@@ -198,6 +198,7 @@ export const FolderTableRowClient = ({
             <span className="truncate font-medium">{folderName}</span>
           </div>
         </TableCell>
+        <TableCell className="text-muted-foreground">Folder</TableCell>
         <TableCell>
           <Badge variant="outline">Folder</Badge>
         </TableCell>
@@ -313,13 +314,11 @@ export const AssetTableRowClient = ({
         <TableCell>
           <div className="flex min-w-0 items-center gap-1 text-left text-primary">
             <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0">
-              <div className="truncate font-medium">{filename}</div>
-              <div className="truncate text-muted-foreground text-xs">
-                {mimeType}
-              </div>
-            </div>
+            <span className="min-w-0 truncate font-medium">{filename}</span>
           </div>
+        </TableCell>
+        <TableCell className="max-w-40 truncate text-muted-foreground">
+          {mimeType}
         </TableCell>
         <TableCell>
           <Badge variant={statusVariant}>{statusLabel}</Badge>

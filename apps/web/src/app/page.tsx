@@ -287,6 +287,7 @@ const FileManager = ({
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Kind</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Size</TableHead>
               <TableHead>
@@ -320,7 +321,7 @@ const FileManager = ({
               <TableRow>
                 <TableCell
                   className="h-32 text-center text-muted-foreground text-sm"
-                  colSpan={4}
+                  colSpan={5}
                 >
                   This folder is empty.
                 </TableCell>
