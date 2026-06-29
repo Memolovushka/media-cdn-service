@@ -194,6 +194,9 @@ const Page = async ({ searchParams }: PageProps) => {
                 <>
                   <span>{dashboardAssets.length} files</span>
                   <span>{cdnReadyAssetCount} CDN-ready</span>
+                  {storageUsage ? (
+                    <StorageUsageSummary usage={storageUsage} />
+                  ) : null}
                 </>
               ) : null}
             </div>
@@ -246,9 +249,6 @@ const Page = async ({ searchParams }: PageProps) => {
                 />
               </div>
             </section>
-
-            {storageUsage ? <StorageUsageSummary usage={storageUsage} /> : null}
-
             <FileManager
               allFolders={folders ?? []}
               assets={dashboardAssets}
