@@ -1,13 +1,12 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -121,23 +120,25 @@ const CdnActionsMenu = ({
   onCopyNextImageConfig: () => void;
   showNextImageConfig: boolean;
 }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
+  <Popover>
+    <PopoverTrigger asChild>
       <Button size="icon-sm" type="button" variant="outline">
         <MoreHorizontalIcon />
         <span className="sr-only">CDN actions</span>
       </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="start" className="w-44">
-      <DropdownMenuItem
+    </PopoverTrigger>
+    <PopoverContent align="start" className="w-44 gap-1 p-1">
+      <button
+        className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0"
         disabled={disabled || !showNextImageConfig}
-        onSelect={onCopyNextImageConfig}
+        onClick={onCopyNextImageConfig}
+        type="button"
       >
         {copiedTarget === "config" ? <CheckIcon /> : <ClipboardIcon />}
         Copy Next config
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+      </button>
+    </PopoverContent>
+  </Popover>
 );
 
 export const AssetCdnControls = ({
