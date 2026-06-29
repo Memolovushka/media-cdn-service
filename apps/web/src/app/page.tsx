@@ -236,6 +236,7 @@ const Page = async ({ searchParams }: PageProps) => {
             </section>
 
             <FileManager
+              allFolders={folders ?? []}
               assets={dashboardAssets}
               selectedAssetId={selectedAssetId}
               selectedFolderPath={selectedFolderPath}

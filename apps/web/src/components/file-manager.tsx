@@ -222,6 +222,7 @@ const AssetDetailsPanel = ({
               aria-label="Filename"
               className="h-8 min-w-0 font-semibold text-sm"
               disabled={isPending}
+              onBlur={saveFilename}
               onChange={(event) => setFilename(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -234,6 +235,7 @@ const AssetDetailsPanel = ({
             <Button
               disabled={isPending || !filename.trim()}
               onClick={saveFilename}
+              onMouseDown={(event) => event.preventDefault()}
               size="icon"
               type="button"
               variant="outline"
@@ -289,12 +291,14 @@ const AssetDetailsPanel = ({
 };
 
 export const FileManager = ({
+  allFolders,
   assets,
   selectedAssetId,
   selectedFolderPath,
   visibleFolders,
   workspaceId,
 }: {
+  allFolders: DashboardFolder[];
   assets: DashboardAsset[];
   selectedAssetId?: string;
   selectedFolderPath: string;
@@ -418,8 +422,15 @@ export const FileManager = ({
     }
   };
   const isDraggingFiles = dragDepth > 0;
-  const canMoveToRoot =
-    Boolean(draggedAssetId) && selectedFolderPath !== rootFolderPath;
+  const draggedAsset = draggedAssetId
+    ? optimisticAssets.find((asset) => asset.id === draggedAssetId)
+    : null;
+  const moveTargets = draggedAsset
+    ? [
+        { id: rootFolderPath, name: "Main", path: rootFolderPath },
+        ...allFolders,
+      ].filter((folder) => folder.path !== draggedAsset.folderPath)
+    : [];
 
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: This surface accepts OS file drops while preserving table semantics inside.
@@ -495,29 +506,34 @@ export const FileManager = ({
         </div>
       ) : null}
       <div className="min-h-96 overflow-x-auto rounded-lg border">
-        {canMoveToRoot ? (
-          <button
-            className="block w-full border-b bg-muted/30 px-4 py-2 text-left text-muted-foreground text-xs"
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              if (draggedAssetId) {
-                moveAsset(draggedAssetId, rootFolderPath).catch(
-                  (moveErrorValue: unknown) => {
-                    setMoveError(
-                      moveErrorValue instanceof Error
-                        ? moveErrorValue.message
-                        : "Move failed"
+        {moveTargets.length ? (
+          <div className="flex flex-wrap gap-2 border-b bg-muted/30 p-2">
+            {moveTargets.map((folder) => (
+              <button
+                className="rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs hover:border-primary/50 hover:text-foreground"
+                key={folder.path}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (draggedAssetId) {
+                    moveAsset(draggedAssetId, folder.path).catch(
+                      (moveErrorValue: unknown) => {
+                        setMoveError(
+                          moveErrorValue instanceof Error
+                            ? moveErrorValue.message
+                            : "Move failed"
+                        );
+                      }
                     );
                   }
-                );
-              }
-              setDraggedAssetId(null);
-            }}
-            type="button"
-          >
-            Drop here to move to Main
-          </button>
+                  setDraggedAssetId(null);
+                }}
+                type="button"
+              >
+                {folder.name}
+              </button>
+            ))}
+          </div>
         ) : null}
         <Table>
           <TableHeader>
