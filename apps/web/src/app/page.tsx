@@ -412,9 +412,14 @@ const Page = async ({ searchParams }: PageProps) => {
 
       return parentPath === selectedFolderPath;
     }) ?? [];
+  const dashboardAssets = assets ?? [];
   const parentFolderPath = getParentFolderPath(selectedFolderPath);
   const selectedAsset =
-    assets?.find((asset) => asset.id === selectedAssetId) ?? assets?.at(0);
+    dashboardAssets.find((asset) => asset.id === selectedAssetId) ??
+    dashboardAssets.at(0);
+  const cdnReadyAssetCount = dashboardAssets.filter(
+    (asset) => asset.cdnEnabled
+  ).length;
 
   return (
     <main className="min-h-svh bg-background">
@@ -428,6 +433,12 @@ const Page = async ({ searchParams }: PageProps) => {
               <span>{session.user.email}</span>
               {activeWorkspace ? (
                 <Badge variant="outline">{activeWorkspace.workspaceName}</Badge>
+              ) : null}
+              {activeWorkspace ? (
+                <>
+                  <span>{dashboardAssets.length} files</span>
+                  <span>{cdnReadyAssetCount} CDN-ready</span>
+                </>
               ) : null}
             </div>
           </div>
@@ -443,33 +454,6 @@ const Page = async ({ searchParams }: PageProps) => {
 
         {activeWorkspace ? (
           <>
-            <section className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Assets</CardTitle>
-                </CardHeader>
-                <CardContent className="font-semibold text-2xl">
-                  {assets?.length ?? 0}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Workspace</CardTitle>
-                </CardHeader>
-                <CardContent className="truncate font-medium">
-                  {activeWorkspace.workspaceSlug}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">CDN-ready</CardTitle>
-                </CardHeader>
-                <CardContent className="font-semibold text-2xl">
-                  {assets?.filter((asset) => asset.cdnEnabled).length ?? 0}
-                </CardContent>
-              </Card>
-            </section>
-
             <section className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Button
@@ -495,7 +479,7 @@ const Page = async ({ searchParams }: PageProps) => {
             </section>
 
             <FileManager
-              assets={assets ?? []}
+              assets={dashboardAssets}
               selectedAsset={selectedAsset}
               selectedFolderPath={selectedFolderPath}
               visibleFolders={visibleFolders}
