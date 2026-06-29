@@ -43,7 +43,7 @@ const getErrorMessage = async (response: Response) => {
     error?: string;
   } | null;
 
-  return payload?.error ?? "Folder deletion failed";
+  return payload?.error ?? "Deletion failed";
 };
 
 const MenuSeparator = () => <div className="-mx-1 my-1 h-px bg-border/50" />;
@@ -272,20 +272,26 @@ export const FolderTableRowClient = ({
 };
 
 export const AssetTableRowClient = ({
+  assetId,
   downloadUrl,
   filename,
   href,
   mimeType,
+  onDeleted,
+  onOpen,
   previewUrl,
   selected,
   sizeLabel,
   statusLabel,
   statusVariant,
 }: {
+  assetId: string;
   downloadUrl?: null | string;
   filename: string;
   href: string;
   mimeType: string;
+  onDeleted?: (assetId: string) => void;
+  onOpen?: () => void;
   previewUrl?: null | string;
   selected: boolean;
   sizeLabel: string;
@@ -294,7 +300,31 @@ export const AssetTableRowClient = ({
 }) => {
   const router = useRouter();
   const { closeMenu, openMenu, position } = useRowContextMenu();
-  const openAsset = () => router.push(href as Route);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const openAsset = () => {
+    onOpen?.();
+    router.push(href as Route);
+  };
+  const deleteAsset = () => {
+    setError(null);
+
+    startTransition(async () => {
+      const response = await fetch(`/api/assets/${assetId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        setError(await getErrorMessage(response));
+        return;
+      }
+
+      setDeleteOpen(false);
+      onDeleted?.(assetId);
+      router.refresh();
+    });
+  };
 
   return (
     <>
@@ -324,7 +354,21 @@ export const AssetTableRowClient = ({
           <Badge variant={statusVariant}>{statusLabel}</Badge>
         </TableCell>
         <TableCell>{sizeLabel}</TableCell>
-        <TableCell />
+        <TableCell
+          className="text-right"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <Button
+            aria-label={`Delete ${filename}`}
+            disabled={isPending}
+            onClick={() => setDeleteOpen(true)}
+            size="icon"
+            variant="ghost"
+          >
+            <TrashIcon />
+          </Button>
+        </TableCell>
       </TableRow>
 
       <FloatingMenu position={position}>
@@ -362,7 +406,48 @@ export const AssetTableRowClient = ({
           <DownloadIcon />
           Download
         </MenuItem>
+        <MenuSeparator />
+        <MenuItem
+          disabled={isPending}
+          onSelect={() => {
+            closeMenu();
+            setDeleteOpen(true);
+          }}
+          variant="destructive"
+        >
+          <TrashIcon />
+          Delete
+        </MenuItem>
       </FloatingMenu>
+
+      <AlertDialog
+        onOpenChange={(nextOpen) => {
+          setDeleteOpen(nextOpen);
+          setError(null);
+        }}
+        open={deleteOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete file</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the file from the workspace file manager.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {error ? <p className="text-destructive text-xs">{error}</p> : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <Button
+              disabled={isPending}
+              onClick={deleteAsset}
+              variant="destructive"
+            >
+              <TrashIcon />
+              {isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

@@ -16,7 +16,7 @@ import { Progress } from "@workspace/ui/components/progress";
 import { cn } from "@workspace/ui/lib/utils";
 import { CloudUploadIcon, FileIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, useTransition } from "react";
+import { useId, useRef, useState } from "react";
 
 const bytesPerKilobyte = 1024;
 const kilobytesPerMegabyte = 1024;
@@ -27,6 +27,7 @@ const progressIntentStarted = 5;
 const progressIntentCreated = 35;
 const progressContentUploaded = 75;
 const progressComplete = 100;
+const progressPercentDenominator = 100;
 const allowedMimePrefixes = [
   "image/",
   "video/",
@@ -145,51 +146,63 @@ export const AssetUploadDialog = ({
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [currentFilename, setCurrentFilename] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const [isPending, startTransition] = useTransition();
-
-  const selectFile = (nextFile: File | null) => {
-    setFile(nextFile);
-    setError(null);
-  };
 
   const reset = () => {
-    setFile(null);
+    setFiles([]);
+    setCurrentFilename(null);
     setIsDragging(false);
+    setIsUploading(false);
     setError(null);
     setProgress(0);
   };
 
-  const upload = () => {
-    if (!(file && workspaceId)) {
+  const uploadFiles = async (nextFiles: File[]) => {
+    if (!(nextFiles.length && workspaceId) || isUploading) {
       return;
     }
 
+    setFiles(nextFiles);
+    setIsUploading(true);
     setError(null);
     setProgress(progressIntentStarted);
 
-    startTransition(async () => {
-      try {
+    try {
+      for (const [index, nextFile] of nextFiles.entries()) {
+        const baseProgress = (index / nextFiles.length) * progressComplete;
+        const progressShare = progressComplete / nextFiles.length;
+
+        setCurrentFilename(nextFile.name);
         await uploadAsset({
           cdnEnabled: false,
-          file,
+          file: nextFile,
           folderPath,
-          onProgress: setProgress,
+          onProgress: (value) =>
+            setProgress(
+              Math.round(
+                baseProgress +
+                  (value / progressPercentDenominator) * progressShare
+              )
+            ),
           workspaceId,
         });
-        setOpen(false);
-        reset();
-        router.refresh();
-      } catch (uploadError) {
-        setError(
-          uploadError instanceof Error ? uploadError.message : "Upload failed"
-        );
-        setProgress(0);
       }
-    });
+
+      setOpen(false);
+      reset();
+      router.refresh();
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error ? uploadError.message : "Upload failed"
+      );
+      setIsUploading(false);
+      setProgress(0);
+    }
   };
 
   return (
@@ -197,7 +210,7 @@ export const AssetUploadDialog = ({
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
 
-        if (!(nextOpen || isPending)) {
+        if (!(nextOpen || isUploading)) {
           reset();
         }
       }}
@@ -223,10 +236,20 @@ export const AssetUploadDialog = ({
             <Input
               accept="image/*,video/*,audio/*,application/pdf,text/plain"
               className="sr-only"
-              disabled={isPending}
+              disabled={isUploading}
               id={fileInputId}
+              multiple
               onChange={(event) => {
-                selectFile(event.target.files?.item(0) ?? null);
+                uploadFiles(Array.from(event.target.files ?? [])).catch(
+                  (uploadError: unknown) => {
+                    setError(
+                      uploadError instanceof Error
+                        ? uploadError.message
+                        : "Upload failed"
+                    );
+                  }
+                );
+                event.target.value = "";
               }}
               ref={fileInputRef}
               tabIndex={-1}
@@ -236,9 +259,9 @@ export const AssetUploadDialog = ({
               className={cn(
                 "flex min-h-36 w-full flex-col items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-center transition-colors",
                 isDragging && "border-primary bg-primary/5",
-                isPending && "cursor-not-allowed opacity-60"
+                isUploading && "cursor-not-allowed opacity-60"
               )}
-              disabled={isPending}
+              disabled={isUploading}
               onClick={() => fileInputRef.current?.click()}
               onDragEnter={(event) => {
                 event.preventDefault();
@@ -255,29 +278,45 @@ export const AssetUploadDialog = ({
                 event.preventDefault();
                 setIsDragging(false);
 
-                if (isPending) {
+                if (isUploading) {
                   return;
                 }
 
-                selectFile(event.dataTransfer.files.item(0));
+                uploadFiles(Array.from(event.dataTransfer.files)).catch(
+                  (uploadError: unknown) => {
+                    setError(
+                      uploadError instanceof Error
+                        ? uploadError.message
+                        : "Upload failed"
+                    );
+                  }
+                );
               }}
               type="button"
             >
               <CloudUploadIcon className="size-8 text-muted-foreground" />
-              <span className="font-medium text-sm">Drop a file or browse</span>
+              <span className="font-medium text-sm">Drop files or browse</span>
               <span className="text-muted-foreground text-xs">
                 Images, video, audio, PDF, or text up to {maxUploadMegabytes} MB
               </span>
             </button>
           </div>
 
-          {file ? (
+          {files.length ? (
             <div className="flex items-center gap-3 rounded-md border p-3">
               <FileIcon className="size-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 text-xs">
-                <div className="truncate font-medium">{file.name}</div>
+                <div className="truncate font-medium">
+                  {isUploading && currentFilename
+                    ? currentFilename
+                    : `${files.length} file${files.length === 1 ? "" : "s"} selected`}
+                </div>
                 <div className="truncate text-muted-foreground">
-                  {file.type || "unknown"} · {file.size.toLocaleString()} bytes
+                  {isUploading
+                    ? "Uploading..."
+                    : `${files
+                        .reduce((total, nextFile) => total + nextFile.size, 0)
+                        .toLocaleString()} bytes total`}
                 </div>
               </div>
             </div>
@@ -289,11 +328,19 @@ export const AssetUploadDialog = ({
 
         <DialogFooter>
           <Button
-            disabled={isPending || !file || !workspaceId}
-            onClick={upload}
+            disabled={isUploading || !files.length || !workspaceId}
+            onClick={() => {
+              uploadFiles(files).catch((uploadError: unknown) => {
+                setError(
+                  uploadError instanceof Error
+                    ? uploadError.message
+                    : "Upload failed"
+                );
+              });
+            }}
           >
             <CloudUploadIcon />
-            {isPending ? "Uploading..." : "Upload"}
+            {isUploading ? "Uploading..." : "Upload"}
           </Button>
         </DialogFooter>
       </DialogContent>

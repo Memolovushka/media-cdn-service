@@ -408,3 +408,41 @@ export const PATCH = async (request: Request, context: RouteContext) => {
     );
   }
 };
+
+export const DELETE = async (request: Request, context: RouteContext) => {
+  const ctx = await getAppContext();
+  const user = await getSessionUser(ctx, request);
+
+  if (!user) {
+    return unauthorized();
+  }
+
+  const { id: assetId } = await context.params;
+  const asset = await getWritableAsset({
+    db: ctx.db,
+    assetId,
+    userId: user.id,
+  });
+
+  if (!asset) {
+    return notFound();
+  }
+
+  const now = new Date();
+
+  await ctx.db
+    .update(assets)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(eq(assets.id, asset.id));
+
+  await ctx.db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    workspaceId: asset.workspaceId,
+    actorUserId: user.id,
+    assetId: asset.id,
+    eventType: "asset.deleted",
+    metadataJson: JSON.stringify({ filename: asset.filename }),
+  });
+
+  return Response.json({ asset: { id: asset.id } });
+};
