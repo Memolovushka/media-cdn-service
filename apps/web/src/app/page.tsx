@@ -41,6 +41,7 @@ import { listWorkspaceAssets, listWorkspaceFolders } from "@/server/assets";
 import { getAppContext } from "@/server/context";
 
 const bytesPerUnit = 1024;
+const fileBrowserRootPath = "asset";
 
 const assetStatusLabels = {
   abandoned: "Abandoned",
@@ -100,15 +101,20 @@ const getParentFolderPath = (folderPath: string) =>
     : "";
 
 const folderHref = (folderPath: string) =>
-  folderPath ? `/?folder=${encodeURIComponent(folderPath)}` : "/";
+  folderPath === fileBrowserRootPath
+    ? "/"
+    : `/?folder=${encodeURIComponent(folderPath)}`;
+
+const getFileBrowserFolderPath = (folderPath?: string) =>
+  folderPath?.startsWith(`${fileBrowserRootPath}/`)
+    ? folderPath
+    : fileBrowserRootPath;
 
 const getFolderBreadcrumbSegments = (folderPath: string) =>
-  folderPath
-    ? folderPath.split("/").map((segment, index, segments) => ({
-        href: folderHref(segments.slice(0, index + 1).join("/")),
-        name: segment,
-      }))
-    : [];
+  folderPath.split("/").map((segment, index, segments) => ({
+    href: folderHref(segments.slice(0, index + 1).join("/")),
+    name: segment,
+  }));
 
 const FolderTableRow = ({
   folder,
@@ -352,7 +358,7 @@ interface PageProps {
 
 const Page = async ({ searchParams }: PageProps) => {
   const params = await searchParams;
-  const selectedFolderPath = params?.folder ?? "";
+  const selectedFolderPath = getFileBrowserFolderPath(params?.folder);
   const selectedAssetId = params?.asset ?? "";
   const ctx = await getAppContext().catch(() => null);
   const session = ctx
@@ -475,20 +481,13 @@ const Page = async ({ searchParams }: PageProps) => {
               <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <Breadcrumb>
                   <BreadcrumbList>
-                    <BreadcrumbItem>
-                      {selectedFolderPath ? (
-                        <BreadcrumbLink href="/">Root</BreadcrumbLink>
-                      ) : (
-                        <BreadcrumbPage>Root</BreadcrumbPage>
-                      )}
-                    </BreadcrumbItem>
                     {folderBreadcrumbSegments.map((segment, index) => {
                       const isCurrent =
                         index === folderBreadcrumbSegments.length - 1;
 
                       return (
                         <Fragment key={segment.href}>
-                          <BreadcrumbSeparator />
+                          {index > 0 ? <BreadcrumbSeparator /> : null}
                           <BreadcrumbItem>
                             {isCurrent ? (
                               <BreadcrumbPage>{segment.name}</BreadcrumbPage>
