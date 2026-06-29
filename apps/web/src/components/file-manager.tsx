@@ -15,7 +15,13 @@ import {
 } from "@workspace/ui/components/table";
 import { CloudUploadIcon, DownloadIcon, SaveIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
 import { uploadFilesSequentially } from "@/components/asset-upload-client";
@@ -50,6 +56,11 @@ export interface DashboardFolder {
 
 const bytesPerUnit = 1024;
 const rootFolderPath = "asset";
+
+const hasFilesTransfer = (
+  dataTransfer: DataTransfer | null
+): dataTransfer is DataTransfer =>
+  Boolean(dataTransfer?.types.includes("Files"));
 
 const assetStatusLabels = {
   abandoned: "Abandoned",
@@ -389,38 +400,109 @@ export const FileManager = ({
 
     router.refresh();
   };
-  const uploadDroppedFiles = async (files: File[]) => {
-    if (!(files.length && workspaceId) || isDropUploading) {
-      return;
-    }
+  const uploadDroppedFiles = useCallback(
+    async (files: File[], folderPath = selectedFolderPath) => {
+      if (!(files.length && workspaceId) || isDropUploading) {
+        return;
+      }
 
-    setDropError(null);
-    setDropProgress(1);
-    setDropUploadLabel(`${files.length} file${files.length === 1 ? "" : "s"}`);
-    setIsDropUploading(true);
-
-    try {
-      await uploadFilesSequentially({
-        cdnEnabled: false,
-        files,
-        folderPath: selectedFolderPath,
-        onFileStart: (file) => setDropUploadLabel(file.name),
-        onProgress: setDropProgress,
-        workspaceId,
-      });
-      setDragDepth(0);
-      setDropProgress(0);
-      setDropUploadLabel(null);
-      setIsDropUploading(false);
-      router.refresh();
-    } catch (uploadError) {
-      setDropError(
-        uploadError instanceof Error ? uploadError.message : "Upload failed"
+      setDropError(null);
+      setDropProgress(1);
+      setDropUploadLabel(
+        `${files.length} file${files.length === 1 ? "" : "s"}`
       );
-      setDropProgress(0);
-      setIsDropUploading(false);
-    }
-  };
+      setIsDropUploading(true);
+
+      try {
+        await uploadFilesSequentially({
+          cdnEnabled: false,
+          files,
+          folderPath,
+          onFileStart: (file) => setDropUploadLabel(file.name),
+          onProgress: setDropProgress,
+          workspaceId,
+        });
+        setDragDepth(0);
+        setDropProgress(0);
+        setDropUploadLabel(null);
+        setIsDropUploading(false);
+        router.refresh();
+      } catch (uploadError) {
+        setDropError(
+          uploadError instanceof Error ? uploadError.message : "Upload failed"
+        );
+        setDropProgress(0);
+        setIsDropUploading(false);
+      }
+    },
+    [isDropUploading, router, selectedFolderPath, workspaceId]
+  );
+
+  useEffect(() => {
+    let nextDragDepth = 0;
+
+    const handleDragEnter = (event: DragEvent) => {
+      if (!hasFilesTransfer(event.dataTransfer)) {
+        return;
+      }
+
+      event.preventDefault();
+      nextDragDepth += 1;
+      setDragDepth(nextDragDepth);
+    };
+
+    const handleDragLeave = (event: DragEvent) => {
+      if (!hasFilesTransfer(event.dataTransfer)) {
+        return;
+      }
+
+      event.preventDefault();
+      nextDragDepth = Math.max(0, nextDragDepth - 1);
+      setDragDepth(nextDragDepth);
+    };
+
+    const handleDragOver = (event: DragEvent) => {
+      const { dataTransfer } = event;
+
+      if (!hasFilesTransfer(dataTransfer)) {
+        return;
+      }
+
+      event.preventDefault();
+      dataTransfer.dropEffect = "copy";
+    };
+
+    const handleDrop = (event: DragEvent) => {
+      if (!hasFilesTransfer(event.dataTransfer)) {
+        return;
+      }
+
+      event.preventDefault();
+      nextDragDepth = 0;
+      setDragDepth(0);
+
+      const files = Array.from(event.dataTransfer?.files ?? []);
+      uploadDroppedFiles(files).catch((uploadError: unknown) => {
+        setDropError(
+          uploadError instanceof Error ? uploadError.message : "Upload failed"
+        );
+        setIsDropUploading(false);
+      });
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, [uploadDroppedFiles]);
+
   const isDraggingFiles = dragDepth > 0;
   const draggedAsset = draggedAssetId
     ? optimisticAssets.find((asset) => asset.id === draggedAssetId)
@@ -433,55 +515,10 @@ export const FileManager = ({
     : [];
 
   return (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: This surface accepts OS file drops while preserving table semantics inside.
-    // biome-ignore lint/a11y/noStaticElementInteractions: Drag-and-drop has no native semantic container that can wrap the file manager table.
-    <div
-      className="relative grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]"
-      onDragEnter={(event) => {
-        if (!event.dataTransfer.types.includes("Files")) {
-          return;
-        }
-
-        event.preventDefault();
-        setDragDepth((currentDepth) => currentDepth + 1);
-      }}
-      onDragLeave={(event) => {
-        if (!event.dataTransfer.types.includes("Files")) {
-          return;
-        }
-
-        event.preventDefault();
-        setDragDepth((currentDepth) => Math.max(0, currentDepth - 1));
-      }}
-      onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes("Files")) {
-          return;
-        }
-
-        event.preventDefault();
-      }}
-      onDrop={(event) => {
-        if (!event.dataTransfer.types.includes("Files")) {
-          return;
-        }
-
-        event.preventDefault();
-        setDragDepth(0);
-        uploadDroppedFiles(Array.from(event.dataTransfer.files)).catch(
-          (uploadError: unknown) => {
-            setDropError(
-              uploadError instanceof Error
-                ? uploadError.message
-                : "Upload failed"
-            );
-            setIsDropUploading(false);
-          }
-        );
-      }}
-    >
+    <div className="relative grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]">
       {isDraggingFiles || isDropUploading ? (
-        <div className="pointer-events-none absolute inset-0 z-20 rounded-lg border-2 border-primary border-dashed bg-primary/5 p-4 backdrop-blur-[1px]">
-          <div className="flex items-center gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
+        <div className="pointer-events-none fixed inset-0 z-50 border-2 border-primary border-dashed bg-primary/5 p-4 backdrop-blur-[1px]">
+          <div className="mx-auto mt-6 flex max-w-md items-center gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
             <CloudUploadIcon className="size-5 text-primary" />
             <div className="min-w-0 flex-1">
               <div className="font-medium text-sm">
@@ -490,12 +527,13 @@ export const FileManager = ({
                   : "Drop anywhere to upload"}
               </div>
               <div className="truncate text-muted-foreground text-xs">
-                {dropUploadLabel ?? "Files will be added to this folder"}
+                {dropUploadLabel ??
+                  `Files will be added to ${selectedFolderPath}`}
               </div>
             </div>
           </div>
           {dropProgress > 0 ? (
-            <Progress className="mt-3 max-w-md" value={dropProgress} />
+            <Progress className="mx-auto mt-3 max-w-md" value={dropProgress} />
           ) : null}
         </div>
       ) : null}
@@ -584,6 +622,18 @@ export const FileManager = ({
                         }
                       );
                       setDraggedAssetId(null);
+                    }}
+                    onFileDrop={(folderPath, files) => {
+                      uploadDroppedFiles(files, folderPath).catch(
+                        (uploadError: unknown) => {
+                          setDropError(
+                            uploadError instanceof Error
+                              ? uploadError.message
+                              : "Upload failed"
+                          );
+                          setIsDropUploading(false);
+                        }
+                      );
                     }}
                     workspaceId={workspaceId}
                   />

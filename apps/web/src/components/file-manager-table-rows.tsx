@@ -143,12 +143,14 @@ export const FolderTableRowClient = ({
   folderName,
   folderPath,
   onAssetDrop,
+  onFileDrop,
   workspaceId,
 }: {
   folderHref: string;
   folderName: string;
   folderPath: string;
   onAssetDrop?: (folderPath: string) => void;
+  onFileDrop?: (folderPath: string, files: File[]) => void;
   workspaceId: string;
 }) => {
   const router = useRouter();
@@ -190,14 +192,29 @@ export const FolderTableRowClient = ({
         onClick={openFolder}
         onContextMenu={openMenu}
         onDragOver={(event) => {
-          if (!onAssetDrop) {
+          const isFileDrop = event.dataTransfer.types.includes("Files");
+
+          if (!(onAssetDrop || (isFileDrop && onFileDrop))) {
             return;
           }
 
           event.preventDefault();
+          event.dataTransfer.dropEffect = isFileDrop ? "copy" : "move";
         }}
         onDrop={(event) => {
           event.preventDefault();
+          event.stopPropagation();
+
+          if (event.dataTransfer.types.includes("Files")) {
+            const files = Array.from(event.dataTransfer.files);
+
+            if (files.length) {
+              onFileDrop?.(folderPath, files);
+            }
+
+            return;
+          }
+
           onAssetDrop?.(folderPath);
         }}
         onKeyDown={(event) => handleRowKeyDown({ event, onOpen: openFolder })}
