@@ -23,7 +23,6 @@ import {
   useTransition,
 } from "react";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
-import { AssetPreviewDialog } from "@/components/asset-preview-dialog";
 import { uploadFilesSequentially } from "@/components/asset-upload-client";
 import {
   AssetTableRowClient,
@@ -289,12 +288,6 @@ const AssetDetailsPanel = ({
       ) : null}
 
       <div className="flex items-center gap-1">
-        <AssetPreviewDialog
-          disabled={!previewUrl}
-          filename={asset.filename}
-          mimeType={asset.mimeType}
-          previewUrl={previewUrl}
-        />
         {downloadUrl ? (
           <Button asChild size="icon" variant="ghost">
             <a href={downloadUrl}>
