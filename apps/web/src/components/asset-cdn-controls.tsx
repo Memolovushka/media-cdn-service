@@ -152,6 +152,7 @@ export const AssetCdnControls = ({
   const [error, setError] = useState<string | null>(null);
   const [isPublicUrlVisible, setIsPublicUrlVisible] = useState(false);
   const [tagValue, setTagValue] = useState(tags.join(", "));
+  const [savedTagValue, setSavedTagValue] = useState(tags.join(", "));
   const [isPending, startTransition] = useTransition();
   const currentTags = useMemo(() => parseTags(tagValue), [tagValue]);
   const nextImageConfig = useMemo(() => {
@@ -243,6 +244,15 @@ export const AssetCdnControls = ({
     });
   };
 
+  const saveTags = () => {
+    if (tagValue === savedTagValue) {
+      return;
+    }
+
+    setSavedTagValue(tagValue);
+    patchAsset({ body: { tags: currentTags } });
+  };
+
   let cdnUrlContent = (
     <p className="text-muted-foreground text-xs">
       Upload must finish before CDN publishing.
@@ -332,7 +342,14 @@ export const AssetCdnControls = ({
             aria-label="Asset tags"
             className="h-7 text-xs"
             disabled={isPending}
+            onBlur={saveTags}
             onChange={(event) => setTagValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                saveTags();
+              }
+            }}
             placeholder="tags"
             value={tagValue}
           />
@@ -340,7 +357,8 @@ export const AssetCdnControls = ({
             <TooltipTrigger asChild>
               <Button
                 disabled={isPending}
-                onClick={() => patchAsset({ body: { tags: currentTags } })}
+                onClick={saveTags}
+                onMouseDown={(event) => event.preventDefault()}
                 size="icon"
                 type="button"
                 variant="outline"
