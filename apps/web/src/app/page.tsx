@@ -42,6 +42,7 @@ import { getAppContext } from "@/server/context";
 
 const bytesPerUnit = 1024;
 const fileBrowserRootPath = "asset";
+const fileBrowserRootLabel = "Main";
 
 const assetStatusLabels = {
   abandoned: "Abandoned",
@@ -113,7 +114,10 @@ const getFileBrowserFolderPath = (folderPath?: string) =>
 const getFolderBreadcrumbSegments = (folderPath: string) =>
   folderPath.split("/").map((segment, index, segments) => ({
     href: folderHref(segments.slice(0, index + 1).join("/")),
-    name: segment,
+    name:
+      index === 0 && segment === fileBrowserRootPath
+        ? fileBrowserRootLabel
+        : segment,
   }));
 
 const FolderTableRow = ({
