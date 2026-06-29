@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, like, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, like } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
   assetFolders,
@@ -262,15 +262,21 @@ export const deleteWorkspaceFolder = async ({
   const assetInFolder = await db.query.assets.findFirst({
     where: and(
       eq(assets.workspaceId, workspaceId),
-      or(
-        eq(assets.folderPath, normalizedPath),
-        like(assets.folderPath, `${normalizedPath}/%`)
-      ),
+      eq(assets.folderPath, normalizedPath),
       isNull(assets.deletedAt)
     ),
   });
+  const childAssetInFolder = assetInFolder
+    ? null
+    : await db.query.assets.findFirst({
+        where: and(
+          eq(assets.workspaceId, workspaceId),
+          like(assets.folderPath, `${normalizedPath}/%`),
+          isNull(assets.deletedAt)
+        ),
+      });
 
-  if (!(folder || assetInFolder)) {
+  if (!(folder || assetInFolder || childAssetInFolder)) {
     throw new Error("Folder not found");
   }
 
@@ -282,10 +288,18 @@ export const deleteWorkspaceFolder = async ({
     .where(
       and(
         eq(assets.workspaceId, workspaceId),
-        or(
-          eq(assets.folderPath, normalizedPath),
-          like(assets.folderPath, `${normalizedPath}/%`)
-        ),
+        eq(assets.folderPath, normalizedPath),
+        isNull(assets.deletedAt)
+      )
+    );
+
+  await db
+    .update(assets)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(assets.workspaceId, workspaceId),
+        like(assets.folderPath, `${normalizedPath}/%`),
         isNull(assets.deletedAt)
       )
     );
@@ -295,10 +309,16 @@ export const deleteWorkspaceFolder = async ({
     .where(
       and(
         eq(assetFolders.workspaceId, workspaceId),
-        or(
-          eq(assetFolders.path, normalizedPath),
-          like(assetFolders.path, `${normalizedPath}/%`)
-        )
+        eq(assetFolders.path, normalizedPath)
+      )
+    );
+
+  await db
+    .delete(assetFolders)
+    .where(
+      and(
+        eq(assetFolders.workspaceId, workspaceId),
+        like(assetFolders.path, `${normalizedPath}/%`)
       )
     );
 
