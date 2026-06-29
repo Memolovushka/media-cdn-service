@@ -31,7 +31,6 @@ import type {
 } from "react";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-import { FolderDeleteButton } from "@/components/folder-delete-button";
 
 interface MenuPosition {
   x: number;
@@ -208,10 +207,15 @@ export const FolderTableRowClient = ({
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <FolderDeleteButton
-            folderPath={folderPath}
-            workspaceId={workspaceId}
-          />
+          <Button
+            aria-label={`Delete ${folderName}`}
+            disabled={isPending}
+            onClick={() => setDeleteOpen(true)}
+            size="icon"
+            variant="ghost"
+          >
+            <TrashIcon />
+          </Button>
         </TableCell>
       </TableRow>
 
