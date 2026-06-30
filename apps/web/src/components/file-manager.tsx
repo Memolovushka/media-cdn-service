@@ -2,7 +2,6 @@
 
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
 import { Progress } from "@workspace/ui/components/progress";
 import {
@@ -28,11 +27,11 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip";
 import {
-  CheckSquareIcon,
   CloudUploadIcon,
   DownloadIcon,
   FolderInputIcon,
   Globe2Icon,
+  MousePointerClickIcon,
   SaveIcon,
   SearchIcon,
   XIcon,
@@ -77,10 +76,13 @@ export interface DashboardFolder {
   path: string;
 }
 
+type SelectableItem =
+  | { asset: DashboardAsset; id: string; kind: "asset" }
+  | { folder: DashboardFolder; id: string; kind: "folder" };
+
 const bytesPerUnit = 1024;
 const rootFolderPath = "asset";
 const defaultTableColumnCount = 5;
-const selectableTableColumnCount = 6;
 
 interface AssetPatchResponse {
   asset?: Partial<DashboardAsset>;
@@ -111,34 +113,35 @@ const isAssetPublished = (asset: DashboardAsset) =>
 const matchesSearch = (value: string, query: string) =>
   value.toLowerCase().includes(query.trim().toLowerCase());
 
-const getNextSelectedAssetIds = ({
-  assetId,
+const getAssetItemId = (assetId: string) => `asset:${assetId}`;
+const getFolderItemId = (folderPath: string) => `folder:${folderPath}`;
+
+const getNextSelectedItemIds = ({
   currentIds,
-  filteredAssets,
-  lastSelectedAssetId,
+  itemId,
+  items,
+  lastSelectedItemId,
   shiftKey,
   shouldSelect,
 }: {
-  assetId: string;
   currentIds: Set<string>;
-  filteredAssets: DashboardAsset[];
-  lastSelectedAssetId: null | string;
+  itemId: string;
+  items: SelectableItem[];
+  lastSelectedItemId: null | string;
   shiftKey: boolean;
   shouldSelect: boolean;
 }) => {
   const nextIds = new Set(currentIds);
-  const currentIndex = filteredAssets.findIndex(
-    (asset) => asset.id === assetId
-  );
-  const lastIndex = lastSelectedAssetId
-    ? filteredAssets.findIndex((asset) => asset.id === lastSelectedAssetId)
+  const currentIndex = items.findIndex((item) => item.id === itemId);
+  const lastIndex = lastSelectedItemId
+    ? items.findIndex((item) => item.id === lastSelectedItemId)
     : -1;
 
   if (!(shiftKey && lastIndex >= 0 && currentIndex >= 0)) {
     if (shouldSelect) {
-      nextIds.add(assetId);
+      nextIds.add(itemId);
     } else {
-      nextIds.delete(assetId);
+      nextIds.delete(itemId);
     }
 
     return nextIds;
@@ -149,11 +152,11 @@ const getNextSelectedAssetIds = ({
       ? [lastIndex, currentIndex]
       : [currentIndex, lastIndex];
 
-  for (const asset of filteredAssets.slice(startIndex, endIndex + 1)) {
+  for (const item of items.slice(startIndex, endIndex + 1)) {
     if (shouldSelect) {
-      nextIds.add(asset.id);
+      nextIds.add(item.id);
     } else {
-      nextIds.delete(asset.id);
+      nextIds.delete(item.id);
     }
   }
 
@@ -425,17 +428,17 @@ export const FileManager = ({
   const [dropError, setDropError] = useState<string | null>(null);
   const [dropProgress, setDropProgress] = useState(0);
   const [dropUploadLabel, setDropUploadLabel] = useState<string | null>(null);
-  const [draggedAssetId, setDraggedAssetId] = useState<string | null>(null);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [isDropUploading, setIsDropUploading] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
-  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
     () => new Set()
   );
-  const [lastSelectedAssetId, setLastSelectedAssetId] = useState<string | null>(
+  const [lastSelectedItemId, setLastSelectedItemId] = useState<string | null>(
     null
   );
   const [bulkMoveTarget, setBulkMoveTarget] = useState(rootFolderPath);
@@ -444,10 +447,21 @@ export const FileManager = ({
 
   useEffect(() => {
     setOptimisticAssets(assets);
-    setActiveAssetId(selectedAssetId || assets.at(0)?.id || "");
+    const nextActiveAssetId = selectedAssetId || assets.at(0)?.id || "";
+
+    setActiveAssetId(nextActiveAssetId);
     setIsRefreshingSelection(false);
-    setSelectedAssetIds(new Set());
-    setLastSelectedAssetId(null);
+    setSelectedItemIds(new Set());
+    setLastSelectedItemId((currentAnchorId) => {
+      if (
+        currentAnchorId &&
+        assets.some((asset) => getAssetItemId(asset.id) === currentAnchorId)
+      ) {
+        return currentAnchorId;
+      }
+
+      return nextActiveAssetId ? getAssetItemId(nextActiveAssetId) : null;
+    });
   }, [assets, selectedAssetId]);
 
   const selectedAsset = useMemo(
@@ -475,9 +489,34 @@ export const FileManager = ({
       matchesSearch(`${asset.filename} ${asset.mimeType}`, searchQuery)
     );
   }, [optimisticAssets, searchQuery]);
+  const filteredItems = useMemo<SelectableItem[]>(
+    () => [
+      ...filteredFolders.map((folder) => ({
+        folder,
+        id: getFolderItemId(folder.path),
+        kind: "folder" as const,
+      })),
+      ...filteredAssets.map((asset) => ({
+        asset,
+        id: getAssetItemId(asset.id),
+        kind: "asset" as const,
+      })),
+    ],
+    [filteredAssets, filteredFolders]
+  );
   const selectedAssets = useMemo(
-    () => optimisticAssets.filter((asset) => selectedAssetIds.has(asset.id)),
-    [optimisticAssets, selectedAssetIds]
+    () =>
+      optimisticAssets.filter((asset) =>
+        selectedItemIds.has(getAssetItemId(asset.id))
+      ),
+    [optimisticAssets, selectedItemIds]
+  );
+  const selectedFolders = useMemo(
+    () =>
+      allFolders.filter((folder) =>
+        selectedItemIds.has(getFolderItemId(folder.path))
+      ),
+    [allFolders, selectedItemIds]
   );
   const publishableSelectedAssets = selectedAssets.filter(
     (asset) => isAssetReady(asset) && !isAssetPublished(asset)
@@ -485,15 +524,16 @@ export const FileManager = ({
   const hasFileManagerItems = Boolean(
     filteredFolders.length || filteredAssets.length
   );
-  const tableColumnCount = selectMode
-    ? selectableTableColumnCount
-    : defaultTableColumnCount;
-  const selectedCount = selectedAssetIds.size;
+  const tableColumnCount = defaultTableColumnCount;
+  const selectedCount = selectedItemIds.size;
+  const allVisibleItemsSelected =
+    filteredItems.length > 0 &&
+    filteredItems.every((item) => selectedItemIds.has(item.id));
 
   const handleDeleted = (assetId: string) => {
-    setSelectedAssetIds((currentIds) => {
+    setSelectedItemIds((currentIds) => {
       const nextIds = new Set(currentIds);
-      nextIds.delete(assetId);
+      nextIds.delete(getAssetItemId(assetId));
       return nextIds;
     });
     setOptimisticAssets((currentAssets) => {
@@ -514,7 +554,7 @@ export const FileManager = ({
     );
   };
   const handleBulkSelect = (
-    assetId: string,
+    itemId: string,
     shiftKey: boolean,
     shouldSelect: boolean
   ) => {
@@ -522,48 +562,48 @@ export const FileManager = ({
       setSelectMode(true);
     }
 
-    setSelectedAssetIds((currentIds) =>
-      getNextSelectedAssetIds({
-        assetId,
+    setSelectedItemIds((currentIds) =>
+      getNextSelectedItemIds({
         currentIds,
-        filteredAssets,
-        lastSelectedAssetId,
+        itemId,
+        items: filteredItems,
+        lastSelectedItemId,
         shiftKey,
         shouldSelect,
       })
     );
-    setLastSelectedAssetId(assetId);
+    setLastSelectedItemId(itemId);
   };
   const toggleSelectMode = () => {
     setSelectMode((currentMode) => {
       const nextMode = !currentMode;
 
       if (!nextMode) {
-        setSelectedAssetIds(new Set());
-        setLastSelectedAssetId(null);
+        setSelectedItemIds(new Set());
+        setLastSelectedItemId(null);
       }
 
       return nextMode;
     });
   };
   const clearSelection = () => {
-    if (!selectedAssetIds.size) {
+    if (!selectedItemIds.size) {
       return;
     }
 
-    setSelectedAssetIds(new Set());
+    setSelectedItemIds(new Set());
     setSelectMode(false);
-    setLastSelectedAssetId(null);
+    setLastSelectedItemId(null);
   };
   const toggleAllVisibleAssets = (checked: boolean) => {
-    setSelectedAssetIds((currentIds) => {
+    setSelectedItemIds((currentIds) => {
       const nextIds = new Set(currentIds);
 
-      for (const asset of filteredAssets) {
+      for (const item of filteredItems) {
         if (checked) {
-          nextIds.add(asset.id);
+          nextIds.add(item.id);
         } else {
-          nextIds.delete(asset.id);
+          nextIds.delete(item.id);
         }
       }
 
@@ -612,16 +652,66 @@ export const FileManager = ({
       router.refresh();
     });
   };
-  const moveSelectedAssets = () => {
-    if (!(selectedAssets.length && bulkMoveTarget) || isBulkPending) {
+  const isFolderInsideFolder = (path: string, parentPath: string) =>
+    path === parentPath || path.startsWith(`${parentPath}/`);
+  const isInsideSelectedFolder = (path: string, folders: DashboardFolder[]) =>
+    folders.some((folder) => isFolderInsideFolder(path, folder.path));
+  const moveSelectedItems = () => {
+    if (!(selectedCount && bulkMoveTarget) || isBulkPending) {
+      return;
+    }
+
+    const foldersToMove = selectedFolders.filter(
+      (folder) =>
+        !selectedFolders.some(
+          (selectedFolder) =>
+            selectedFolder.path !== folder.path &&
+            isFolderInsideFolder(folder.path, selectedFolder.path)
+        )
+    );
+    const assetsToMove = selectedAssets.filter(
+      (asset) => !isInsideSelectedFolder(asset.folderPath, foldersToMove)
+    );
+
+    if (
+      foldersToMove.some((folder) =>
+        isFolderInsideFolder(bulkMoveTarget, folder.path)
+      )
+    ) {
+      setBulkError("Folder cannot be moved into itself");
       return;
     }
 
     setBulkError(null);
     startBulkTransition(async () => {
-      const movedAssetIds = new Set<string>();
+      const movedItemIds = new Set<string>();
 
-      for (const asset of selectedAssets) {
+      for (const folder of foldersToMove) {
+        if (folder.path === bulkMoveTarget) {
+          continue;
+        }
+
+        const response = await fetch("/api/folders", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            path: folder.path,
+            targetParentPath: bulkMoveTarget,
+            workspaceId,
+          }),
+        });
+
+        if (!response.ok) {
+          setBulkError(await getErrorMessage(response, "Move failed"));
+          return;
+        }
+
+        movedItemIds.add(getFolderItemId(folder.path));
+      }
+
+      for (const asset of assetsToMove) {
         if (asset.folderPath === bulkMoveTarget) {
           continue;
         }
@@ -639,26 +729,28 @@ export const FileManager = ({
           return;
         }
 
-        movedAssetIds.add(asset.id);
+        movedItemIds.add(getAssetItemId(asset.id));
       }
 
       if (bulkMoveTarget === selectedFolderPath) {
         setOptimisticAssets((currentAssets) =>
           currentAssets.map((asset) =>
-            movedAssetIds.has(asset.id)
+            movedItemIds.has(getAssetItemId(asset.id))
               ? { ...asset, folderPath: bulkMoveTarget }
               : asset
           )
         );
       } else {
         setOptimisticAssets((currentAssets) =>
-          currentAssets.filter((asset) => !movedAssetIds.has(asset.id))
+          currentAssets.filter(
+            (asset) => !movedItemIds.has(getAssetItemId(asset.id))
+          )
         );
-        setSelectedAssetIds((currentIds) => {
+        setSelectedItemIds((currentIds) => {
           const nextIds = new Set(currentIds);
 
-          for (const assetId of movedAssetIds) {
-            nextIds.delete(assetId);
+          for (const itemId of movedItemIds) {
+            nextIds.delete(itemId);
           }
 
           return nextIds;
@@ -667,6 +759,44 @@ export const FileManager = ({
 
       router.refresh();
     });
+  };
+  const moveFolder = async (folderPath: string, targetParentPath: string) => {
+    if (
+      folderPath === targetParentPath ||
+      targetParentPath.startsWith(`${folderPath}/`)
+    ) {
+      setMoveError("Folder cannot be moved into itself");
+      return;
+    }
+
+    setMoveError(null);
+    const response = await fetch("/api/folders", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        path: folderPath,
+        targetParentPath,
+        workspaceId,
+      }),
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+
+      setMoveError(payload?.error ?? "Move failed");
+      return;
+    }
+
+    setSelectedItemIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      nextIds.delete(getFolderItemId(folderPath));
+      return nextIds;
+    });
+    router.refresh();
   };
   const moveAsset = async (assetId: string, folderPath: string) => {
     const asset = optimisticAssets.find(
@@ -703,13 +833,47 @@ export const FileManager = ({
 
     router.refresh();
   };
-  const moveDraggedAssets = async (assetId: string, folderPath: string) => {
-    const assetIds =
-      selectedAssetIds.has(assetId) && selectedAssetIds.size > 1
-        ? [...selectedAssetIds]
-        : [assetId];
+  const moveDraggedItems = async (itemId: string, folderPath: string) => {
+    const itemIds =
+      selectedItemIds.has(itemId) && selectedItemIds.size > 1
+        ? [...selectedItemIds]
+        : [itemId];
+    const selectedFolderPaths = itemIds
+      .filter((currentItemId) => currentItemId.startsWith("folder:"))
+      .map((currentItemId) => currentItemId.slice("folder:".length));
 
-    for (const currentAssetId of assetIds) {
+    for (const currentItemId of itemIds) {
+      if (currentItemId.startsWith("folder:")) {
+        const currentFolderPath = currentItemId.slice("folder:".length);
+
+        if (
+          selectedFolderPaths.some(
+            (selectedFolderPath) =>
+              selectedFolderPath !== currentFolderPath &&
+              isFolderInsideFolder(currentFolderPath, selectedFolderPath)
+          )
+        ) {
+          continue;
+        }
+
+        await moveFolder(currentFolderPath, folderPath);
+        continue;
+      }
+
+      const currentAssetId = currentItemId.slice("asset:".length);
+      const asset = optimisticAssets.find(
+        (currentAsset) => currentAsset.id === currentAssetId
+      );
+
+      if (
+        asset &&
+        selectedFolderPaths.some((selectedFolderPath) =>
+          isFolderInsideFolder(asset.folderPath, selectedFolderPath)
+        )
+      ) {
+        continue;
+      }
+
       await moveAsset(currentAssetId, folderPath);
     }
   };
@@ -817,17 +981,33 @@ export const FileManager = ({
   }, [uploadDroppedFiles]);
 
   const isDraggingFiles = dragDepth > 0;
-  const draggedAsset = draggedAssetId
-    ? optimisticAssets.find((asset) => asset.id === draggedAssetId)
-    : null;
   const moveFolderOptions = allFolders.filter(
     (folder) => folder.path !== rootFolderPath
   );
-  const moveTargets = draggedAsset
+  const draggedFolderPaths = draggedItemId
+    ? (selectedItemIds.has(draggedItemId) && selectedItemIds.size > 1
+        ? [...selectedItemIds]
+        : [draggedItemId]
+      )
+        .filter((itemId) => itemId.startsWith("folder:"))
+        .map((itemId) => itemId.slice("folder:".length))
+    : [];
+  const draggedAsset = draggedItemId?.startsWith("asset:")
+    ? optimisticAssets.find(
+        (asset) => getAssetItemId(asset.id) === draggedItemId
+      )
+    : null;
+  const moveTargets = draggedItemId
     ? [
         { id: rootFolderPath, name: "Main", path: rootFolderPath },
         ...moveFolderOptions,
-      ].filter((folder) => folder.path !== draggedAsset.folderPath)
+      ].filter(
+        (folder) =>
+          folder.path !== draggedAsset?.folderPath &&
+          !draggedFolderPaths.some((folderPath) =>
+            isFolderInsideFolder(folder.path, folderPath)
+          )
+      )
     : [];
 
   return (
@@ -862,8 +1042,8 @@ export const FileManager = ({
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
-                if (draggedAssetId) {
-                  moveDraggedAssets(draggedAssetId, folder.path).catch(
+                if (draggedItemId) {
+                  moveDraggedItems(draggedItemId, folder.path).catch(
                     (moveErrorValue: unknown) => {
                       setMoveError(
                         moveErrorValue instanceof Error
@@ -873,7 +1053,7 @@ export const FileManager = ({
                     }
                   );
                 }
-                setDraggedAssetId(null);
+                setDraggedItemId(null);
               }}
               type="button"
             >
@@ -972,7 +1152,7 @@ export const FileManager = ({
                       type="button"
                       variant={selectMode ? "secondary" : "outline"}
                     >
-                      {selectMode ? <XIcon /> : <CheckSquareIcon />}
+                      {selectMode ? <XIcon /> : <MousePointerClickIcon />}
                       {selectMode ? "Done" : "Select"}
                     </Button>
                   </TooltipTrigger>
@@ -986,19 +1166,32 @@ export const FileManager = ({
           {selectMode ? (
             <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
               <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <TooltipHint content="Select all visible files">
-                  <Checkbox
-                    aria-label="Select all visible files"
-                    checked={
-                      filteredAssets.length > 0 &&
-                      filteredAssets.every((asset) =>
-                        selectedAssetIds.has(asset.id)
-                      )
+                <TooltipHint
+                  content={
+                    allVisibleItemsSelected
+                      ? "Clear visible selection"
+                      : "Select all visible items"
+                  }
+                >
+                  <Button
+                    aria-label={
+                      allVisibleItemsSelected
+                        ? "Clear visible selection"
+                        : "Select all visible items"
                     }
-                    onCheckedChange={(checked) =>
-                      toggleAllVisibleAssets(checked === true)
+                    onClick={() =>
+                      toggleAllVisibleAssets(!allVisibleItemsSelected)
                     }
-                  />
+                    size="icon-xs"
+                    type="button"
+                    variant={allVisibleItemsSelected ? "secondary" : "ghost"}
+                  >
+                    {allVisibleItemsSelected ? (
+                      <XIcon />
+                    ) : (
+                      <MousePointerClickIcon />
+                    )}
+                  </Button>
                 </TooltipHint>
                 {selectedCount} selected
               </div>
@@ -1014,7 +1207,7 @@ export const FileManager = ({
               </TooltipHint>
               <Select onValueChange={setBulkMoveTarget} value={bulkMoveTarget}>
                 <TooltipHint content="Choose target folder">
-                  <SelectTrigger aria-label="Move selected files to folder">
+                  <SelectTrigger aria-label="Move selected items to folder">
                     <SelectValue />
                   </SelectTrigger>
                 </TooltipHint>
@@ -1030,7 +1223,7 @@ export const FileManager = ({
               <TooltipHint content="Move selected files to the chosen folder">
                 <Button
                   disabled={!selectedCount || isBulkPending}
-                  onClick={moveSelectedAssets}
+                  onClick={moveSelectedItems}
                   type="button"
                   variant="outline"
                 >
@@ -1047,11 +1240,6 @@ export const FileManager = ({
         <Table>
           <TableHeader>
             <TableRow>
-              {selectMode ? (
-                <TableHead className="w-9">
-                  <span className="sr-only">Select</span>
-                </TableHead>
-              ) : null}
               <TableHead>Name</TableHead>
               <TableHead>Kind</TableHead>
               <TableHead>CDN</TableHead>
@@ -1075,11 +1263,11 @@ export const FileManager = ({
                     folderPath={folder.path}
                     key={folder.id}
                     onAssetDrop={(folderPath) => {
-                      if (!draggedAssetId) {
+                      if (!draggedItemId) {
                         return;
                       }
 
-                      moveDraggedAssets(draggedAssetId, folderPath).catch(
+                      moveDraggedItems(draggedItemId, folderPath).catch(
                         (moveErrorValue: unknown) => {
                           setMoveError(
                             moveErrorValue instanceof Error
@@ -1088,8 +1276,19 @@ export const FileManager = ({
                           );
                         }
                       );
-                      setDraggedAssetId(null);
+                      setDraggedItemId(null);
                     }}
+                    onBulkSelect={(folderPath, shiftKey, shouldSelect) =>
+                      handleBulkSelect(
+                        getFolderItemId(folderPath),
+                        shiftKey,
+                        shouldSelect
+                      )
+                    }
+                    onDragEnd={() => setDraggedItemId(null)}
+                    onDragStart={(folderPath) =>
+                      setDraggedItemId(getFolderItemId(folderPath))
+                    }
                     onFileDrop={(folderPath, files) => {
                       uploadDroppedFiles(files, folderPath).catch(
                         (uploadError: unknown) => {
@@ -1102,6 +1301,9 @@ export const FileManager = ({
                         }
                       );
                     }}
+                    selectedForBulk={selectedItemIds.has(
+                      getFolderItemId(folder.path)
+                    )}
                     selectMode={selectMode}
                     workspaceId={workspaceId}
                   />
@@ -1123,18 +1325,28 @@ export const FileManager = ({
                       })}
                       key={asset.id}
                       mimeType={asset.mimeType}
-                      onBulkSelect={handleBulkSelect}
+                      onBulkSelect={(assetId, shiftKey, shouldSelect) =>
+                        handleBulkSelect(
+                          getAssetItemId(assetId),
+                          shiftKey,
+                          shouldSelect
+                        )
+                      }
                       onDeleted={handleDeleted}
-                      onDragEnd={() => setDraggedAssetId(null)}
-                      onDragStart={setDraggedAssetId}
+                      onDragEnd={() => setDraggedItemId(null)}
+                      onDragStart={(assetId) =>
+                        setDraggedItemId(getAssetItemId(assetId))
+                      }
                       onOpen={() => {
                         setActiveAssetId(asset.id);
-                        setLastSelectedAssetId(asset.id);
+                        setLastSelectedItemId(getAssetItemId(asset.id));
                         setIsRefreshingSelection(true);
                       }}
                       previewUrl={previewUrl}
                       selected={selectedAsset?.id === asset.id}
-                      selectedForBulk={selectedAssetIds.has(asset.id)}
+                      selectedForBulk={selectedItemIds.has(
+                        getAssetItemId(asset.id)
+                      )}
                       selectMode={selectMode}
                       sizeLabel={formatBytes(asset.sizeBytes)}
                     />
@@ -1156,7 +1368,7 @@ export const FileManager = ({
           </TableBody>
         </Table>
         <button
-          aria-label="Clear selected files"
+          aria-label="Clear selected items"
           className="min-h-12 flex-1 cursor-default bg-transparent"
           onClick={clearSelection}
           tabIndex={-1}

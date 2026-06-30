@@ -11,7 +11,6 @@ import {
 } from "@workspace/ui/components/alert-dialog";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Checkbox } from "@workspace/ui/components/checkbox";
 import { TableCell, TableRow } from "@workspace/ui/components/table";
 import {
   DownloadIcon,
@@ -162,16 +161,28 @@ export const FolderTableRowClient = ({
   folderHref,
   folderName,
   folderPath,
+  onBulkSelect,
   onAssetDrop,
+  onDragEnd,
+  onDragStart,
   onFileDrop,
+  selectedForBulk = false,
   selectMode = false,
   workspaceId,
 }: {
   folderHref: string;
   folderName: string;
   folderPath: string;
+  onBulkSelect?: (
+    folderPath: string,
+    shiftKey: boolean,
+    shouldSelect: boolean
+  ) => void;
   onAssetDrop?: (folderPath: string) => void;
+  onDragEnd?: () => void;
+  onDragStart?: (folderPath: string) => void;
   onFileDrop?: (folderPath: string, files: File[]) => void;
+  selectedForBulk?: boolean;
   selectMode?: boolean;
   workspaceId: string;
 }) => {
@@ -181,6 +192,9 @@ export const FolderTableRowClient = ({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const openFolder = () => router.push(folderHref as Route);
+  const toggleBulkSelection = (shiftKey: boolean, forceSelect = false) => {
+    onBulkSelect?.(folderPath, shiftKey, forceSelect || !selectedForBulk);
+  };
 
   const deleteFolder = () => {
     setError(null);
@@ -210,9 +224,27 @@ export const FolderTableRowClient = ({
   return (
     <>
       <TableRow
-        className="cursor-pointer hover:bg-muted/40"
-        onClick={openFolder}
+        className={getAssetRowClassName({
+          selected: false,
+          selectedForBulk,
+        })}
+        draggable
+        onClick={(event) => {
+          if (event.shiftKey) {
+            event.preventDefault();
+            toggleBulkSelection(true, true);
+            return;
+          }
+
+          if (selectMode) {
+            toggleBulkSelection(false);
+            return;
+          }
+
+          openFolder();
+        }}
         onContextMenu={openMenu}
+        onDragEnd={onDragEnd}
         onDragOver={(event) => {
           const isFileDrop = event.dataTransfer.types.includes("Files");
 
@@ -222,6 +254,10 @@ export const FolderTableRowClient = ({
 
           event.preventDefault();
           event.dataTransfer.dropEffect = isFileDrop ? "copy" : "move";
+        }}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          onDragStart?.(folderPath);
         }}
         onDrop={(event) => {
           event.preventDefault();
@@ -239,11 +275,18 @@ export const FolderTableRowClient = ({
 
           onAssetDrop?.(folderPath);
         }}
-        onKeyDown={(event) => handleRowKeyDown({ event, onOpen: openFolder })}
+        onKeyDown={(event) => {
+          if (selectMode && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            toggleBulkSelection(event.shiftKey);
+            return;
+          }
+
+          handleRowKeyDown({ event, onOpen: openFolder });
+        }}
         role="link"
         tabIndex={0}
       >
-        {selectMode ? <TableCell className="w-9" /> : null}
         <TableCell>
           <div className="flex min-w-0 items-center gap-1 text-primary">
             <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -438,32 +481,6 @@ export const AssetTableRowClient = ({
         role="link"
         tabIndex={0}
       >
-        {selectMode ? (
-          <TableCell
-            className="w-9"
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-          >
-            <TooltipHint content={`Select ${filename}`}>
-              <Checkbox
-                aria-label={`Select ${filename}`}
-                checked={selectedForBulk}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
-                }}
-                onKeyDown={(event) => {
-                  if (!(event.key === "Enter" || event.key === " ")) {
-                    return;
-                  }
-
-                  event.preventDefault();
-                  onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
-                }}
-              />
-            </TooltipHint>
-          </TableCell>
-        ) : null}
         <TableCell>
           <div className="flex min-w-0 items-center gap-1 text-left text-primary">
             <FileIcon className="size-4 shrink-0 text-muted-foreground" />

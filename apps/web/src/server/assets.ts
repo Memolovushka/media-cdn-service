@@ -385,6 +385,157 @@ export const deleteWorkspaceFolder = async ({
   return { path: normalizedPath };
 };
 
+const rewriteChildFolderPath = ({
+  fromPath,
+  path,
+  toPath,
+}: {
+  fromPath: string;
+  path: string;
+  toPath: string;
+}) =>
+  path === fromPath ? toPath : `${toPath}/${path.slice(fromPath.length + 1)}`;
+
+export const moveWorkspaceFolder = async ({
+  db,
+  path,
+  targetParentPath,
+  userId,
+  workspaceId,
+}: {
+  db: Db;
+  path: string;
+  targetParentPath?: string;
+  userId: string;
+  workspaceId: string;
+}) => {
+  const membership = await getWorkspaceMembership({ db, workspaceId, userId });
+
+  if (!(membership && canWriteWorkspace(membership.role))) {
+    return null;
+  }
+
+  const normalizedPath = normalizeFolderPath(path);
+  const normalizedTargetParentPath = normalizeFolderPath(
+    targetParentPath ?? ""
+  );
+
+  if (!normalizedPath) {
+    throw new Error("Folder path is required");
+  }
+
+  if (
+    normalizedTargetParentPath === normalizedPath ||
+    normalizedTargetParentPath.startsWith(`${normalizedPath}/`)
+  ) {
+    throw new Error("Folder cannot be moved into itself");
+  }
+
+  const folderName = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const nextPath = normalizeFolderPath(
+    normalizedTargetParentPath
+      ? `${normalizedTargetParentPath}/${folderName}`
+      : folderName
+  );
+
+  if (nextPath === normalizedPath) {
+    return { name: folderName, path: normalizedPath };
+  }
+
+  const existingTargetFolder = await db.query.assetFolders.findFirst({
+    where: and(
+      eq(assetFolders.workspaceId, workspaceId),
+      eq(assetFolders.path, nextPath)
+    ),
+  });
+
+  if (existingTargetFolder) {
+    throw new Error("Folder already exists at target");
+  }
+
+  const folderRows = await db
+    .select({ id: assetFolders.id, path: assetFolders.path })
+    .from(assetFolders)
+    .where(
+      and(
+        eq(assetFolders.workspaceId, workspaceId),
+        like(assetFolders.path, `${normalizedPath}%`)
+      )
+    );
+  const assetRows = await db
+    .select({ folderPath: assets.folderPath, id: assets.id })
+    .from(assets)
+    .where(
+      and(
+        eq(assets.workspaceId, workspaceId),
+        like(assets.folderPath, `${normalizedPath}%`),
+        isNull(assets.deletedAt)
+      )
+    );
+  const movableFolderRows = folderRows.filter(
+    (folder) =>
+      folder.path === normalizedPath ||
+      folder.path.startsWith(`${normalizedPath}/`)
+  );
+  const movableAssetRows = assetRows.filter(
+    (asset) =>
+      asset.folderPath === normalizedPath ||
+      asset.folderPath.startsWith(`${normalizedPath}/`)
+  );
+
+  if (!(movableFolderRows.length || movableAssetRows.length)) {
+    throw new Error("Folder not found");
+  }
+
+  const now = new Date();
+
+  for (const folder of movableFolderRows.sort(
+    (left, right) => right.path.length - left.path.length
+  )) {
+    const rewrittenPath = rewriteChildFolderPath({
+      fromPath: normalizedPath,
+      path: folder.path,
+      toPath: nextPath,
+    });
+
+    await db
+      .update(assetFolders)
+      .set({
+        name: rewrittenPath.split("/").at(-1) ?? rewrittenPath,
+        path: rewrittenPath,
+        updatedAt: now,
+      })
+      .where(eq(assetFolders.id, folder.id));
+  }
+
+  for (const asset of movableAssetRows) {
+    await db
+      .update(assets)
+      .set({
+        folderPath: rewriteChildFolderPath({
+          fromPath: normalizedPath,
+          path: asset.folderPath,
+          toPath: nextPath,
+        }),
+        updatedAt: now,
+      })
+      .where(eq(assets.id, asset.id));
+  }
+
+  await db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    workspaceId,
+    actorUserId: userId,
+    eventType: "folder.moved",
+    metadataJson: JSON.stringify({
+      fromPath: normalizedPath,
+      toPath: nextPath,
+    }),
+  });
+
+  return { name: folderName, path: nextPath };
+};
+
 export const makePrivateR2Key = ({
   workspaceId,
   assetId,
