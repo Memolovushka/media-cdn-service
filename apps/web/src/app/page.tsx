@@ -15,7 +15,9 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card";
 import { eq } from "drizzle-orm";
+import type { Route } from "next";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { Fragment } from "react";
 import { AccountActions } from "@/components/account-actions";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
@@ -230,8 +232,10 @@ const Page = async ({ searchParams }: PageProps) => {
                               {isCurrent ? (
                                 <BreadcrumbPage>{segment.name}</BreadcrumbPage>
                               ) : (
-                                <BreadcrumbLink href={segment.href}>
-                                  {segment.name}
+                                <BreadcrumbLink asChild>
+                                  <Link href={segment.href as Route}>
+                                    {segment.name}
+                                  </Link>
                                 </BreadcrumbLink>
                               )}
                             </BreadcrumbItem>
