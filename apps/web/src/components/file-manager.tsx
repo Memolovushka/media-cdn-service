@@ -421,6 +421,7 @@ export const FileManager = ({
   const [moveError, setMoveError] = useState<string | null>(null);
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
     () => new Set()
@@ -884,16 +885,55 @@ export const FileManager = ({
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <div className="relative">
-                <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  aria-label="Search files and folders"
-                  className="h-7 w-48 pl-7 text-xs"
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search"
-                  value={searchQuery}
-                />
-              </div>
+              {isSearchOpen || searchQuery ? (
+                <div className="relative">
+                  <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    aria-label="Search files and folders"
+                    autoFocus
+                    className="h-7 w-36 pr-7 pl-7 text-xs"
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        setSearchQuery("");
+                        setIsSearchOpen(false);
+                      }
+                    }}
+                    placeholder="Search"
+                    value={searchQuery}
+                  />
+                  <Button
+                    aria-label="Close search"
+                    className="absolute top-1 right-1 size-5"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsSearchOpen(false);
+                    }}
+                    size="icon-xs"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        aria-label="Search files and folders"
+                        onClick={() => setIsSearchOpen(true)}
+                        size="icon"
+                        type="button"
+                        variant="outline"
+                      >
+                        <SearchIcon />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Search files and folders</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <FolderCreateDialog
                 parentPath={selectedFolderPath}
                 tooltip="Create new folder in the current location"

@@ -438,9 +438,18 @@ export const AssetTableRowClient = ({
             <Checkbox
               aria-label={`Select ${filename}`}
               checked={selectedForBulk}
-              onCheckedChange={(checked) =>
-                onBulkSelect?.(assetId, false, checked === true)
-              }
+              onClick={(event) => {
+                event.preventDefault();
+                onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
+              }}
+              onKeyDown={(event) => {
+                if (!(event.key === "Enter" || event.key === " ")) {
+                  return;
+                }
+
+                event.preventDefault();
+                onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
+              }}
             />
           </TableCell>
         ) : null}
