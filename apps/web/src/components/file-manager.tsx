@@ -546,6 +546,15 @@ export const FileManager = ({
       return nextMode;
     });
   };
+  const clearSelection = () => {
+    if (!selectedAssetIds.size) {
+      return;
+    }
+
+    setSelectedAssetIds(new Set());
+    setSelectMode(false);
+    setLastSelectedAssetId(null);
+  };
   const toggleAllVisibleAssets = (checked: boolean) => {
     setSelectedAssetIds((currentIds) => {
       const nextIds = new Set(currentIds);
@@ -888,7 +897,7 @@ export const FileManager = ({
           {moveError}
         </div>
       ) : null}
-      <div className="min-h-96 overflow-x-auto rounded-lg border">
+      <div className="flex min-h-96 flex-col overflow-x-auto rounded-lg border">
         <div className="flex flex-col gap-2 border-b px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
@@ -1146,6 +1155,13 @@ export const FileManager = ({
             )}
           </TableBody>
         </Table>
+        <button
+          aria-label="Clear selected files"
+          className="min-h-12 flex-1 cursor-default bg-transparent"
+          onClick={clearSelection}
+          tabIndex={-1}
+          type="button"
+        />
       </div>
       <AssetDetailsPanel
         asset={selectedAsset}
