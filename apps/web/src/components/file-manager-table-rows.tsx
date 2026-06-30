@@ -378,8 +378,8 @@ export const AssetTableRowClient = ({
     onOpen?.();
     router.push(href as Route);
   };
-  const toggleBulkSelection = (shiftKey: boolean) => {
-    onBulkSelect?.(assetId, shiftKey, !selectedForBulk);
+  const toggleBulkSelection = (shiftKey: boolean, forceSelect = false) => {
+    onBulkSelect?.(assetId, shiftKey, forceSelect || !selectedForBulk);
   };
   const deleteAsset = () => {
     setError(null);
@@ -407,8 +407,14 @@ export const AssetTableRowClient = ({
         className={getAssetRowClassName({ selected, selectedForBulk })}
         draggable
         onClick={(event) => {
+          if (event.shiftKey) {
+            event.preventDefault();
+            toggleBulkSelection(true, true);
+            return;
+          }
+
           if (selectMode) {
-            toggleBulkSelection(event.shiftKey);
+            toggleBulkSelection(false);
             return;
           }
 

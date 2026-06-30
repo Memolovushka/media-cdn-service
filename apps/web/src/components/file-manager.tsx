@@ -518,6 +518,10 @@ export const FileManager = ({
     shiftKey: boolean,
     shouldSelect: boolean
   ) => {
+    if (shiftKey) {
+      setSelectMode(true);
+    }
+
     setSelectedAssetIds((currentIds) =>
       getNextSelectedAssetIds({
         assetId,
@@ -1116,6 +1120,7 @@ export const FileManager = ({
                       onDragStart={setDraggedAssetId}
                       onOpen={() => {
                         setActiveAssetId(asset.id);
+                        setLastSelectedAssetId(asset.id);
                         setIsRefreshingSelection(true);
                       }}
                       previewUrl={previewUrl}
