@@ -12,6 +12,12 @@ import {
 } from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip";
 import { FolderPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useId, useState, useTransition } from "react";
@@ -33,10 +39,12 @@ interface FolderCreateResponse {
 export const FolderCreateDialog = ({
   disabled,
   parentPath,
+  tooltip,
   workspaceId,
 }: {
   disabled?: boolean;
   parentPath?: string;
+  tooltip?: string;
   workspaceId?: string;
 }) => {
   const router = useRouter();
@@ -92,12 +100,28 @@ export const FolderCreateDialog = ({
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button disabled={disabled} variant="outline">
-          <FolderPlusIcon />
-          New folder
-        </Button>
-      </DialogTrigger>
+      {tooltip ? (
+        <TooltipProvider>
+          <Tooltip>
+            <DialogTrigger asChild>
+              <TooltipTrigger asChild>
+                <Button disabled={disabled} variant="outline">
+                  <FolderPlusIcon />
+                  New folder
+                </Button>
+              </TooltipTrigger>
+            </DialogTrigger>
+            <TooltipContent>{tooltip}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <DialogTrigger asChild>
+          <Button disabled={disabled} variant="outline">
+            <FolderPlusIcon />
+            New folder
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create folder</DialogTitle>

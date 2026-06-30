@@ -11,6 +11,7 @@ import {
 } from "@workspace/ui/components/alert-dialog";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { Checkbox } from "@workspace/ui/components/checkbox";
 import { TableCell, TableRow } from "@workspace/ui/components/table";
 import {
   DownloadIcon,
@@ -138,12 +139,31 @@ const useRowContextMenu = () => {
   return { closeMenu, openMenu, position };
 };
 
+const getAssetRowClassName = ({
+  selected,
+  selectedForBulk,
+}: {
+  selected: boolean;
+  selectedForBulk: boolean;
+}) => {
+  if (selectedForBulk) {
+    return "cursor-pointer bg-primary/10 hover:bg-primary/15";
+  }
+
+  if (selected) {
+    return "cursor-pointer bg-muted/60 hover:bg-muted/70";
+  }
+
+  return "cursor-pointer hover:bg-muted/40";
+};
+
 export const FolderTableRowClient = ({
   folderHref,
   folderName,
   folderPath,
   onAssetDrop,
   onFileDrop,
+  selectMode = false,
   workspaceId,
 }: {
   folderHref: string;
@@ -151,6 +171,7 @@ export const FolderTableRowClient = ({
   folderPath: string;
   onAssetDrop?: (folderPath: string) => void;
   onFileDrop?: (folderPath: string, files: File[]) => void;
+  selectMode?: boolean;
   workspaceId: string;
 }) => {
   const router = useRouter();
@@ -221,6 +242,7 @@ export const FolderTableRowClient = ({
         role="link"
         tabIndex={0}
       >
+        {selectMode ? <TableCell className="w-9" /> : null}
         <TableCell>
           <div className="flex min-w-0 items-center gap-1 text-primary">
             <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -305,19 +327,22 @@ export const FolderTableRowClient = ({
 
 export const AssetTableRowClient = ({
   assetId,
+  cdnLabel,
+  cdnVariant,
   downloadUrl,
   filename,
   href,
   mimeType,
+  onBulkSelect,
   onDeleted,
   onDragEnd,
   onDragStart,
   onOpen,
   previewUrl,
+  selectMode = false,
   selected,
+  selectedForBulk = false,
   sizeLabel,
-  cdnLabel,
-  cdnVariant,
 }: {
   assetId: string;
   cdnLabel: string;
@@ -326,12 +351,19 @@ export const AssetTableRowClient = ({
   filename: string;
   href: string;
   mimeType: string;
+  onBulkSelect?: (
+    assetId: string,
+    shiftKey: boolean,
+    selected: boolean
+  ) => void;
   onDeleted?: (assetId: string) => void;
   onDragEnd?: () => void;
   onDragStart?: (assetId: string) => void;
   onOpen?: () => void;
   previewUrl?: null | string;
+  selectMode?: boolean;
   selected: boolean;
+  selectedForBulk?: boolean;
   sizeLabel: string;
 }) => {
   const router = useRouter();
@@ -342,6 +374,9 @@ export const AssetTableRowClient = ({
   const openAsset = () => {
     onOpen?.();
     router.push(href as Route);
+  };
+  const toggleBulkSelection = (shiftKey: boolean) => {
+    onBulkSelect?.(assetId, shiftKey, !selectedForBulk);
   };
   const deleteAsset = () => {
     setError(null);
@@ -366,23 +401,49 @@ export const AssetTableRowClient = ({
     <>
       <TableRow
         aria-current={selected ? "page" : undefined}
-        className={
-          selected
-            ? "cursor-pointer bg-muted/60 hover:bg-muted/70"
-            : "cursor-pointer hover:bg-muted/40"
-        }
+        className={getAssetRowClassName({ selected, selectedForBulk })}
         draggable
-        onClick={openAsset}
+        onClick={(event) => {
+          if (selectMode) {
+            toggleBulkSelection(event.shiftKey);
+            return;
+          }
+
+          openAsset();
+        }}
         onContextMenu={openMenu}
         onDragEnd={onDragEnd}
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = "move";
           onDragStart?.(assetId);
         }}
-        onKeyDown={(event) => handleRowKeyDown({ event, onOpen: openAsset })}
+        onKeyDown={(event) => {
+          if (selectMode && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            toggleBulkSelection(event.shiftKey);
+            return;
+          }
+
+          handleRowKeyDown({ event, onOpen: openAsset });
+        }}
         role="link"
         tabIndex={0}
       >
+        {selectMode ? (
+          <TableCell
+            className="w-9"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <Checkbox
+              aria-label={`Select ${filename}`}
+              checked={selectedForBulk}
+              onCheckedChange={(checked) =>
+                onBulkSelect?.(assetId, false, checked === true)
+              }
+            />
+          </TableCell>
+        ) : null}
         <TableCell>
           <div className="flex min-w-0 items-center gap-1 text-left text-primary">
             <FileIcon className="size-4 shrink-0 text-muted-foreground" />

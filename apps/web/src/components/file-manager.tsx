@@ -2,8 +2,16 @@
 
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
 import { Progress } from "@workspace/ui/components/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
   Table,
@@ -13,7 +21,22 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { CloudUploadIcon, DownloadIcon, SaveIcon } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip";
+import {
+  CheckSquareIcon,
+  CloudUploadIcon,
+  DownloadIcon,
+  FolderInputIcon,
+  Globe2Icon,
+  SaveIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -55,6 +78,13 @@ export interface DashboardFolder {
 
 const bytesPerUnit = 1024;
 const rootFolderPath = "asset";
+const defaultTableColumnCount = 5;
+const selectableTableColumnCount = 6;
+
+interface AssetPatchResponse {
+  asset?: Partial<DashboardAsset>;
+  publicUrl?: null | string;
+}
 
 const hasFilesTransfer = (
   dataTransfer: DataTransfer | null
@@ -69,6 +99,64 @@ const getAssetCdnState = (asset: DashboardAsset) => {
     label: isPublished ? "CDN published" : "Not published",
     variant: isPublished ? ("default" as const) : ("outline" as const),
   };
+};
+
+const isAssetReady = (asset: DashboardAsset) =>
+  asset.versions.at(0)?.uploadStatus === "ready";
+
+const isAssetPublished = (asset: DashboardAsset) =>
+  asset.cdnEnabled && Boolean(asset.versions.at(0)?.publicUrl);
+
+const matchesSearch = (value: string, query: string) =>
+  value.toLowerCase().includes(query.trim().toLowerCase());
+
+const getNextSelectedAssetIds = ({
+  assetId,
+  currentIds,
+  filteredAssets,
+  lastSelectedAssetId,
+  shiftKey,
+  shouldSelect,
+}: {
+  assetId: string;
+  currentIds: Set<string>;
+  filteredAssets: DashboardAsset[];
+  lastSelectedAssetId: null | string;
+  shiftKey: boolean;
+  shouldSelect: boolean;
+}) => {
+  const nextIds = new Set(currentIds);
+  const currentIndex = filteredAssets.findIndex(
+    (asset) => asset.id === assetId
+  );
+  const lastIndex = lastSelectedAssetId
+    ? filteredAssets.findIndex((asset) => asset.id === lastSelectedAssetId)
+    : -1;
+
+  if (!(shiftKey && lastIndex >= 0 && currentIndex >= 0)) {
+    if (shouldSelect) {
+      nextIds.add(assetId);
+    } else {
+      nextIds.delete(assetId);
+    }
+
+    return nextIds;
+  }
+
+  const [startIndex, endIndex] =
+    lastIndex < currentIndex
+      ? [lastIndex, currentIndex]
+      : [currentIndex, lastIndex];
+
+  for (const asset of filteredAssets.slice(startIndex, endIndex + 1)) {
+    if (shouldSelect) {
+      nextIds.add(asset.id);
+    } else {
+      nextIds.delete(asset.id);
+    }
+  }
+
+  return nextIds;
 };
 
 const formatBytes = (bytes: number) => {
@@ -101,6 +189,14 @@ const getAssetUrls = (asset: DashboardAsset) => {
       ? `/api/assets/${asset.id}/preview?versionId=${latestVersion.id}`
       : null,
   };
+};
+
+const getErrorMessage = async (response: Response, fallback: string) => {
+  const payload = (await response.json().catch(() => null)) as {
+    error?: string;
+  } | null;
+
+  return payload?.error ?? fallback;
 };
 
 const isImageMimeType = (mimeType: string) => mimeType.startsWith("image/");
@@ -295,6 +391,7 @@ const AssetDetailsPanel = ({
   );
 };
 
+// biome-ignore-start lint/complexity/noExcessiveCognitiveComplexity: This client surface coordinates file listing, upload, drag/drop, selection, and detail-panel actions.
 export const FileManager = ({
   allFolders,
   assets,
@@ -323,11 +420,24 @@ export const FileManager = ({
   const [isDropUploading, setIsDropUploading] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [lastSelectedAssetId, setLastSelectedAssetId] = useState<string | null>(
+    null
+  );
+  const [bulkMoveTarget, setBulkMoveTarget] = useState(rootFolderPath);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [isBulkPending, startBulkTransition] = useTransition();
 
   useEffect(() => {
     setOptimisticAssets(assets);
     setActiveAssetId(selectedAssetId || assets.at(0)?.id || "");
     setIsRefreshingSelection(false);
+    setSelectedAssetIds(new Set());
+    setLastSelectedAssetId(null);
   }, [assets, selectedAssetId]);
 
   const selectedAsset = useMemo(
@@ -337,11 +447,45 @@ export const FileManager = ({
       null,
     [activeAssetId, optimisticAssets]
   );
-  const hasFileManagerItems = Boolean(
-    visibleFolders.length || optimisticAssets.length
+  const filteredFolders = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return visibleFolders;
+    }
+
+    return visibleFolders.filter((folder) =>
+      matchesSearch(`${folder.name} ${folder.path}`, searchQuery)
+    );
+  }, [searchQuery, visibleFolders]);
+  const filteredAssets = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return optimisticAssets;
+    }
+
+    return optimisticAssets.filter((asset) =>
+      matchesSearch(`${asset.filename} ${asset.mimeType}`, searchQuery)
+    );
+  }, [optimisticAssets, searchQuery]);
+  const selectedAssets = useMemo(
+    () => optimisticAssets.filter((asset) => selectedAssetIds.has(asset.id)),
+    [optimisticAssets, selectedAssetIds]
   );
+  const publishableSelectedAssets = selectedAssets.filter(
+    (asset) => isAssetReady(asset) && !isAssetPublished(asset)
+  );
+  const hasFileManagerItems = Boolean(
+    filteredFolders.length || filteredAssets.length
+  );
+  const tableColumnCount = selectMode
+    ? selectableTableColumnCount
+    : defaultTableColumnCount;
+  const selectedCount = selectedAssetIds.size;
 
   const handleDeleted = (assetId: string) => {
+    setSelectedAssetIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      nextIds.delete(assetId);
+      return nextIds;
+    });
     setOptimisticAssets((currentAssets) => {
       const nextAssets = currentAssets.filter((asset) => asset.id !== assetId);
 
@@ -358,6 +502,148 @@ export const FileManager = ({
         asset.id === nextAsset.id ? { ...asset, ...nextAsset } : asset
       )
     );
+  };
+  const handleBulkSelect = (
+    assetId: string,
+    shiftKey: boolean,
+    shouldSelect: boolean
+  ) => {
+    setSelectedAssetIds((currentIds) =>
+      getNextSelectedAssetIds({
+        assetId,
+        currentIds,
+        filteredAssets,
+        lastSelectedAssetId,
+        shiftKey,
+        shouldSelect,
+      })
+    );
+    setLastSelectedAssetId(assetId);
+  };
+  const toggleSelectMode = () => {
+    setSelectMode((currentMode) => {
+      const nextMode = !currentMode;
+
+      if (!nextMode) {
+        setSelectedAssetIds(new Set());
+        setLastSelectedAssetId(null);
+      }
+
+      return nextMode;
+    });
+  };
+  const toggleAllVisibleAssets = (checked: boolean) => {
+    setSelectedAssetIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+
+      for (const asset of filteredAssets) {
+        if (checked) {
+          nextIds.add(asset.id);
+        } else {
+          nextIds.delete(asset.id);
+        }
+      }
+
+      return nextIds;
+    });
+  };
+  const publishSelectedAssets = () => {
+    if (!publishableSelectedAssets.length || isBulkPending) {
+      return;
+    }
+
+    setBulkError(null);
+    startBulkTransition(async () => {
+      for (const asset of publishableSelectedAssets) {
+        const response = await fetch(`/api/assets/${asset.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cdnEnabled: true }),
+        });
+
+        if (!response.ok) {
+          setBulkError(await getErrorMessage(response, "Publish failed"));
+          return;
+        }
+
+        const payload = (await response
+          .json()
+          .catch(() => null)) as AssetPatchResponse | null;
+
+        handleAssetUpdated({
+          ...asset,
+          cdnEnabled: true,
+          versions: asset.versions.map((version, index) =>
+            index === 0
+              ? {
+                  ...version,
+                  publicUrl: payload?.publicUrl ?? version.publicUrl,
+                }
+              : version
+          ),
+        });
+      }
+
+      router.refresh();
+    });
+  };
+  const moveSelectedAssets = () => {
+    if (!(selectedAssets.length && bulkMoveTarget) || isBulkPending) {
+      return;
+    }
+
+    setBulkError(null);
+    startBulkTransition(async () => {
+      const movedAssetIds = new Set<string>();
+
+      for (const asset of selectedAssets) {
+        if (asset.folderPath === bulkMoveTarget) {
+          continue;
+        }
+
+        const response = await fetch(`/api/assets/${asset.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ folderPath: bulkMoveTarget }),
+        });
+
+        if (!response.ok) {
+          setBulkError(await getErrorMessage(response, "Move failed"));
+          return;
+        }
+
+        movedAssetIds.add(asset.id);
+      }
+
+      if (bulkMoveTarget === selectedFolderPath) {
+        setOptimisticAssets((currentAssets) =>
+          currentAssets.map((asset) =>
+            movedAssetIds.has(asset.id)
+              ? { ...asset, folderPath: bulkMoveTarget }
+              : asset
+          )
+        );
+      } else {
+        setOptimisticAssets((currentAssets) =>
+          currentAssets.filter((asset) => !movedAssetIds.has(asset.id))
+        );
+        setSelectedAssetIds((currentIds) => {
+          const nextIds = new Set(currentIds);
+
+          for (const assetId of movedAssetIds) {
+            nextIds.delete(assetId);
+          }
+
+          return nextIds;
+        });
+      }
+
+      router.refresh();
+    });
   };
   const moveAsset = async (assetId: string, folderPath: string) => {
     const asset = optimisticAssets.find(
@@ -393,6 +679,16 @@ export const FileManager = ({
     }
 
     router.refresh();
+  };
+  const moveDraggedAssets = async (assetId: string, folderPath: string) => {
+    const assetIds =
+      selectedAssetIds.has(assetId) && selectedAssetIds.size > 1
+        ? [...selectedAssetIds]
+        : [assetId];
+
+    for (const currentAssetId of assetIds) {
+      await moveAsset(currentAssetId, folderPath);
+    }
   };
   const uploadDroppedFiles = useCallback(
     async (files: File[], folderPath = selectedFolderPath) => {
@@ -501,10 +797,13 @@ export const FileManager = ({
   const draggedAsset = draggedAssetId
     ? optimisticAssets.find((asset) => asset.id === draggedAssetId)
     : null;
+  const moveFolderOptions = allFolders.filter(
+    (folder) => folder.path !== rootFolderPath
+  );
   const moveTargets = draggedAsset
     ? [
         { id: rootFolderPath, name: "Main", path: rootFolderPath },
-        ...allFolders,
+        ...moveFolderOptions,
       ].filter((folder) => folder.path !== draggedAsset.folderPath)
     : [];
 
@@ -541,7 +840,7 @@ export const FileManager = ({
               onDrop={(event) => {
                 event.preventDefault();
                 if (draggedAssetId) {
-                  moveAsset(draggedAssetId, folder.path).catch(
+                  moveDraggedAssets(draggedAssetId, folder.path).catch(
                     (moveErrorValue: unknown) => {
                       setMoveError(
                         moveErrorValue instanceof Error
@@ -576,21 +875,111 @@ export const FileManager = ({
         </div>
       ) : null}
       <div className="min-h-96 overflow-x-auto rounded-lg border">
-        <div className="flex items-center justify-between gap-3 border-b px-3 py-2">
-          <div className="min-w-0">
-            <div className="font-medium text-sm">Files</div>
-            <div className="truncate text-muted-foreground text-xs">
-              {selectedFolderPath}
+        <div className="flex flex-col gap-2 border-b px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-medium text-sm">Files</div>
+              <div className="truncate text-muted-foreground text-xs">
+                {selectedFolderPath}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              <div className="relative">
+                <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  aria-label="Search files and folders"
+                  className="h-7 w-48 pl-7 text-xs"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search"
+                  value={searchQuery}
+                />
+              </div>
+              <FolderCreateDialog
+                parentPath={selectedFolderPath}
+                tooltip="Create new folder in the current location"
+                workspaceId={workspaceId}
+              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      aria-pressed={selectMode}
+                      onClick={toggleSelectMode}
+                      type="button"
+                      variant={selectMode ? "secondary" : "outline"}
+                    >
+                      {selectMode ? <XIcon /> : <CheckSquareIcon />}
+                      {selectMode ? "Done" : "Select"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {selectMode ? "Exit selection mode" : "Select files"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
-          <FolderCreateDialog
-            parentPath={selectedFolderPath}
-            workspaceId={workspaceId}
-          />
+          {selectMode ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                <Checkbox
+                  aria-label="Select all visible files"
+                  checked={
+                    filteredAssets.length > 0 &&
+                    filteredAssets.every((asset) =>
+                      selectedAssetIds.has(asset.id)
+                    )
+                  }
+                  onCheckedChange={(checked) =>
+                    toggleAllVisibleAssets(checked === true)
+                  }
+                />
+                {selectedCount} selected
+              </div>
+              <Button
+                disabled={!publishableSelectedAssets.length || isBulkPending}
+                onClick={publishSelectedAssets}
+                type="button"
+              >
+                <Globe2Icon />
+                Publish {publishableSelectedAssets.length || ""}
+              </Button>
+              <Select onValueChange={setBulkMoveTarget} value={bulkMoveTarget}>
+                <SelectTrigger aria-label="Move selected files to folder">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={rootFolderPath}>Main</SelectItem>
+                  {moveFolderOptions.map((folder) => (
+                    <SelectItem key={folder.path} value={folder.path}>
+                      {folder.path}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                disabled={!selectedCount || isBulkPending}
+                onClick={moveSelectedAssets}
+                type="button"
+                variant="outline"
+              >
+                <FolderInputIcon />
+                Move
+              </Button>
+              {bulkError ? (
+                <span className="text-destructive text-xs">{bulkError}</span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <Table>
           <TableHeader>
             <TableRow>
+              {selectMode ? (
+                <TableHead className="w-9">
+                  <span className="sr-only">Select</span>
+                </TableHead>
+              ) : null}
               <TableHead>Name</TableHead>
               <TableHead>Kind</TableHead>
               <TableHead>CDN</TableHead>
@@ -603,7 +992,7 @@ export const FileManager = ({
           <TableBody>
             {hasFileManagerItems ? (
               <>
-                {visibleFolders.map((folder) => (
+                {filteredFolders.map((folder) => (
                   <FolderTableRowClient
                     folderHref={
                       folder.path === "asset"
@@ -618,7 +1007,7 @@ export const FileManager = ({
                         return;
                       }
 
-                      moveAsset(draggedAssetId, folderPath).catch(
+                      moveDraggedAssets(draggedAssetId, folderPath).catch(
                         (moveErrorValue: unknown) => {
                           setMoveError(
                             moveErrorValue instanceof Error
@@ -641,10 +1030,11 @@ export const FileManager = ({
                         }
                       );
                     }}
+                    selectMode={selectMode}
                     workspaceId={workspaceId}
                   />
                 ))}
-                {optimisticAssets.map((asset) => {
+                {filteredAssets.map((asset) => {
                   const { downloadUrl, previewUrl } = getAssetUrls(asset);
                   const cdnState = getAssetCdnState(asset);
 
@@ -661,6 +1051,7 @@ export const FileManager = ({
                       })}
                       key={asset.id}
                       mimeType={asset.mimeType}
+                      onBulkSelect={handleBulkSelect}
                       onDeleted={handleDeleted}
                       onDragEnd={() => setDraggedAssetId(null)}
                       onDragStart={setDraggedAssetId}
@@ -670,6 +1061,8 @@ export const FileManager = ({
                       }}
                       previewUrl={previewUrl}
                       selected={selectedAsset?.id === asset.id}
+                      selectedForBulk={selectedAssetIds.has(asset.id)}
+                      selectMode={selectMode}
                       sizeLabel={formatBytes(asset.sizeBytes)}
                     />
                   );
@@ -679,9 +1072,11 @@ export const FileManager = ({
               <TableRow>
                 <TableCell
                   className="h-32 text-center text-muted-foreground text-sm"
-                  colSpan={5}
+                  colSpan={tableColumnCount}
                 >
-                  This folder is empty.
+                  {searchQuery.trim()
+                    ? "No files or folders match this search."
+                    : "This folder is empty."}
                 </TableCell>
               </TableRow>
             )}
@@ -696,3 +1091,4 @@ export const FileManager = ({
     </div>
   );
 };
+// biome-ignore-end lint/complexity/noExcessiveCognitiveComplexity: End file-manager client surface suppression.
