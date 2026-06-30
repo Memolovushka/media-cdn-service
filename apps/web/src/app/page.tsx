@@ -23,6 +23,7 @@ import { AccountActions } from "@/components/account-actions";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { FileManager } from "@/components/file-manager";
 import { StorageUsageSummary } from "@/components/storage-usage-summary";
+import { TooltipHint } from "@/components/tooltip-hint";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
 import {
@@ -117,12 +118,16 @@ const Page = async ({ searchParams }: PageProps) => {
               Sign in to manage private assets, uploads, and CDN publishing.
             </p>
             <div className="flex gap-2">
-              <Button asChild>
-                <a href="/auth?mode=signin">Sign in</a>
-              </Button>
-              <Button asChild variant="outline">
-                <a href="/auth?mode=signup">Create account</a>
-              </Button>
+              <TooltipHint content="Sign in to an existing account">
+                <Button asChild>
+                  <a href="/auth?mode=signin">Sign in</a>
+                </Button>
+              </TooltipHint>
+              <TooltipHint content="Create a new account">
+                <Button asChild variant="outline">
+                  <a href="/auth?mode=signup">Create account</a>
+                </Button>
+              </TooltipHint>
             </div>
           </CardContent>
         </Card>

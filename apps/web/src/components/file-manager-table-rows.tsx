@@ -32,6 +32,7 @@ import type {
 } from "react";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { TooltipHint } from "@/components/tooltip-hint";
 
 interface MenuPosition {
   x: number;
@@ -257,15 +258,17 @@ export const FolderTableRowClient = ({
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <Button
-            aria-label={`Delete ${folderName}`}
-            disabled={isPending}
-            onClick={() => setDeleteOpen(true)}
-            size="icon"
-            variant="ghost"
-          >
-            <TrashIcon />
-          </Button>
+          <TooltipHint content={`Delete folder ${folderName}`}>
+            <Button
+              aria-label={`Delete ${folderName}`}
+              disabled={isPending}
+              onClick={() => setDeleteOpen(true)}
+              size="icon"
+              variant="ghost"
+            >
+              <TrashIcon />
+            </Button>
+          </TooltipHint>
         </TableCell>
       </TableRow>
 
@@ -435,22 +438,24 @@ export const AssetTableRowClient = ({
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <Checkbox
-              aria-label={`Select ${filename}`}
-              checked={selectedForBulk}
-              onClick={(event) => {
-                event.preventDefault();
-                onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
-              }}
-              onKeyDown={(event) => {
-                if (!(event.key === "Enter" || event.key === " ")) {
-                  return;
-                }
+            <TooltipHint content={`Select ${filename}`}>
+              <Checkbox
+                aria-label={`Select ${filename}`}
+                checked={selectedForBulk}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
+                }}
+                onKeyDown={(event) => {
+                  if (!(event.key === "Enter" || event.key === " ")) {
+                    return;
+                  }
 
-                event.preventDefault();
-                onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
-              }}
-            />
+                  event.preventDefault();
+                  onBulkSelect?.(assetId, event.shiftKey, !selectedForBulk);
+                }}
+              />
+            </TooltipHint>
           </TableCell>
         ) : null}
         <TableCell>
@@ -471,15 +476,17 @@ export const AssetTableRowClient = ({
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <Button
-            aria-label={`Delete ${filename}`}
-            disabled={isPending}
-            onClick={() => setDeleteOpen(true)}
-            size="icon"
-            variant="ghost"
-          >
-            <TrashIcon />
-          </Button>
+          <TooltipHint content={`Delete file ${filename}`}>
+            <Button
+              aria-label={`Delete ${filename}`}
+              disabled={isPending}
+              onClick={() => setDeleteOpen(true)}
+              size="icon"
+              variant="ghost"
+            >
+              <TrashIcon />
+            </Button>
+          </TooltipHint>
         </TableCell>
       </TableRow>
 

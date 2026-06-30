@@ -8,6 +8,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip";
 import { EyeIcon } from "lucide-react";
 
 const getPreviewKind = (mimeType: string) => {
@@ -45,12 +51,23 @@ export const AssetPreviewDialog = ({
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button disabled={disabled || !previewUrl} size="icon" variant="ghost">
-          <EyeIcon />
-          <span className="sr-only">Preview</span>
-        </Button>
-      </DialogTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <DialogTrigger asChild>
+            <TooltipTrigger asChild>
+              <Button
+                disabled={disabled || !previewUrl}
+                size="icon"
+                variant="ghost"
+              >
+                <EyeIcon />
+                <span className="sr-only">Preview</span>
+              </Button>
+            </TooltipTrigger>
+          </DialogTrigger>
+          <TooltipContent>Preview file</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{filename}</DialogTitle>

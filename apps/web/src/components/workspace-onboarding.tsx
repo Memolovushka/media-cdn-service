@@ -12,6 +12,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Building2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
+import { TooltipHint } from "@/components/tooltip-hint";
 
 export const WorkspaceOnboarding = () => {
   const router = useRouter();
@@ -56,21 +57,25 @@ export const WorkspaceOnboarding = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor={inputId}>Workspace name</Label>
-            <Input
-              id={inputId}
-              maxLength={80}
-              onChange={(event) => setName(event.target.value)}
-              value={name}
-            />
+            <TooltipHint content="Name for your media workspace">
+              <Input
+                id={inputId}
+                maxLength={80}
+                onChange={(event) => setName(event.target.value)}
+                value={name}
+              />
+            </TooltipHint>
           </div>
           {error ? <p className="text-destructive text-xs">{error}</p> : null}
-          <Button
-            disabled={isPending || !name.trim()}
-            onClick={createWorkspace}
-          >
-            <Building2Icon />
-            {isPending ? "Creating..." : "Create workspace"}
-          </Button>
+          <TooltipHint content="Create the first workspace for your assets">
+            <Button
+              disabled={isPending || !name.trim()}
+              onClick={createWorkspace}
+            >
+              <Building2Icon />
+              {isPending ? "Creating..." : "Create workspace"}
+            </Button>
+          </TooltipHint>
         </CardContent>
       </Card>
     </section>

@@ -1,3 +1,4 @@
+import { TooltipHint } from "@/components/tooltip-hint";
 import type { WorkspaceStorageUsage } from "@/server/assets";
 
 const bytesPerUnit = 1024;
@@ -31,9 +32,15 @@ export const StorageUsageSummary = ({
   );
 
   return (
-    <span>
-      Storage: {formatBytes(usage.totalBytes)} used /{" "}
-      {formatBytes(freeBytesRemaining)} left
-    </span>
+    <TooltipHint
+      content={`${formatBytes(usage.privateBytes)} private, ${formatBytes(
+        usage.publicBytes
+      )} public CDN copies`}
+    >
+      <span>
+        Storage: {formatBytes(usage.totalBytes)} used /{" "}
+        {formatBytes(freeBytesRemaining)} left
+      </span>
+    </TooltipHint>
   );
 };

@@ -52,6 +52,7 @@ import {
   FolderTableRowClient,
 } from "@/components/file-manager-table-rows";
 import { FolderCreateDialog } from "@/components/folder-create-dialog";
+import { TooltipHint } from "@/components/tooltip-hint";
 
 interface DashboardAssetVersion {
   id: string;
@@ -313,31 +314,35 @@ const AssetDetailsPanel = ({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1">
-            <Input
-              aria-label="Filename"
-              className="h-8 min-w-0 font-semibold text-sm"
-              disabled={isPending}
-              onBlur={saveFilename}
-              onChange={(event) => setFilename(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  saveFilename();
-                }
-              }}
-              value={filename}
-            />
-            <Button
-              disabled={isPending || !filename.trim()}
-              onClick={saveFilename}
-              onMouseDown={(event) => event.preventDefault()}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              <SaveIcon />
-              <span className="sr-only">Rename file</span>
-            </Button>
+            <TooltipHint content="Rename this file">
+              <Input
+                aria-label="Filename"
+                className="h-8 min-w-0 font-semibold text-sm"
+                disabled={isPending}
+                onBlur={saveFilename}
+                onChange={(event) => setFilename(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    saveFilename();
+                  }
+                }}
+                value={filename}
+              />
+            </TooltipHint>
+            <TooltipHint content="Save filename">
+              <Button
+                disabled={isPending || !filename.trim()}
+                onClick={saveFilename}
+                onMouseDown={(event) => event.preventDefault()}
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                <SaveIcon />
+                <span className="sr-only">Rename file</span>
+              </Button>
+            </TooltipHint>
           </div>
           <div className="mt-1 truncate text-muted-foreground text-xs">
             {asset.mimeType} - {formatBytes(asset.sizeBytes)}
@@ -366,17 +371,21 @@ const AssetDetailsPanel = ({
 
       <div className="flex items-center gap-1">
         {downloadUrl ? (
-          <Button asChild size="icon" variant="ghost">
-            <a href={downloadUrl}>
+          <TooltipHint content="Download private file">
+            <Button asChild size="icon" variant="ghost">
+              <a href={downloadUrl}>
+                <DownloadIcon />
+                <span className="sr-only">Download</span>
+              </a>
+            </Button>
+          </TooltipHint>
+        ) : (
+          <TooltipHint content="Download is available after upload finishes">
+            <Button disabled size="icon" variant="ghost">
               <DownloadIcon />
               <span className="sr-only">Download</span>
-            </a>
-          </Button>
-        ) : (
-          <Button disabled size="icon" variant="ghost">
-            <DownloadIcon />
-            <span className="sr-only">Download</span>
-          </Button>
+            </Button>
+          </TooltipHint>
         )}
       </div>
 
@@ -902,19 +911,21 @@ export const FileManager = ({
                     placeholder="Search"
                     value={searchQuery}
                   />
-                  <Button
-                    aria-label="Close search"
-                    className="absolute top-1 right-1 size-5"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setIsSearchOpen(false);
-                    }}
-                    size="icon-xs"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <XIcon />
-                  </Button>
+                  <TooltipHint content="Clear search">
+                    <Button
+                      aria-label="Close search"
+                      className="absolute top-1 right-1 size-5"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setIsSearchOpen(false);
+                      }}
+                      size="icon-xs"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <XIcon />
+                    </Button>
+                  </TooltipHint>
                 </div>
               ) : (
                 <TooltipProvider>
@@ -962,32 +973,38 @@ export const FileManager = ({
           {selectMode ? (
             <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
               <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <Checkbox
-                  aria-label="Select all visible files"
-                  checked={
-                    filteredAssets.length > 0 &&
-                    filteredAssets.every((asset) =>
-                      selectedAssetIds.has(asset.id)
-                    )
-                  }
-                  onCheckedChange={(checked) =>
-                    toggleAllVisibleAssets(checked === true)
-                  }
-                />
+                <TooltipHint content="Select all visible files">
+                  <Checkbox
+                    aria-label="Select all visible files"
+                    checked={
+                      filteredAssets.length > 0 &&
+                      filteredAssets.every((asset) =>
+                        selectedAssetIds.has(asset.id)
+                      )
+                    }
+                    onCheckedChange={(checked) =>
+                      toggleAllVisibleAssets(checked === true)
+                    }
+                  />
+                </TooltipHint>
                 {selectedCount} selected
               </div>
-              <Button
-                disabled={!publishableSelectedAssets.length || isBulkPending}
-                onClick={publishSelectedAssets}
-                type="button"
-              >
-                <Globe2Icon />
-                Publish {publishableSelectedAssets.length || ""}
-              </Button>
+              <TooltipHint content="Publish selected ready files to CDN">
+                <Button
+                  disabled={!publishableSelectedAssets.length || isBulkPending}
+                  onClick={publishSelectedAssets}
+                  type="button"
+                >
+                  <Globe2Icon />
+                  Publish {publishableSelectedAssets.length || ""}
+                </Button>
+              </TooltipHint>
               <Select onValueChange={setBulkMoveTarget} value={bulkMoveTarget}>
-                <SelectTrigger aria-label="Move selected files to folder">
-                  <SelectValue />
-                </SelectTrigger>
+                <TooltipHint content="Choose target folder">
+                  <SelectTrigger aria-label="Move selected files to folder">
+                    <SelectValue />
+                  </SelectTrigger>
+                </TooltipHint>
                 <SelectContent>
                   <SelectItem value={rootFolderPath}>Main</SelectItem>
                   {moveFolderOptions.map((folder) => (
@@ -997,15 +1014,17 @@ export const FileManager = ({
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                disabled={!selectedCount || isBulkPending}
-                onClick={moveSelectedAssets}
-                type="button"
-                variant="outline"
-              >
-                <FolderInputIcon />
-                Move
-              </Button>
+              <TooltipHint content="Move selected files to the chosen folder">
+                <Button
+                  disabled={!selectedCount || isBulkPending}
+                  onClick={moveSelectedAssets}
+                  type="button"
+                  variant="outline"
+                >
+                  <FolderInputIcon />
+                  Move
+                </Button>
+              </TooltipHint>
               {bulkError ? (
                 <span className="text-destructive text-xs">{bulkError}</span>
               ) : null}

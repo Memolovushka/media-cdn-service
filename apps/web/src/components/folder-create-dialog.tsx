@@ -21,6 +21,7 @@ import {
 import { FolderPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useId, useState, useTransition } from "react";
+import { TooltipHint } from "@/components/tooltip-hint";
 
 const getErrorMessage = async (response: Response) => {
   const payload = (await response.json().catch(() => null)) as {
@@ -132,19 +133,23 @@ export const FolderCreateDialog = ({
         <form className="space-y-4" onSubmit={createFolder}>
           <div className="space-y-2">
             <Label htmlFor={nameId}>Folder name</Label>
-            <Input
-              autoFocus
-              id={nameId}
-              onChange={(event) => setName(event.target.value)}
-              value={name}
-            />
+            <TooltipHint content="Name for the new folder">
+              <Input
+                autoFocus
+                id={nameId}
+                onChange={(event) => setName(event.target.value)}
+                value={name}
+              />
+            </TooltipHint>
             {error ? <p className="text-destructive text-xs">{error}</p> : null}
           </div>
           <DialogFooter>
-            <Button disabled={isPending || !workspaceId || !name.trim()}>
-              <FolderPlusIcon />
-              {isPending ? "Creating..." : "Create"}
-            </Button>
+            <TooltipHint content="Create folder in the current location">
+              <Button disabled={isPending || !workspaceId || !name.trim()}>
+                <FolderPlusIcon />
+                {isPending ? "Creating..." : "Create"}
+              </Button>
+            </TooltipHint>
           </DialogFooter>
         </form>
       </DialogContent>

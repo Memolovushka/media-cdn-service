@@ -6,6 +6,7 @@ import { CloudUploadIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { uploadFilesSequentially } from "@/components/asset-upload-client";
+import { TooltipHint } from "@/components/tooltip-hint";
 
 const progressIntentStarted = 1;
 
@@ -76,14 +77,16 @@ export const AssetUploadDialog = ({
         tabIndex={-1}
         type="file"
       />
-      <Button
-        disabled={disabled || isUploading}
-        onClick={() => fileInputRef.current?.click()}
-        type="button"
-      >
-        <CloudUploadIcon />
-        {isUploading ? "Uploading..." : "Upload"}
-      </Button>
+      <TooltipHint content="Upload files to the current folder">
+        <Button
+          disabled={disabled || isUploading}
+          onClick={() => fileInputRef.current?.click()}
+          type="button"
+        >
+          <CloudUploadIcon />
+          {isUploading ? "Uploading..." : "Upload"}
+        </Button>
+      </TooltipHint>
       {error ? (
         <div className="absolute right-0 mt-1 w-56 text-destructive text-xs">
           {error}

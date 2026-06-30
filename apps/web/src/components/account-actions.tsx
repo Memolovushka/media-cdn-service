@@ -9,6 +9,12 @@ import {
   PopoverTrigger,
 } from "@workspace/ui/components/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip";
+import {
   CheckIcon,
   KeyRoundIcon,
   LogOutIcon,
@@ -17,6 +23,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { authClient } from "@/auth/client";
+import { TooltipHint } from "@/components/tooltip-hint";
 
 interface AccountActionsProps {
   email?: null | string;
@@ -95,12 +102,19 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
   return (
     <div className="flex gap-2">
       <Popover onOpenChange={setOpen} open={open}>
-        <PopoverTrigger asChild>
-          <Button size="icon" type="button" variant="outline">
-            <SettingsIcon />
-            <span className="sr-only">Account settings</span>
-          </Button>
-        </PopoverTrigger>
+        <TooltipProvider>
+          <Tooltip>
+            <PopoverTrigger asChild>
+              <TooltipTrigger asChild>
+                <Button size="icon" type="button" variant="outline">
+                  <SettingsIcon />
+                  <span className="sr-only">Account settings</span>
+                </Button>
+              </TooltipTrigger>
+            </PopoverTrigger>
+            <TooltipContent>Account settings</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <PopoverContent align="end" className="w-80 p-4" sideOffset={8}>
           <div className="mb-4 min-w-0">
             <div className="font-medium text-sm">Account settings</div>
@@ -112,33 +126,39 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor={currentPasswordId}>Current password</Label>
-              <Input
-                autoComplete="current-password"
-                id={currentPasswordId}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                type="password"
-                value={currentPassword}
-              />
+              <TooltipHint content="Your current account password">
+                <Input
+                  autoComplete="current-password"
+                  id={currentPasswordId}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  type="password"
+                  value={currentPassword}
+                />
+              </TooltipHint>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={newPasswordId}>New password</Label>
-              <Input
-                autoComplete="new-password"
-                id={newPasswordId}
-                onChange={(event) => setNewPassword(event.target.value)}
-                type="password"
-                value={newPassword}
-              />
+              <TooltipHint content="Enter the new password">
+                <Input
+                  autoComplete="new-password"
+                  id={newPasswordId}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  type="password"
+                  value={newPassword}
+                />
+              </TooltipHint>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={confirmPasswordId}>Confirm password</Label>
-              <Input
-                autoComplete="new-password"
-                id={confirmPasswordId}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                type="password"
-                value={confirmPassword}
-              />
+              <TooltipHint content="Repeat the new password">
+                <Input
+                  autoComplete="new-password"
+                  id={confirmPasswordId}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  type="password"
+                  value={confirmPassword}
+                />
+              </TooltipHint>
             </div>
             {error ? <p className="text-destructive text-xs">{error}</p> : null}
             {success ? (
@@ -147,28 +167,32 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
                 {success}
               </p>
             ) : null}
-            <Button
-              className="w-full"
-              disabled={isPending || !(currentPassword && newPassword)}
-              onClick={changePassword}
-              type="button"
-            >
-              <KeyRoundIcon />
-              {isPending ? "Updating..." : "Update password"}
-            </Button>
+            <TooltipHint content="Change your password and revoke other sessions">
+              <Button
+                className="w-full"
+                disabled={isPending || !(currentPassword && newPassword)}
+                onClick={changePassword}
+                type="button"
+              >
+                <KeyRoundIcon />
+                {isPending ? "Updating..." : "Update password"}
+              </Button>
+            </TooltipHint>
           </div>
         </PopoverContent>
       </Popover>
-      <Button
-        disabled={isPending}
-        onClick={signOut}
-        size="icon"
-        type="button"
-        variant="outline"
-      >
-        <LogOutIcon />
-        <span className="sr-only">Sign out</span>
-      </Button>
+      <TooltipHint content="Sign out">
+        <Button
+          disabled={isPending}
+          onClick={signOut}
+          size="icon"
+          type="button"
+          variant="outline"
+        >
+          <LogOutIcon />
+          <span className="sr-only">Sign out</span>
+        </Button>
+      </TooltipHint>
     </div>
   );
 };

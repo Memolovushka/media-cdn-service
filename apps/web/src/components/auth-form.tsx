@@ -19,6 +19,7 @@ import { GlobeIcon, LogInIcon, UserPlusIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useState, useTransition } from "react";
 import { authClient } from "@/auth/client";
+import { TooltipHint } from "@/components/tooltip-hint";
 
 type AuthMode = "signin" | "signup";
 const lastEmailStorageKey = "media-cdn:last-email";
@@ -112,89 +113,109 @@ export const AuthForm = () => {
           value={mode}
         >
           <TabsList className="mb-5 grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign in</TabsTrigger>
-            <TabsTrigger value="signup">Create account</TabsTrigger>
+            <TooltipHint content="Use an existing account">
+              <TabsTrigger value="signin">Sign in</TabsTrigger>
+            </TooltipHint>
+            <TooltipHint content="Create a new account">
+              <TabsTrigger value="signup">Create account</TabsTrigger>
+            </TooltipHint>
           </TabsList>
 
-          <Button
-            className="mb-4 w-full"
-            disabled={isPending}
-            onClick={signInWithGoogle}
-            variant="outline"
-          >
-            <GlobeIcon />
-            Continue with Google
-          </Button>
+          <TooltipHint content="Continue with your Google account">
+            <Button
+              className="mb-4 w-full"
+              disabled={isPending}
+              onClick={signInWithGoogle}
+              variant="outline"
+            >
+              <GlobeIcon />
+              Continue with Google
+            </Button>
+          </TooltipHint>
 
           <TabsContent className="space-y-4" value="signin">
             <div className="space-y-2">
               <Label htmlFor={emailId}>Email</Label>
-              <Input
-                autoComplete="email"
-                id={emailId}
-                onChange={(event) => setEmail(event.target.value)}
-                type="email"
-                value={email}
-              />
+              <TooltipHint content="Email address for your account">
+                <Input
+                  autoComplete="email"
+                  id={emailId}
+                  onChange={(event) => setEmail(event.target.value)}
+                  type="email"
+                  value={email}
+                />
+              </TooltipHint>
             </div>
             <div className="space-y-2">
               <Label htmlFor={passwordId}>Password</Label>
-              <Input
-                autoComplete="current-password"
-                id={passwordId}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                value={password}
-              />
+              <TooltipHint content="Password for your account">
+                <Input
+                  autoComplete="current-password"
+                  id={passwordId}
+                  onChange={(event) => setPassword(event.target.value)}
+                  type="password"
+                  value={password}
+                />
+              </TooltipHint>
             </div>
             {error ? <p className="text-destructive text-xs">{error}</p> : null}
-            <Button
-              disabled={isPending || !(email.trim() && password)}
-              onClick={submit}
-            >
-              <LogInIcon />
-              {isPending ? "Signing in..." : "Sign in"}
-            </Button>
+            <TooltipHint content="Sign in with email and password">
+              <Button
+                disabled={isPending || !(email.trim() && password)}
+                onClick={submit}
+              >
+                <LogInIcon />
+                {isPending ? "Signing in..." : "Sign in"}
+              </Button>
+            </TooltipHint>
           </TabsContent>
 
           <TabsContent className="space-y-4" value="signup">
             <div className="space-y-2">
               <Label htmlFor={nameId}>Name</Label>
-              <Input
-                autoComplete="name"
-                id={nameId}
-                onChange={(event) => setName(event.target.value)}
-                value={name}
-              />
+              <TooltipHint content="Display name for your account">
+                <Input
+                  autoComplete="name"
+                  id={nameId}
+                  onChange={(event) => setName(event.target.value)}
+                  value={name}
+                />
+              </TooltipHint>
             </div>
             <div className="space-y-2">
               <Label htmlFor={emailId}>Email</Label>
-              <Input
-                autoComplete="email"
-                id={emailId}
-                onChange={(event) => setEmail(event.target.value)}
-                type="email"
-                value={email}
-              />
+              <TooltipHint content="Email address for your account">
+                <Input
+                  autoComplete="email"
+                  id={emailId}
+                  onChange={(event) => setEmail(event.target.value)}
+                  type="email"
+                  value={email}
+                />
+              </TooltipHint>
             </div>
             <div className="space-y-2">
               <Label htmlFor={passwordId}>Password</Label>
-              <Input
-                autoComplete="new-password"
-                id={passwordId}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                value={password}
-              />
+              <TooltipHint content="Choose a password">
+                <Input
+                  autoComplete="new-password"
+                  id={passwordId}
+                  onChange={(event) => setPassword(event.target.value)}
+                  type="password"
+                  value={password}
+                />
+              </TooltipHint>
             </div>
             {error ? <p className="text-destructive text-xs">{error}</p> : null}
-            <Button
-              disabled={isPending || !(email.trim() && password)}
-              onClick={submit}
-            >
-              <UserPlusIcon />
-              {isPending ? "Creating..." : "Create account"}
-            </Button>
+            <TooltipHint content="Create your account">
+              <Button
+                disabled={isPending || !(email.trim() && password)}
+                onClick={submit}
+              >
+                <UserPlusIcon />
+                {isPending ? "Creating..." : "Create account"}
+              </Button>
+            </TooltipHint>
           </TabsContent>
         </Tabs>
       </CardContent>
