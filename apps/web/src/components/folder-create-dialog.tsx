@@ -14,7 +14,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { FolderPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { type FormEvent, useId, useState, useTransition } from "react";
 
 const getErrorMessage = async (response: Response) => {
   const payload = (await response.json().catch(() => null)) as {
@@ -46,7 +46,9 @@ export const FolderCreateDialog = ({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const createFolder = () => {
+  const createFolder = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     if (!(workspaceId && name.trim())) {
       return;
     }
@@ -103,25 +105,24 @@ export const FolderCreateDialog = ({
             Add a folder inside the current workspace view.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor={nameId}>Folder name</Label>
-          <Input
-            autoFocus
-            id={nameId}
-            onChange={(event) => setName(event.target.value)}
-            value={name}
-          />
-          {error ? <p className="text-destructive text-xs">{error}</p> : null}
-        </div>
-        <DialogFooter>
-          <Button
-            disabled={isPending || !workspaceId || !name.trim()}
-            onClick={createFolder}
-          >
-            <FolderPlusIcon />
-            {isPending ? "Creating..." : "Create"}
-          </Button>
-        </DialogFooter>
+        <form className="space-y-4" onSubmit={createFolder}>
+          <div className="space-y-2">
+            <Label htmlFor={nameId}>Folder name</Label>
+            <Input
+              autoFocus
+              id={nameId}
+              onChange={(event) => setName(event.target.value)}
+              value={name}
+            />
+            {error ? <p className="text-destructive text-xs">{error}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button disabled={isPending || !workspaceId || !name.trim()}>
+              <FolderPlusIcon />
+              {isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
