@@ -20,7 +20,6 @@ import { Fragment } from "react";
 import { AccountActions } from "@/components/account-actions";
 import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { FileManager } from "@/components/file-manager";
-import { FolderCreateDialog } from "@/components/folder-create-dialog";
 import { StorageUsageSummary } from "@/components/storage-usage-summary";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
@@ -242,11 +241,6 @@ const Page = async ({ searchParams }: PageProps) => {
                     </BreadcrumbList>
                   </Breadcrumb>
                 )}
-                <FolderCreateDialog
-                  disabled={!activeWorkspace}
-                  parentPath={selectedFolderPath}
-                  workspaceId={activeWorkspace?.workspaceId}
-                />
               </div>
             </section>
             <FileManager

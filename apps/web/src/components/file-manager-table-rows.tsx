@@ -228,9 +228,7 @@ export const FolderTableRowClient = ({
           </div>
         </TableCell>
         <TableCell className="text-muted-foreground">Folder</TableCell>
-        <TableCell>
-          <Badge variant="outline">Folder</Badge>
-        </TableCell>
+        <TableCell className="text-muted-foreground">-</TableCell>
         <TableCell>-</TableCell>
         <TableCell
           className="text-right"
@@ -318,10 +316,12 @@ export const AssetTableRowClient = ({
   previewUrl,
   selected,
   sizeLabel,
-  statusLabel,
-  statusVariant,
+  cdnLabel,
+  cdnVariant,
 }: {
   assetId: string;
+  cdnLabel: string;
+  cdnVariant: ComponentProps<typeof Badge>["variant"];
   downloadUrl?: null | string;
   filename: string;
   href: string;
@@ -333,8 +333,6 @@ export const AssetTableRowClient = ({
   previewUrl?: null | string;
   selected: boolean;
   sizeLabel: string;
-  statusLabel: string;
-  statusVariant: ComponentProps<typeof Badge>["variant"];
 }) => {
   const router = useRouter();
   const { closeMenu, openMenu, position } = useRowContextMenu();
@@ -395,7 +393,7 @@ export const AssetTableRowClient = ({
           {mimeType}
         </TableCell>
         <TableCell>
-          <Badge variant={statusVariant}>{statusLabel}</Badge>
+          <Badge variant={cdnVariant}>{cdnLabel}</Badge>
         </TableCell>
         <TableCell>{sizeLabel}</TableCell>
         <TableCell

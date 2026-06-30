@@ -28,6 +28,7 @@ import {
   AssetTableRowClient,
   FolderTableRowClient,
 } from "@/components/file-manager-table-rows";
+import { FolderCreateDialog } from "@/components/folder-create-dialog";
 
 interface DashboardAssetVersion {
   id: string;
@@ -42,7 +43,6 @@ export interface DashboardAsset {
   id: string;
   mimeType: string;
   sizeBytes: number;
-  tags: string[];
   versions: DashboardAssetVersion[];
   workspaceId: string;
 }
@@ -61,33 +61,15 @@ const hasFilesTransfer = (
 ): dataTransfer is DataTransfer =>
   Boolean(dataTransfer?.types.includes("Files"));
 
-const assetStatusLabels = {
-  abandoned: "Abandoned",
-  failed: "Failed",
-  pending: "Pending upload",
-  ready: "Ready",
-  uploaded: "Processing",
-} as const;
+const getAssetCdnState = (asset: DashboardAsset) => {
+  const latestVersion = asset.versions.at(0) ?? null;
+  const isPublished = asset.cdnEnabled && Boolean(latestVersion?.publicUrl);
 
-const assetStatusVariants = {
-  abandoned: "outline",
-  failed: "destructive",
-  pending: "secondary",
-  ready: "default",
-  uploaded: "secondary",
-} as const;
-
-type AssetStatus = keyof typeof assetStatusLabels;
-
-const getAssetStatusLabel = (status?: string) =>
-  status && status in assetStatusLabels
-    ? assetStatusLabels[status as AssetStatus]
-    : assetStatusLabels.pending;
-
-const getAssetStatusVariant = (status?: string) =>
-  status && status in assetStatusVariants
-    ? assetStatusVariants[status as AssetStatus]
-    : assetStatusVariants.pending;
+  return {
+    label: isPublished ? "CDN published" : "Not published",
+    variant: isPublished ? ("default" as const) : ("outline" as const),
+  };
+};
 
 const formatBytes = (bytes: number) => {
   if (bytes < bytesPerUnit) {
@@ -193,6 +175,7 @@ const AssetDetailsPanel = ({
 
   const { downloadUrl, latestVersion, previewUrl } = getAssetUrls(asset);
   const isReady = latestVersion?.uploadStatus === "ready";
+  const cdnState = getAssetCdnState(asset);
   const inlineImagePreviewUrl =
     previewUrl && isReady && isImageMimeType(asset.mimeType)
       ? previewUrl
@@ -267,9 +250,7 @@ const AssetDetailsPanel = ({
             <div className="mt-1 text-destructive text-xs">{error}</div>
           ) : null}
         </div>
-        <Badge variant={getAssetStatusVariant(latestVersion?.uploadStatus)}>
-          {getAssetStatusLabel(latestVersion?.uploadStatus)}
-        </Badge>
+        <Badge variant={cdnState.variant}>{cdnState.label}</Badge>
       </div>
 
       {inlineImagePreviewUrl ? (
@@ -308,7 +289,6 @@ const AssetDetailsPanel = ({
         cdnEnabled={asset.cdnEnabled}
         publicUrl={latestVersion?.publicUrl}
         ready={isReady}
-        tags={asset.tags}
         workspaceId={asset.workspaceId}
       />
     </section>
@@ -596,12 +576,24 @@ export const FileManager = ({
         </div>
       ) : null}
       <div className="min-h-96 overflow-x-auto rounded-lg border">
+        <div className="flex items-center justify-between gap-3 border-b px-3 py-2">
+          <div className="min-w-0">
+            <div className="font-medium text-sm">Files</div>
+            <div className="truncate text-muted-foreground text-xs">
+              {selectedFolderPath}
+            </div>
+          </div>
+          <FolderCreateDialog
+            parentPath={selectedFolderPath}
+            workspaceId={workspaceId}
+          />
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Kind</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>CDN</TableHead>
               <TableHead>Size</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
@@ -653,12 +645,14 @@ export const FileManager = ({
                   />
                 ))}
                 {optimisticAssets.map((asset) => {
-                  const { downloadUrl, latestVersion, previewUrl } =
-                    getAssetUrls(asset);
+                  const { downloadUrl, previewUrl } = getAssetUrls(asset);
+                  const cdnState = getAssetCdnState(asset);
 
                   return (
                     <AssetTableRowClient
                       assetId={asset.id}
+                      cdnLabel={cdnState.label}
+                      cdnVariant={cdnState.variant}
                       downloadUrl={downloadUrl}
                       filename={asset.filename}
                       href={assetHref({
@@ -677,12 +671,6 @@ export const FileManager = ({
                       previewUrl={previewUrl}
                       selected={selectedAsset?.id === asset.id}
                       sizeLabel={formatBytes(asset.sizeBytes)}
-                      statusLabel={getAssetStatusLabel(
-                        latestVersion?.uploadStatus
-                      )}
-                      statusVariant={getAssetStatusVariant(
-                        latestVersion?.uploadStatus
-                      )}
                     />
                   );
                 })}

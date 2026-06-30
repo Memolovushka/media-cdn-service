@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { assets, assetTags, assetVersions, auditEvents } from "@/db/schema";
+import { assets, assetVersions, auditEvents } from "@/db/schema";
 import {
   canPublishToCdn,
   getWritableAsset,
@@ -26,7 +26,6 @@ interface AssetPatch {
   cdnEnabled?: boolean;
   filename?: string;
   folderPath?: string;
-  tags?: string[];
 }
 
 interface PublishResult {
@@ -59,39 +58,6 @@ const parseBooleanPatch = (
   return body[field];
 };
 
-const maxTags = 20;
-const maxTagLength = 40;
-
-const normalizeTag = (tag: string) =>
-  tag.trim().toLowerCase().replace(/\s+/g, "-").slice(0, maxTagLength);
-
-const parseTagsPatch = (body: Record<string, unknown>) => {
-  if (!("tags" in body)) {
-    return;
-  }
-
-  if (!Array.isArray(body.tags)) {
-    throw new AssetPatchError("tags must be an array", HTTP_STATUS.badRequest);
-  }
-
-  const tags = [
-    ...new Set(
-      body.tags
-        .map((tag) => (typeof tag === "string" ? normalizeTag(tag) : ""))
-        .filter(Boolean)
-    ),
-  ];
-
-  if (tags.length > maxTags) {
-    throw new AssetPatchError(
-      `tags must contain at most ${maxTags} items`,
-      HTTP_STATUS.badRequest
-    );
-  }
-
-  return tags;
-};
-
 const parseAssetPatch = (body: Record<string, unknown>): AssetPatch => {
   const cdnEnabled = parseBooleanPatch(body, "cdnEnabled");
   const filename =
@@ -102,7 +68,6 @@ const parseAssetPatch = (body: Record<string, unknown>): AssetPatch => {
     typeof body.folderPath === "string"
       ? normalizeFolderPath(body.folderPath)
       : undefined;
-  const tags = parseTagsPatch(body);
 
   if (filename !== undefined && !filename) {
     throw new AssetPatchError(
@@ -114,8 +79,7 @@ const parseAssetPatch = (body: Record<string, unknown>): AssetPatch => {
   if (
     cdnEnabled === undefined &&
     filename === undefined &&
-    folderPath === undefined &&
-    tags === undefined
+    folderPath === undefined
   ) {
     throw new AssetPatchError(
       "No supported fields to update",
@@ -123,7 +87,7 @@ const parseAssetPatch = (body: Record<string, unknown>): AssetPatch => {
     );
   }
 
-  return { cdnEnabled, filename, folderPath, tags };
+  return { cdnEnabled, filename, folderPath };
 };
 
 const getAuditEventType = (cdnEnabled: boolean | undefined) => {
@@ -304,34 +268,6 @@ const publishForPatch = ({
   });
 };
 
-const updateTagsForPatch = async ({
-  assetId,
-  ctx,
-  tags,
-}: {
-  assetId: string;
-  ctx: AppContext;
-  tags?: string[];
-}) => {
-  if (tags === undefined) {
-    return;
-  }
-
-  await ctx.db.delete(assetTags).where(eq(assetTags.assetId, assetId));
-
-  if (tags.length === 0) {
-    return;
-  }
-
-  await ctx.db.insert(assetTags).values(
-    tags.map((tag) => ({
-      id: crypto.randomUUID(),
-      assetId,
-      tag,
-    }))
-  );
-};
-
 const updateAsset = async ({
   assetId,
   ctx,
@@ -358,7 +294,6 @@ const updateAsset = async ({
   });
 
   await ctx.db.update(assets).set(assetUpdates).where(eq(assets.id, asset.id));
-  await updateTagsForPatch({ assetId: asset.id, ctx, tags: patch.tags });
 
   await ctx.db.insert(auditEvents).values({
     id: crypto.randomUUID(),
@@ -371,7 +306,6 @@ const updateAsset = async ({
       folderPath: patch.folderPath,
       publicKey: publishResult?.publicKey,
       publicUrl: publishResult?.publicUrl,
-      tags: patch.tags,
       versionId: publishResult?.currentVersion.id,
     }),
   });
@@ -386,7 +320,6 @@ const updateAsset = async ({
     },
     publicKey: publishResult?.publicKey ?? null,
     publicUrl: publishResult?.publicUrl ?? null,
-    tags: patch.tags,
   });
 };
 

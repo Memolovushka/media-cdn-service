@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
 import {
   Popover,
   PopoverContent,
@@ -20,7 +19,6 @@ import {
   EyeOffIcon,
   Globe2Icon,
   MoreHorizontalIcon,
-  SaveIcon,
   UnlinkIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -31,7 +29,6 @@ interface AssetCdnControlsProps {
   cdnEnabled: boolean;
   publicUrl?: null | string;
   ready: boolean;
-  tags: string[];
   workspaceId: string;
 }
 
@@ -42,12 +39,6 @@ const getErrorMessage = async (response: Response) => {
 
   return payload?.error ?? "Asset update failed";
 };
-
-const parseTags = (value: string) =>
-  value
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
 
 const copiedResetDelayMs = 1600;
 const httpsProtocol = "https:";
@@ -140,7 +131,6 @@ export const AssetCdnControls = ({
   cdnEnabled,
   publicUrl,
   ready,
-  tags,
   workspaceId,
 }: AssetCdnControlsProps) => {
   const router = useRouter();
@@ -151,10 +141,7 @@ export const AssetCdnControls = ({
   );
   const [error, setError] = useState<string | null>(null);
   const [isPublicUrlVisible, setIsPublicUrlVisible] = useState(false);
-  const [tagValue, setTagValue] = useState(tags.join(", "));
-  const [savedTagValue, setSavedTagValue] = useState(tags.join(", "));
   const [isPending, startTransition] = useTransition();
-  const currentTags = useMemo(() => parseTags(tagValue), [tagValue]);
   const nextImageConfig = useMemo(() => {
     if (!currentPublicUrl) {
       return null;
@@ -244,15 +231,6 @@ export const AssetCdnControls = ({
     });
   };
 
-  const saveTags = () => {
-    if (tagValue === savedTagValue) {
-      return;
-    }
-
-    setSavedTagValue(tagValue);
-    patchAsset({ body: { tags: currentTags } });
-  };
-
   let cdnUrlContent = (
     <p className="text-muted-foreground text-xs">
       Upload must finish before CDN publishing.
@@ -337,39 +315,6 @@ export const AssetCdnControls = ({
 
         {cdnUrlContent}
 
-        <div className="flex max-w-80 items-center gap-1">
-          <Input
-            aria-label="Asset tags"
-            className="h-7 text-xs"
-            disabled={isPending}
-            onBlur={saveTags}
-            onChange={(event) => setTagValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                saveTags();
-              }
-            }}
-            placeholder="tags"
-            value={tagValue}
-          />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                disabled={isPending}
-                onClick={saveTags}
-                onMouseDown={(event) => event.preventDefault()}
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <SaveIcon />
-                <span className="sr-only">Save tags</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Save tags</TooltipContent>
-          </Tooltip>
-        </div>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
       </div>
     </TooltipProvider>

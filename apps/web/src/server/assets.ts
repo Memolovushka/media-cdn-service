@@ -3,7 +3,6 @@ import type { Db } from "@/db/client";
 import {
   assetFolders,
   assets,
-  assetTags,
   assetVersions,
   auditEvents,
   workspaceMembers,
@@ -680,27 +679,8 @@ export const listWorkspaceAssets = async ({
     }
   }
 
-  const tagRows = await db
-    .select()
-    .from(assetTags)
-    .where(
-      inArray(
-        assetTags.assetId,
-        assetRows.map((asset) => asset.id)
-      )
-    );
-  const tagsByAsset = new Map<string, string[]>();
-
-  for (const tag of tagRows) {
-    tagsByAsset.set(tag.assetId, [
-      ...(tagsByAsset.get(tag.assetId) ?? []),
-      tag.tag,
-    ]);
-  }
-
   return assetRows.map((asset) => ({
     ...asset,
-    tags: tagsByAsset.get(asset.id) ?? [],
     versions: latestVersions.has(asset.id)
       ? [latestVersions.get(asset.id) as (typeof versionRows)[number]]
       : [],
