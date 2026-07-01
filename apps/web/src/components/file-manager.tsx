@@ -124,6 +124,7 @@ const defaultTableColumnCount = 5;
 const acceptedUploadMimeTypes =
   "image/*,video/*,audio/*,application/pdf,text/plain";
 const copiedResetDelayMs = 1600;
+const selectionDragStartThreshold = 6;
 
 interface AssetPatchResponse {
   asset?: Partial<DashboardAsset>;
@@ -364,6 +365,12 @@ const isElementInsideSelectionBox = (
     elementRect.bottom >= top
   );
 };
+
+const hasSelectionDragMoved = (dragState: SelectionDragState) =>
+  Math.abs(dragState.currentClientX - dragState.startClientX) >=
+    selectionDragStartThreshold ||
+  Math.abs(dragState.currentClientY - dragState.startClientY) >=
+    selectionDragStartThreshold;
 
 const assetHref = ({
   assetId,
@@ -923,6 +930,7 @@ export const FileManager = ({
   const fileAreaRef = useRef<HTMLDivElement | null>(null);
   const commandUploadInputRef = useRef<HTMLInputElement | null>(null);
   const baseSelectionIdsRef = useRef<Set<string>>(new Set());
+  const pendingSelectionDragRef = useRef<SelectionDragState | null>(null);
   const [optimisticAssets, setOptimisticAssets] = useState(assets);
   const [activeAssetId, setActiveAssetId] = useState(
     selectedAssetId || assets.at(0)?.id || ""
@@ -1220,28 +1228,52 @@ export const FileManager = ({
       startClientY: event.clientY,
     };
 
-    setSelectMode(true);
-    setSelectionDrag(nextDragState);
-    updateSelectionFromDrag(nextDragState);
+    pendingSelectionDragRef.current = nextDragState;
   };
   const handleSelectionPointerMove = (
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
-    if (!selectionDrag || event.pointerId !== selectionDrag.pointerId) {
+    const pendingDrag = pendingSelectionDragRef.current;
+
+    if (selectionDrag?.pointerId === event.pointerId) {
+      const nextDragState = {
+        ...selectionDrag,
+        currentClientX: event.clientX,
+        currentClientY: event.clientY,
+      };
+
+      setSelectionDrag(nextDragState);
+      updateSelectionFromDrag(nextDragState);
+      return;
+    }
+
+    if (!pendingDrag || event.pointerId !== pendingDrag.pointerId) {
       return;
     }
 
     const nextDragState = {
-      ...selectionDrag,
+      ...pendingDrag,
       currentClientX: event.clientX,
       currentClientY: event.clientY,
     };
 
+    pendingSelectionDragRef.current = nextDragState;
+
+    if (!hasSelectionDragMoved(nextDragState)) {
+      return;
+    }
+
+    setSelectMode(true);
     setSelectionDrag(nextDragState);
     updateSelectionFromDrag(nextDragState);
   };
   const finishSelectionDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!selectionDrag || event.pointerId !== selectionDrag.pointerId) {
+    const pendingDrag = pendingSelectionDragRef.current;
+
+    if (
+      selectionDrag?.pointerId !== event.pointerId &&
+      pendingDrag?.pointerId !== event.pointerId
+    ) {
       return;
     }
 
@@ -1249,6 +1281,7 @@ export const FileManager = ({
       fileAreaRef.current.releasePointerCapture(event.pointerId);
     }
 
+    pendingSelectionDragRef.current = null;
     setSelectionDrag(null);
     baseSelectionIdsRef.current = new Set();
   };
