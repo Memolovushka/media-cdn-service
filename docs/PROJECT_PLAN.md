@@ -120,7 +120,7 @@ HTTP API:
 - 2026-07-01 UI/UX recommendations execution started: the file manager now has List/Grid view switching, media thumbnail cards, and a preview-first asset details panel.
 - 2026-07-01 UI/UX recommendations continued: selection mode now uses a floating batch action bar for Select all, Publish, Move, and Clear without resizing the file list.
 - 2026-07-01 UI/UX recommendations continued: file selection now supports an OS-style drag selection rectangle across visible files and folders.
-- 2026-07-01 UI/UX recommendations continued: CDN controls now show a lifecycle card plus visible copyable Public URL, Next.js, and HTML snippets.
+- 2026-07-01 UI/UX recommendations continued: CDN controls now show a lifecycle card plus a compact Public CDN URL; Next.js and HTML snippets are hidden behind an optional `Embed snippets` toggle.
 
 ### Phase 1: Foundation
 

@@ -3,7 +3,13 @@
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
-import { CheckIcon, ClipboardIcon, Globe2Icon, UnlinkIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ClipboardIcon,
+  Globe2Icon,
+  UnlinkIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { TooltipHint } from "@/components/tooltip-hint";
@@ -148,6 +154,7 @@ export const AssetCdnControls = ({
   const [currentPublicUrl, setCurrentPublicUrl] = useState(publicUrl ?? null);
   const [copiedTarget, setCopiedTarget] = useState<CopiedTarget>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSnippets, setShowSnippets] = useState(false);
   const [isPending, startTransition] = useTransition();
   const nextImageConfig = useMemo(() => {
     if (!currentPublicUrl) {
@@ -303,30 +310,50 @@ export const AssetCdnControls = ({
         </div>
 
         {currentPublicUrl ? (
-          <div className="flex max-w-96 flex-col gap-3 rounded-lg border p-3">
+          <div className="flex max-w-96 flex-col gap-2 rounded-lg border p-3">
             <CopyableCodeBlock
               copied={copiedTarget === "url"}
-              label="Public URL"
+              label="Public CDN URL"
               onCopy={() => copyValue("url", currentPublicUrl)}
               value={currentPublicUrl}
             />
 
-            {nextImageConfig ? (
-              <CopyableCodeBlock
-                copied={copiedTarget === "next"}
-                label="Next.js snippet"
-                onCopy={() => copyValue("next", nextImageConfig)}
-                value={nextImageConfig}
+            <Button
+              aria-expanded={showSnippets}
+              className="w-fit"
+              onClick={() => setShowSnippets((visible) => !visible)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <ChevronDownIcon
+                className={
+                  showSnippets ? "rotate-180 transition" : "transition"
+                }
               />
-            ) : null}
+              Embed snippets
+            </Button>
 
-            {htmlSnippet ? (
-              <CopyableCodeBlock
-                copied={copiedTarget === "html"}
-                label="HTML snippet"
-                onCopy={() => copyValue("html", htmlSnippet)}
-                value={htmlSnippet}
-              />
+            {showSnippets ? (
+              <div className="flex flex-col gap-3 border-t pt-2">
+                {nextImageConfig ? (
+                  <CopyableCodeBlock
+                    copied={copiedTarget === "next"}
+                    label="Next.js snippet"
+                    onCopy={() => copyValue("next", nextImageConfig)}
+                    value={nextImageConfig}
+                  />
+                ) : null}
+
+                {htmlSnippet ? (
+                  <CopyableCodeBlock
+                    copied={copiedTarget === "html"}
+                    label="HTML snippet"
+                    onCopy={() => copyValue("html", htmlSnippet)}
+                    value={htmlSnippet}
+                  />
+                ) : null}
+              </div>
             ) : null}
           </div>
         ) : (

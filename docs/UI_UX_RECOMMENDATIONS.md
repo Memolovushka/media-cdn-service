@@ -35,7 +35,7 @@
     Вместо простого `CDN published / Not published` показать lifecycle: `Private`, `Publishing`, `Public`, `Disabled`, `Blocked`. Для каждого состояния дать визуальный цвет, короткий смысл и доступные действия. **Done:** правая панель показывает CDN lifecycle card с Private, Publishing, Public и Blocked состояниями.
 
 11. **Public URL card с live snippet**
-    В правой панели сделать compact-блок: публичный URL, кнопка copy, Next.js snippet, HTML snippet. После копирования показывать микро-feedback `Copied`. Это превращает CDN в главный продуктовый value, а не вторичную настройку. **Done:** Public URL, Next.js snippet и HTML snippet теперь видны и копируются прямо из asset-панели.
+    В правой панели сделать compact-блок: публичный URL, кнопка copy, Next.js snippet, HTML snippet. После копирования показывать микро-feedback `Copied`. Это превращает CDN в главный продуктовый value, а не вторичную настройку. **Done:** основной видимый блок показывает Public CDN URL, а Next.js и HTML snippets скрыты в раскрываемом `Embed snippets`.
 
 12. **Smart empty states по контексту**
     Для пустой папки показывать не общий текст, а контекстные действия: Upload, Create folder, Drop files here. Для пустого поиска: `No results for "..."` + кнопка очистки поиска. Empty state должен помогать следующему действию.
