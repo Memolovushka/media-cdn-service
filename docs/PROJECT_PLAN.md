@@ -305,7 +305,7 @@ Test plan:
 
 Current known state:
 
-- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `42480b7`.
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `f930884`.
 - `GET /api/setup/status` returns `ok=true`.
 - Confirmed production bindings:
   - `bindings.DB=true`
@@ -318,7 +318,7 @@ Current known state:
   - email signup returns `200`;
   - `POST /api/workspaces` returns `201`;
   - dashboard render after workspace creation returns `200`.
-- Confirmed latest production setup check after commit `42480b7`:
+- Confirmed latest production setup check after commit `f930884`:
   - `ok=true`;
   - `bindings.DB=true`;
   - `bindings.MEDIA_BUCKET=true`;
@@ -333,6 +333,12 @@ Current known state:
   - `0a2b34e`: redundant preview action removed.
 - Confirmed UI/UX recommendations deploy on 2026-07-01:
   - `42480b7`: List/Grid file manager view switching, media thumbnail cards, preview-first asset details panel, and `docs/UI_UX_RECOMMENDATIONS.md`.
+  - `0803c4a`: fixed grid card CDN status overlap.
+  - `f688981`: fixed grid card filename overflow.
+  - `ba0d15c`: floating batch action bar for selected files/folders.
+  - `56cf56e`: OS-style drag selection rectangle across visible files/folders.
+  - `4534917`: CDN lifecycle card plus copyable Public URL, Next.js, and HTML snippets.
+  - `f930884`: compact Public CDN URL kept visible while Next.js and HTML snippets are hidden behind `Embed snippets`.
 - Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP
