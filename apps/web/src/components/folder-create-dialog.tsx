@@ -91,7 +91,12 @@ export const FolderCreateDialog = ({
       setOpen(false);
 
       if (nextFolderPath) {
-        router.push(`/?folder=${encodeURIComponent(nextFolderPath)}`);
+        const params = new URLSearchParams({
+          folder: nextFolderPath,
+          workspace: workspaceId,
+        });
+
+        router.push(`/?${params.toString()}`);
         return;
       }
 

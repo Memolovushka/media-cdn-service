@@ -1,4 +1,3 @@
-import { Badge } from "@workspace/ui/components/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -24,6 +23,7 @@ import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { FileManager } from "@/components/file-manager";
 import { StorageUsageSummary } from "@/components/storage-usage-summary";
 import { TooltipHint } from "@/components/tooltip-hint";
+import { WorkspaceMenu } from "@/components/workspace-menu";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
 import {
@@ -41,19 +41,45 @@ const getParentFolderPath = (folderPath: string) =>
     ? folderPath.slice(0, folderPath.lastIndexOf("/"))
     : "";
 
-const folderHref = (folderPath: string) =>
-  folderPath === fileBrowserRootPath
-    ? "/"
-    : `/?folder=${encodeURIComponent(folderPath)}`;
+const folderHref = ({
+  folderPath,
+  workspaceId,
+}: {
+  folderPath: string;
+  workspaceId?: string;
+}) => {
+  const params = new URLSearchParams();
+
+  if (workspaceId) {
+    params.set("workspace", workspaceId);
+  }
+
+  if (folderPath !== fileBrowserRootPath) {
+    params.set("folder", folderPath);
+  }
+
+  const query = params.toString();
+
+  return query ? `/?${query}` : "/";
+};
 
 const getFileBrowserFolderPath = (folderPath?: string) =>
   folderPath?.startsWith(`${fileBrowserRootPath}/`)
     ? folderPath
     : fileBrowserRootPath;
 
-const getFolderBreadcrumbSegments = (folderPath: string) =>
+const getFolderBreadcrumbSegments = ({
+  folderPath,
+  workspaceId,
+}: {
+  folderPath: string;
+  workspaceId?: string;
+}) =>
   folderPath.split("/").map((segment, index, segments) => ({
-    href: folderHref(segments.slice(0, index + 1).join("/")),
+    href: folderHref({
+      folderPath: segments.slice(0, index + 1).join("/"),
+      workspaceId,
+    }),
     name:
       index === 0 && segment === fileBrowserRootPath
         ? fileBrowserRootLabel
@@ -83,6 +109,7 @@ interface PageProps {
   searchParams?: Promise<{
     asset?: string;
     folder?: string;
+    workspace?: string;
   }>;
 }
 
@@ -146,7 +173,10 @@ const Page = async ({ searchParams }: PageProps) => {
     .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
     .where(eq(workspaceMembers.userId, session.user.id));
 
-  const activeWorkspace = memberships.at(0);
+  const activeWorkspace =
+    memberships.find(
+      (membership) => membership.workspaceId === params?.workspace
+    ) ?? memberships.at(0);
   const assets = activeWorkspace
     ? await listWorkspaceAssets({
         db: ctx.db,
@@ -176,8 +206,10 @@ const Page = async ({ searchParams }: PageProps) => {
       return parentPath === selectedFolderPath;
     }) ?? [];
   const dashboardAssets = assets ?? [];
-  const folderBreadcrumbSegments =
-    getFolderBreadcrumbSegments(selectedFolderPath);
+  const folderBreadcrumbSegments = getFolderBreadcrumbSegments({
+    folderPath: selectedFolderPath,
+    workspaceId: activeWorkspace?.workspaceId,
+  });
   const isRootFolder = selectedFolderPath === fileBrowserRootPath;
   const cdnReadyAssetCount = dashboardAssets.filter(
     (asset) => asset.cdnEnabled
@@ -192,9 +224,14 @@ const Page = async ({ searchParams }: PageProps) => {
               Media CDN
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-              <span>{session.user.email}</span>
               {activeWorkspace ? (
-                <Badge variant="outline">{activeWorkspace.workspaceName}</Badge>
+                <WorkspaceMenu
+                  activeWorkspaceId={activeWorkspace.workspaceId}
+                  workspaces={memberships.map((membership) => ({
+                    id: membership.workspaceId,
+                    name: membership.workspaceName,
+                  }))}
+                />
               ) : null}
               {activeWorkspace ? (
                 <>

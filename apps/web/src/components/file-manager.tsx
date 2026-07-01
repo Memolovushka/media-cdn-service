@@ -208,11 +208,15 @@ const isImageMimeType = (mimeType: string) => mimeType.startsWith("image/");
 const assetHref = ({
   assetId,
   folderPath,
+  workspaceId,
 }: {
   assetId: string;
   folderPath: string;
+  workspaceId: string;
 }) => {
   const params = new URLSearchParams();
+
+  params.set("workspace", workspaceId);
 
   if (folderPath) {
     params.set("folder", folderPath);
@@ -1256,11 +1260,12 @@ export const FileManager = ({
               <>
                 {filteredFolders.map((folder) => (
                   <FolderTableRowClient
-                    folderHref={
-                      folder.path === "asset"
-                        ? "/"
-                        : `/?folder=${encodeURIComponent(folder.path)}`
-                    }
+                    folderHref={`/?${new URLSearchParams({
+                      ...(folder.path === "asset"
+                        ? {}
+                        : { folder: folder.path }),
+                      workspace: workspaceId,
+                    }).toString()}`}
                     folderName={folder.name}
                     folderPath={folder.path}
                     key={folder.id}
@@ -1329,6 +1334,7 @@ export const FileManager = ({
                       href={assetHref({
                         assetId: asset.id,
                         folderPath: selectedFolderPath,
+                        workspaceId,
                       })}
                       key={asset.id}
                       mimeType={asset.mimeType}
