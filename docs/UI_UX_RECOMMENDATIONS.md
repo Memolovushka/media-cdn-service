@@ -23,7 +23,7 @@
    При drag файлов или папок показывать подсветку доступных папок, root-зоны и недоступных целей. Для запретных целей показывать короткий inline reason: `Cannot move folder into itself`.
 
 7. **Batch action bar вместо отдельного select-mode блока**
-   Когда выбрано несколько элементов, снизу или над списком должна появляться плавающая action bar: Move, Publish, Download, Delete, Clear. Она должна быть компактной, sticky и не ломать высоту таблицы.
+   Когда выбрано несколько элементов, снизу или над списком должна появляться плавающая action bar: Move, Publish, Download, Delete, Clear. Она должна быть компактной, sticky и не ломать высоту таблицы. **Done:** Select mode теперь использует floating action bar для Select all, Publish, Move и Clear.
 
 8. **Undo toast для destructive actions**
    После удаления файла/папки показывать toast с `Undo` на 5-10 секунд. Это снижает страх перед быстрыми действиями и делает интерфейс более зрелым. Backend уже использует soft-delete, поэтому UX хорошо ложится на модель.
@@ -67,7 +67,7 @@
 ## Приоритетный порядок
 
 1. Grid-view + preview-first правую панель. **Started:** добавлен переключатель List/Grid и preview-first asset details panel.
-2. Batch action bar + drag selection рамкой.
+2. Batch action bar + drag selection рамкой. **Partly done:** batch action bar shipped, drag selection рамкой next.
 3. CDN lifecycle + public URL snippets.
 4. Upload tray + retry queue.
 5. Keyboard shortcuts + command palette.

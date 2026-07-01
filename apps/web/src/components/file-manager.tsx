@@ -683,6 +683,116 @@ const AssetGridCard = ({
   );
 };
 
+const SelectionActionBar = ({
+  allVisibleItemsSelected,
+  bulkError,
+  bulkMoveTarget,
+  isBulkPending,
+  moveFolderOptions,
+  onClearSelection,
+  onMoveSelectedItems,
+  onPublishSelectedAssets,
+  onSetBulkMoveTarget,
+  onToggleAllVisible,
+  publishableSelectedCount,
+  selectedCount,
+}: {
+  allVisibleItemsSelected: boolean;
+  bulkError: null | string;
+  bulkMoveTarget: string;
+  isBulkPending: boolean;
+  moveFolderOptions: DashboardFolder[];
+  onClearSelection: () => void;
+  onMoveSelectedItems: () => void;
+  onPublishSelectedAssets: () => void;
+  onSetBulkMoveTarget: (value: string) => void;
+  onToggleAllVisible: (checked: boolean) => void;
+  publishableSelectedCount: number;
+  selectedCount: number;
+}) => (
+  <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-4">
+    <div className="pointer-events-auto mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 rounded-lg border bg-popover/95 p-2 shadow-lg backdrop-blur-sm">
+      <div className="flex min-w-28 items-center gap-2 px-1 text-muted-foreground text-xs">
+        <TooltipHint
+          content={
+            allVisibleItemsSelected
+              ? "Clear visible selection"
+              : "Select all visible items"
+          }
+        >
+          <Button
+            aria-label={
+              allVisibleItemsSelected
+                ? "Clear visible selection"
+                : "Select all visible items"
+            }
+            onClick={() => onToggleAllVisible(!allVisibleItemsSelected)}
+            size="icon-xs"
+            type="button"
+            variant={allVisibleItemsSelected ? "secondary" : "ghost"}
+          >
+            {allVisibleItemsSelected ? <XIcon /> : <MousePointerClickIcon />}
+          </Button>
+        </TooltipHint>
+        {selectedCount} selected
+      </div>
+
+      <TooltipHint content="Publish selected ready files to CDN">
+        <Button
+          disabled={!publishableSelectedCount || isBulkPending}
+          onClick={onPublishSelectedAssets}
+          type="button"
+        >
+          <Globe2Icon />
+          Publish {publishableSelectedCount || ""}
+        </Button>
+      </TooltipHint>
+
+      <Select onValueChange={onSetBulkMoveTarget} value={bulkMoveTarget}>
+        <TooltipHint content="Choose target folder">
+          <SelectTrigger
+            aria-label="Move selected items to folder"
+            className="w-40"
+          >
+            <SelectValue />
+          </SelectTrigger>
+        </TooltipHint>
+        <SelectContent>
+          <SelectItem value={rootFolderPath}>Main</SelectItem>
+          {moveFolderOptions.map((folder) => (
+            <SelectItem key={folder.path} value={folder.path}>
+              {folder.path}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <TooltipHint content="Move selected items to the chosen folder">
+        <Button
+          disabled={!selectedCount || isBulkPending}
+          onClick={onMoveSelectedItems}
+          type="button"
+          variant="outline"
+        >
+          <FolderInputIcon />
+          Move
+        </Button>
+      </TooltipHint>
+
+      <TooltipHint content="Clear selected items">
+        <Button onClick={onClearSelection} type="button" variant="ghost">
+          <XIcon />
+          Clear
+        </Button>
+      </TooltipHint>
+
+      {bulkError ? (
+        <span className="min-w-0 text-destructive text-xs">{bulkError}</span>
+      ) : null}
+    </div>
+  </div>
+);
+
 // biome-ignore-start lint/complexity/noExcessiveCognitiveComplexity: This client surface coordinates file listing, upload, drag/drop, selection, and detail-panel actions.
 export const FileManager = ({
   allFolders,
@@ -1472,79 +1582,6 @@ export const FileManager = ({
               </TooltipProvider>
             </div>
           </div>
-          {selectMode ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <TooltipHint
-                  content={
-                    allVisibleItemsSelected
-                      ? "Clear visible selection"
-                      : "Select all visible items"
-                  }
-                >
-                  <Button
-                    aria-label={
-                      allVisibleItemsSelected
-                        ? "Clear visible selection"
-                        : "Select all visible items"
-                    }
-                    onClick={() =>
-                      toggleAllVisibleAssets(!allVisibleItemsSelected)
-                    }
-                    size="icon-xs"
-                    type="button"
-                    variant={allVisibleItemsSelected ? "secondary" : "ghost"}
-                  >
-                    {allVisibleItemsSelected ? (
-                      <XIcon />
-                    ) : (
-                      <MousePointerClickIcon />
-                    )}
-                  </Button>
-                </TooltipHint>
-                {selectedCount} selected
-              </div>
-              <TooltipHint content="Publish selected ready files to CDN">
-                <Button
-                  disabled={!publishableSelectedAssets.length || isBulkPending}
-                  onClick={publishSelectedAssets}
-                  type="button"
-                >
-                  <Globe2Icon />
-                  Publish {publishableSelectedAssets.length || ""}
-                </Button>
-              </TooltipHint>
-              <Select onValueChange={setBulkMoveTarget} value={bulkMoveTarget}>
-                <TooltipHint content="Choose target folder">
-                  <SelectTrigger aria-label="Move selected items to folder">
-                    <SelectValue />
-                  </SelectTrigger>
-                </TooltipHint>
-                <SelectContent>
-                  <SelectItem value={rootFolderPath}>Main</SelectItem>
-                  {moveFolderOptions.map((folder) => (
-                    <SelectItem key={folder.path} value={folder.path}>
-                      {folder.path}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <TooltipHint content="Move selected files to the chosen folder">
-                <Button
-                  disabled={!selectedCount || isBulkPending}
-                  onClick={moveSelectedItems}
-                  type="button"
-                  variant="outline"
-                >
-                  <FolderInputIcon />
-                  Move
-                </Button>
-              </TooltipHint>
-              {bulkError ? (
-                <span className="text-destructive text-xs">{bulkError}</span>
-              ) : null}
-            </div>
-          ) : null}
         </div>
         {viewMode === "list" ? (
           <Table>
@@ -1816,6 +1853,22 @@ export const FileManager = ({
         isRefreshing={isRefreshingSelection}
         onAssetUpdated={handleAssetUpdated}
       />
+      {selectMode ? (
+        <SelectionActionBar
+          allVisibleItemsSelected={allVisibleItemsSelected}
+          bulkError={bulkError}
+          bulkMoveTarget={bulkMoveTarget}
+          isBulkPending={isBulkPending}
+          moveFolderOptions={moveFolderOptions}
+          onClearSelection={clearSelection}
+          onMoveSelectedItems={moveSelectedItems}
+          onPublishSelectedAssets={publishSelectedAssets}
+          onSetBulkMoveTarget={setBulkMoveTarget}
+          onToggleAllVisible={toggleAllVisibleAssets}
+          publishableSelectedCount={publishableSelectedAssets.length}
+          selectedCount={selectedCount}
+        />
+      ) : null}
     </div>
   );
 };
