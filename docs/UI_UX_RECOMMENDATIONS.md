@@ -5,7 +5,7 @@
 ## 20 рекомендаций
 
 1. **Command palette для быстрых действий**
-   Добавить `Cmd/Ctrl + K` с командами: загрузить файлы, создать папку, найти файл, опубликовать в CDN, скопировать URL, открыть настройки workspace. Это даст ощущение современного power-user продукта и ускорит работу без мыши.
+   Добавить `Cmd/Ctrl + K` с командами: загрузить файлы, создать папку, найти файл, опубликовать в CDN, скопировать URL, открыть настройки workspace. Это даст ощущение современного power-user продукта и ускорит работу без мыши. **Done:** file manager имеет command palette с Upload, New folder, Search, Select, Rename, Publish current/selected и Copy public URL.
 
 2. **Два режима просмотра: список и медиа-сетка**
    Сейчас файловый менеджер ближе к таблице. Для изображений и видео нужен grid-view с крупными превью, размером, CDN-статусом и быстрым выбором. Список оставить для документов, больших наборов файлов и точной работы.
@@ -56,7 +56,7 @@
     На mobile список должен превращаться в плотные rows/cards, а правая панель - в bottom sheet. Главные действия: upload, search, select, details. Не пытаться просто сжать desktop grid.
 
 18. **Keyboard-first workflow**
-    Добавить горячие клавиши: `/` search, `N` new folder, `U` upload, `F2` rename, `Delete` delete, `Enter` open, `Space` preview/select, `Esc` clear. Показывать их в tooltip/menu, но не перегружать экран подсказками.
+    Добавить горячие клавиши: `/` search, `N` new folder, `U` upload, `F2` rename, `Delete` delete, `Enter` open, `Space` preview/select, `Esc` clear. Показывать их в tooltip/menu, но не перегружать экран подсказками. **Done:** `Cmd/Ctrl+K`, `/`, `N`, `U`, `F2` и `Esc` работают без перехвата ввода в текстовых полях; command palette показывает основные shortcuts.
 
 19. **Context menu как основной action surface**
     Расширить правый клик: Rename, Move to, Copy public URL, Publish/Unpublish, Download, Delete, Show details. Для папок: Open, Rename, Move, Delete. Это соответствует ожиданию "как в Google Drive", но остается lightweight.
@@ -70,7 +70,7 @@
 2. Batch action bar + drag selection рамкой. **Done:** batch action bar и drag selection рамкой shipped.
 3. CDN lifecycle + public URL snippets. **Done:** lifecycle card, compact Public CDN URL, and hidden optional snippets shipped.
 4. Upload tray + retry queue. **Done:** compact upload tray and per-file retry queue shipped.
-5. Keyboard shortcuts + command palette.
+5. Keyboard shortcuts + command palette. **Done:** Cmd/Ctrl+K palette and keyboard workflow shipped.
 6. Activity/audit feed.
 
 ## Дизайн-направление

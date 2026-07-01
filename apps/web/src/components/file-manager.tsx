@@ -2,6 +2,17 @@
 
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from "@workspace/ui/components/command";
 import { Input } from "@workspace/ui/components/input";
 import {
   Select,
@@ -26,7 +37,9 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip";
 import {
+  ClipboardIcon,
   CloudUploadIcon,
+  CommandIcon,
   DownloadIcon,
   FileAudioIcon,
   FileImageIcon,
@@ -34,10 +47,12 @@ import {
   FileVideoIcon,
   FolderIcon,
   FolderInputIcon,
+  FolderPlusIcon,
   Globe2Icon,
   LayoutGridIcon,
   ListIcon,
   MousePointerClickIcon,
+  PencilIcon,
   SaveIcon,
   SearchIcon,
   XIcon,
@@ -106,6 +121,9 @@ type ViewMode = "grid" | "list";
 const bytesPerUnit = 1024;
 const rootFolderPath = "asset";
 const defaultTableColumnCount = 5;
+const acceptedUploadMimeTypes =
+  "image/*,video/*,audio/*,application/pdf,text/plain";
+const copiedResetDelayMs = 1600;
 
 interface AssetPatchResponse {
   asset?: Partial<DashboardAsset>;
@@ -123,6 +141,14 @@ const isInteractiveSelectionTarget = (target: EventTarget | null) =>
   Boolean(
     target.closest(
       "a, button, input, textarea, select, [role='button'], [role='menu'], [data-selectable-id]"
+    )
+  );
+
+const isEditableKeyboardTarget = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  Boolean(
+    target.closest(
+      "input, textarea, select, [contenteditable='true'], [role='textbox']"
     )
   );
 
@@ -427,12 +453,15 @@ const AssetDetailsPanel = ({
   asset,
   isRefreshing,
   onAssetUpdated,
+  renameRequestKey,
 }: {
   asset?: DashboardAsset | null;
   isRefreshing: boolean;
   onAssetUpdated: (asset: DashboardAsset) => void;
+  renameRequestKey: number;
 }) => {
   const router = useRouter();
+  const filenameInputRef = useRef<HTMLInputElement | null>(null);
   const [filename, setFilename] = useState(asset?.filename ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -441,6 +470,15 @@ const AssetDetailsPanel = ({
     setFilename(asset?.filename ?? "");
     setError(null);
   }, [asset?.filename]);
+
+  useEffect(() => {
+    if (!(asset && renameRequestKey)) {
+      return;
+    }
+
+    filenameInputRef.current?.focus();
+    filenameInputRef.current?.select();
+  }, [asset, renameRequestKey]);
 
   if (!asset) {
     return (
@@ -515,6 +553,7 @@ const AssetDetailsPanel = ({
                     saveFilename();
                   }
                 }}
+                ref={filenameInputRef}
                 value={filename}
               />
             </TooltipHint>
@@ -882,6 +921,7 @@ export const FileManager = ({
     workspaceId,
   });
   const fileAreaRef = useRef<HTMLDivElement | null>(null);
+  const commandUploadInputRef = useRef<HTMLInputElement | null>(null);
   const baseSelectionIdsRef = useRef<Set<string>>(new Set());
   const [optimisticAssets, setOptimisticAssets] = useState(assets);
   const [activeAssetId, setActiveAssetId] = useState(
@@ -894,6 +934,10 @@ export const FileManager = ({
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
+  const [renameRequestKey, setRenameRequestKey] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectionDrag, setSelectionDrag] = useState<SelectionDragState | null>(
     null
@@ -936,6 +980,14 @@ export const FileManager = ({
       null,
     [activeAssetId, optimisticAssets]
   );
+  const selectedAssetPublicUrl =
+    selectedAsset?.versions.at(0)?.publicUrl ?? null;
+  const selectedAssetReady = selectedAsset
+    ? isAssetReady(selectedAsset)
+    : false;
+  const selectedAssetPublished = selectedAsset
+    ? isAssetPublished(selectedAsset)
+    : false;
   const filteredFolders = useMemo(() => {
     if (!searchQuery.trim()) {
       return visibleFolders;
@@ -1051,7 +1103,7 @@ export const FileManager = ({
       return nextMode;
     });
   };
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     if (!selectedItemIds.size) {
       return;
     }
@@ -1059,6 +1111,40 @@ export const FileManager = ({
     setSelectedItemIds(new Set());
     setSelectMode(false);
     setLastSelectedItemId(null);
+  }, [selectedItemIds.size]);
+  const showCommandFeedback = (message: string) => {
+    setCommandFeedback(message);
+    window.setTimeout(() => setCommandFeedback(null), copiedResetDelayMs);
+  };
+  const openUploadPicker = useCallback(() => {
+    commandUploadInputRef.current?.click();
+  }, []);
+  const openSearch = useCallback(() => {
+    setIsSearchOpen(true);
+  }, []);
+  const openCreateFolder = useCallback(() => {
+    setIsCreateFolderOpen(true);
+  }, []);
+  const requestRenameSelectedAsset = useCallback(() => {
+    if (!selectedAsset) {
+      return;
+    }
+
+    setRenameRequestKey((currentKey) => currentKey + 1);
+  }, [selectedAsset]);
+  const copySelectedAssetUrl = () => {
+    if (!selectedAssetPublicUrl) {
+      return;
+    }
+
+    navigator.clipboard
+      .writeText(selectedAssetPublicUrl)
+      .then(() => showCommandFeedback("Public URL copied"))
+      .catch(() => showCommandFeedback("Copy failed"));
+  };
+  const runCommand = (command: () => void) => {
+    command();
+    setIsCommandOpen(false);
   };
   const toggleAllVisibleAssets = (checked: boolean) => {
     setSelectedItemIds((currentIds) => {
@@ -1166,14 +1252,14 @@ export const FileManager = ({
     setSelectionDrag(null);
     baseSelectionIdsRef.current = new Set();
   };
-  const publishSelectedAssets = () => {
-    if (!publishableSelectedAssets.length || isBulkPending) {
+  const publishAssetsToCdn = (assetsToPublish: DashboardAsset[]) => {
+    if (!assetsToPublish.length || isBulkPending) {
       return;
     }
 
     setBulkError(null);
     startBulkTransition(async () => {
-      for (const asset of publishableSelectedAssets) {
+      for (const asset of assetsToPublish) {
         const response = await fetch(`/api/assets/${asset.id}`, {
           method: "PATCH",
           headers: {
@@ -1207,6 +1293,16 @@ export const FileManager = ({
 
       router.refresh();
     });
+  };
+  const publishSelectedAssets = () => {
+    publishAssetsToCdn(publishableSelectedAssets);
+  };
+  const publishCurrentAsset = () => {
+    if (!(selectedAsset && selectedAssetReady && !selectedAssetPublished)) {
+      return;
+    }
+
+    publishAssetsToCdn([selectedAsset]);
   };
   const isFolderInsideFolder = (path: string, parentPath: string) =>
     path === parentPath || path.startsWith(`${parentPath}/`);
@@ -1505,6 +1601,81 @@ export const FileManager = ({
     };
   }, [uploadDroppedFiles]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if ((event.metaKey || event.ctrlKey) && key === "k") {
+        event.preventDefault();
+        setIsCommandOpen((open) => !open);
+        return;
+      }
+
+      if (isEditableKeyboardTarget(event.target)) {
+        return;
+      }
+
+      if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+
+      if (event.key === "/") {
+        event.preventDefault();
+        openSearch();
+        return;
+      }
+
+      if (key === "n") {
+        event.preventDefault();
+        openCreateFolder();
+        return;
+      }
+
+      if (key === "u") {
+        event.preventDefault();
+        openUploadPicker();
+        return;
+      }
+
+      if (event.key === "F2") {
+        event.preventDefault();
+        requestRenameSelectedAsset();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        if (isSearchOpen || searchQuery) {
+          event.preventDefault();
+          setSearchQuery("");
+          setIsSearchOpen(false);
+          return;
+        }
+
+        if (selectedItemIds.size) {
+          event.preventDefault();
+          clearSelection();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    clearSelection,
+    isSearchOpen,
+    openCreateFolder,
+    openSearch,
+    openUploadPicker,
+    requestRenameSelectedAsset,
+    searchQuery,
+    selectedItemIds.size,
+  ]);
+
   const isDraggingFiles = dragDepth > 0;
   const moveFolderOptions = allFolders.filter(
     (folder) => folder.path !== rootFolderPath
@@ -1540,6 +1711,127 @@ export const FileManager = ({
 
   return (
     <div className="relative grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]">
+      <Input
+        accept={acceptedUploadMimeTypes}
+        className="sr-only"
+        multiple
+        onChange={(event) => {
+          uploadQueue.enqueueFiles(
+            Array.from(event.target.files ?? []),
+            selectedFolderPath
+          );
+          event.target.value = "";
+        }}
+        ref={commandUploadInputRef}
+        tabIndex={-1}
+        type="file"
+      />
+      <CommandDialog
+        description="Run file manager actions"
+        onOpenChange={setIsCommandOpen}
+        open={isCommandOpen}
+        title="Command Palette"
+      >
+        <Command>
+          <CommandInput placeholder="Run an action..." />
+          <CommandList>
+            <CommandEmpty>No actions found.</CommandEmpty>
+            <CommandGroup heading="File manager">
+              <CommandItem onSelect={() => runCommand(openUploadPicker)}>
+                <CloudUploadIcon />
+                Upload files
+                <CommandShortcut>U</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(openCreateFolder)}>
+                <FolderPlusIcon />
+                New folder
+                <CommandShortcut>N</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(openSearch)}>
+                <SearchIcon />
+                Search files
+                <CommandShortcut>/</CommandShortcut>
+              </CommandItem>
+              <CommandItem
+                onSelect={() =>
+                  runCommand(() => {
+                    setSelectMode(true);
+                  })
+                }
+              >
+                <MousePointerClickIcon />
+                Select items
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Selected file">
+              <CommandItem
+                disabled={!selectedAsset}
+                onSelect={() => runCommand(requestRenameSelectedAsset)}
+              >
+                <PencilIcon />
+                Rename file
+                <CommandShortcut>F2</CommandShortcut>
+              </CommandItem>
+              <CommandItem
+                disabled={
+                  !(
+                    selectedAsset &&
+                    selectedAssetReady &&
+                    !selectedAssetPublished
+                  )
+                }
+                onSelect={() => runCommand(publishCurrentAsset)}
+              >
+                <Globe2Icon />
+                Publish current file
+              </CommandItem>
+              <CommandItem
+                disabled={!selectedAssetPublicUrl}
+                onSelect={copySelectedAssetUrl}
+              >
+                <ClipboardIcon />
+                Copy public URL
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Selection">
+              <CommandItem
+                disabled={!filteredItems.length}
+                onSelect={() =>
+                  runCommand(() => {
+                    setSelectMode(true);
+                    toggleAllVisibleAssets(true);
+                  })
+                }
+              >
+                <MousePointerClickIcon />
+                Select all visible
+              </CommandItem>
+              <CommandItem
+                disabled={!publishableSelectedAssets.length}
+                onSelect={() => runCommand(publishSelectedAssets)}
+              >
+                <Globe2Icon />
+                Publish selected files
+              </CommandItem>
+              <CommandItem
+                disabled={!selectedItemIds.size}
+                onSelect={() => runCommand(clearSelection)}
+              >
+                <XIcon />
+                Clear selection
+                <CommandShortcut>Esc</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+          {commandFeedback ? (
+            <div className="border-t px-3 py-2 text-primary text-xs">
+              {commandFeedback}
+            </div>
+          ) : null}
+        </Command>
+      </CommandDialog>
       {isDraggingFiles ? (
         <div className="pointer-events-none fixed inset-0 z-50 border-2 border-primary border-dashed bg-primary/5 p-4 backdrop-blur-[1px]">
           <div className="mx-auto mt-6 flex max-w-md items-center gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
@@ -1662,6 +1954,8 @@ export const FileManager = ({
                 </TooltipProvider>
               )}
               <FolderCreateDialog
+                onOpenChange={setIsCreateFolderOpen}
+                open={isCreateFolderOpen}
                 parentPath={selectedFolderPath}
                 tooltip="Create new folder in the current location"
                 workspaceId={workspaceId}
@@ -1692,6 +1986,17 @@ export const FileManager = ({
                   </Button>
                 </TooltipHint>
               </div>
+              <TooltipHint content="Open command palette">
+                <Button
+                  aria-label="Open command palette"
+                  onClick={() => setIsCommandOpen(true)}
+                  size="icon"
+                  type="button"
+                  variant="outline"
+                >
+                  <CommandIcon />
+                </Button>
+              </TooltipHint>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1969,6 +2274,7 @@ export const FileManager = ({
         asset={selectedAsset}
         isRefreshing={isRefreshingSelection}
         onAssetUpdated={handleAssetUpdated}
+        renameRequestKey={renameRequestKey}
       />
       <AssetUploadTray {...uploadQueue} />
       {selectMode ? (

@@ -39,21 +39,30 @@ interface FolderCreateResponse {
 
 export const FolderCreateDialog = ({
   disabled,
+  onOpenChange,
+  open: controlledOpen,
   parentPath,
   tooltip,
   workspaceId,
 }: {
   disabled?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
   parentPath?: string;
   tooltip?: string;
   workspaceId?: string;
 }) => {
   const router = useRouter();
   const nameId = useId();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
 
   const createFolder = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
