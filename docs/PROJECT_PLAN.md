@@ -340,7 +340,7 @@ Current known state:
   - `56cf56e`: OS-style drag selection rectangle across visible files/folders.
   - `4534917`: CDN lifecycle card plus copyable Public URL, Next.js, and HTML snippets.
   - `f930884`: compact Public CDN URL kept visible while Next.js and HTML snippets are hidden behind `Embed snippets`.
-  - Pending current deploy: compact upload tray and per-file retry queue.
+  - `1332179`: compact upload tray and per-file retry queue.
 - Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP
