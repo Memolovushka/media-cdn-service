@@ -117,6 +117,7 @@ HTTP API:
 - 2026-06-29 feedback-driven UX pass completed: full-page drag-and-drop upload, upload into any visible folder by dropping onto it, asset drag-move targets, compact header storage usage, inline photo preview in the detail panel, and removal of the redundant preview eye action are deployed.
 - 2026-06-29 work note: today's work followed live product feedback and visual cleanup rather than the planned next-order backlog.
 - 2026-07-01 quota enforcement added: workspaces now have a default 1 GB storage quota, upload intent blocks files that would exceed quota, and the dashboard storage indicator uses the workspace quota.
+- 2026-07-01 UI/UX recommendations execution started: the file manager now has List/Grid view switching, media thumbnail cards, and a preview-first asset details panel.
 
 ### Phase 1: Foundation
 
@@ -292,7 +293,7 @@ Test plan:
 ## Ближайший порядок работ
 
 1. Permission and state-transition tests.
-2. Production browser verification for the latest feedback-driven UX changes.
+2. Continue UI/UX recommendations: batch action bar, drag selection, and CDN lifecycle polish.
 3. Account settings polish: email change, profile name update, active sessions.
 4. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
 5. Audit log UI.

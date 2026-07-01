@@ -29,15 +29,24 @@ import {
 import {
   CloudUploadIcon,
   DownloadIcon,
+  FileAudioIcon,
+  FileImageIcon,
+  FileTextIcon,
+  FileVideoIcon,
+  FolderIcon,
   FolderInputIcon,
   Globe2Icon,
+  LayoutGridIcon,
+  ListIcon,
   MousePointerClickIcon,
   SaveIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import {
+  type ComponentProps,
   useCallback,
   useEffect,
   useMemo,
@@ -79,6 +88,8 @@ export interface DashboardFolder {
 type SelectableItem =
   | { asset: DashboardAsset; id: string; kind: "asset" }
   | { folder: DashboardFolder; id: string; kind: "folder" };
+
+type ViewMode = "grid" | "list";
 
 const bytesPerUnit = 1024;
 const rootFolderPath = "asset";
@@ -204,6 +215,68 @@ const getErrorMessage = async (response: Response, fallback: string) => {
 };
 
 const isImageMimeType = (mimeType: string) => mimeType.startsWith("image/");
+const isAudioMimeType = (mimeType: string) => mimeType.startsWith("audio/");
+const isVideoMimeType = (mimeType: string) => mimeType.startsWith("video/");
+const isPdfMimeType = (mimeType: string) => mimeType === "application/pdf";
+const isTextMimeType = (mimeType: string) => mimeType.startsWith("text/");
+
+const getAssetTypeIcon = (mimeType: string) => {
+  if (isImageMimeType(mimeType)) {
+    return FileImageIcon;
+  }
+
+  if (isVideoMimeType(mimeType)) {
+    return FileVideoIcon;
+  }
+
+  if (isAudioMimeType(mimeType)) {
+    return FileAudioIcon;
+  }
+
+  return FileTextIcon;
+};
+
+const getAssetPreviewLabel = (mimeType: string) => {
+  if (isImageMimeType(mimeType)) {
+    return "Image preview";
+  }
+
+  if (isVideoMimeType(mimeType)) {
+    return "Video preview";
+  }
+
+  if (isAudioMimeType(mimeType)) {
+    return "Audio preview";
+  }
+
+  if (isPdfMimeType(mimeType)) {
+    return "PDF preview";
+  }
+
+  if (isTextMimeType(mimeType)) {
+    return "Text preview";
+  }
+
+  return "File preview";
+};
+
+const getGridCardClassName = ({
+  selected,
+  selectedForBulk,
+}: {
+  selected: boolean;
+  selectedForBulk: boolean;
+}) => {
+  if (selectedForBulk) {
+    return "border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.22)]";
+  }
+
+  if (selected) {
+    return "border-primary/70 bg-primary/10";
+  }
+
+  return "border-border bg-background";
+};
 
 const assetHref = ({
   assetId,
@@ -229,6 +302,7 @@ const assetHref = ({
 
 const AssetDetailsPanelSkeleton = () => (
   <section className="flex flex-col gap-4 rounded-lg border p-4">
+    <Skeleton className="h-64 w-full rounded-md" />
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-4 w-2/3" />
@@ -243,6 +317,50 @@ const AssetDetailsPanelSkeleton = () => (
     <Skeleton className="h-24 w-full" />
   </section>
 );
+
+const AssetPreviewSurface = ({
+  asset,
+  className,
+  isReady,
+  previewUrl,
+}: {
+  asset: DashboardAsset;
+  className?: string;
+  isReady: boolean;
+  previewUrl: null | string;
+}) => {
+  const previewLabel = getAssetPreviewLabel(asset.mimeType);
+
+  if (!(isReady && previewUrl)) {
+    const AssetIcon = getAssetTypeIcon(asset.mimeType);
+
+    return (
+      <div
+        className={`flex min-h-56 flex-col items-center justify-center gap-2 rounded-lg border bg-muted/20 p-4 text-center text-muted-foreground text-sm ${className ?? ""}`}
+      >
+        <AssetIcon className="size-8" />
+        Preview is available after upload finishes.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex min-h-64 items-center justify-center overflow-hidden rounded-lg border bg-muted/20 ${className ?? ""}`}
+    >
+      <object
+        aria-label={`Preview of ${asset.filename}`}
+        className="h-full max-h-[460px] min-h-64 w-full object-contain"
+        data={previewUrl}
+        type={asset.mimeType}
+      >
+        <div className="flex min-h-56 items-center justify-center p-4 text-center text-muted-foreground text-sm">
+          {previewLabel} is not available for this file.
+        </div>
+      </object>
+    </div>
+  );
+};
 
 const AssetDetailsPanel = ({
   asset,
@@ -280,10 +398,6 @@ const AssetDetailsPanel = ({
   const { downloadUrl, latestVersion, previewUrl } = getAssetUrls(asset);
   const isReady = latestVersion?.uploadStatus === "ready";
   const cdnState = getAssetCdnState(asset);
-  const inlineImagePreviewUrl =
-    previewUrl && isReady && isImageMimeType(asset.mimeType)
-      ? previewUrl
-      : null;
   const saveFilename = () => {
     const nextFilename = filename.trim();
 
@@ -318,6 +432,12 @@ const AssetDetailsPanel = ({
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border p-4">
+      <AssetPreviewSurface
+        asset={asset}
+        isReady={isReady}
+        previewUrl={previewUrl}
+      />
+
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1">
@@ -361,21 +481,6 @@ const AssetDetailsPanel = ({
         <Badge variant={cdnState.variant}>{cdnState.label}</Badge>
       </div>
 
-      {inlineImagePreviewUrl ? (
-        <div className="flex min-h-56 items-center justify-center overflow-hidden rounded-lg border bg-muted/20">
-          <object
-            aria-label={`Preview of ${asset.filename}`}
-            className="h-full max-h-[420px] min-h-56 w-full object-contain"
-            data={inlineImagePreviewUrl}
-            type={asset.mimeType}
-          >
-            <div className="flex min-h-56 items-center justify-center p-4 text-center text-muted-foreground text-sm">
-              Preview is not available for this image.
-            </div>
-          </object>
-        </div>
-      ) : null}
-
       <div className="flex items-center gap-1">
         {downloadUrl ? (
           <TooltipHint content="Download private file">
@@ -404,6 +509,175 @@ const AssetDetailsPanel = ({
         workspaceId={asset.workspaceId}
       />
     </section>
+  );
+};
+
+const FolderGridCard = ({
+  folder,
+  onAssetDrop,
+  onBulkSelect,
+  onDragEnd,
+  onDragStart,
+  onFileDrop,
+  onOpen,
+  selected,
+  selectedForBulk,
+  selectMode,
+}: {
+  folder: DashboardFolder;
+  onAssetDrop: (folderPath: string) => void;
+  onBulkSelect: (
+    folderPath: string,
+    shiftKey: boolean,
+    shouldSelect: boolean
+  ) => void;
+  onDragEnd: () => void;
+  onDragStart: (folderPath: string) => void;
+  onFileDrop: (folderPath: string, files: File[]) => void;
+  onOpen: (folderPath: string) => void;
+  selected: boolean;
+  selectedForBulk: boolean;
+  selectMode: boolean;
+}) => (
+  <button
+    aria-pressed={selected || selectedForBulk}
+    className={`group flex min-h-36 flex-col rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+    draggable
+    onClick={(event) => {
+      if (event.shiftKey) {
+        event.preventDefault();
+        onBulkSelect(folder.path, true, true);
+        return;
+      }
+
+      if (selectMode) {
+        onBulkSelect(folder.path, false, !selectedForBulk);
+        return;
+      }
+
+      onOpen(folder.path);
+    }}
+    onDragEnd={onDragEnd}
+    onDragOver={(event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = event.dataTransfer.types.includes("Files")
+        ? "copy"
+        : "move";
+    }}
+    onDragStart={(event) => {
+      event.dataTransfer.effectAllowed = "move";
+      onDragStart(folder.path);
+    }}
+    onDrop={(event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.dataTransfer.types.includes("Files")) {
+        const files = Array.from(event.dataTransfer.files);
+
+        if (files.length) {
+          onFileDrop(folder.path, files);
+        }
+
+        return;
+      }
+
+      onAssetDrop(folder.path);
+    }}
+    type="button"
+  >
+    <div className="flex flex-1 items-center justify-center rounded-md bg-muted/30">
+      <FolderIcon className="size-11 text-muted-foreground transition group-hover:text-primary" />
+    </div>
+    <div className="mt-3 min-w-0">
+      <div className="truncate font-medium text-sm">{folder.name}</div>
+      <div className="truncate text-muted-foreground text-xs">Folder</div>
+    </div>
+  </button>
+);
+
+const AssetGridCard = ({
+  asset,
+  cdnLabel,
+  cdnVariant,
+  onBulkSelect,
+  onDragEnd,
+  onDragStart,
+  onOpen,
+  previewUrl,
+  selected,
+  selectedForBulk,
+  selectMode,
+  sizeLabel,
+}: {
+  asset: DashboardAsset;
+  cdnLabel: string;
+  cdnVariant: ComponentProps<typeof Badge>["variant"];
+  onBulkSelect: (assetId: string, shiftKey: boolean, selected: boolean) => void;
+  onDragEnd: () => void;
+  onDragStart: (assetId: string) => void;
+  onOpen: () => void;
+  previewUrl: null | string;
+  selected: boolean;
+  selectedForBulk: boolean;
+  selectMode: boolean;
+  sizeLabel: string;
+}) => {
+  const AssetIcon = getAssetTypeIcon(asset.mimeType);
+  const showImagePreview = previewUrl && isImageMimeType(asset.mimeType);
+
+  return (
+    <button
+      aria-pressed={selected || selectedForBulk}
+      className={`group flex min-h-44 flex-col rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+      draggable
+      onClick={(event) => {
+        if (event.shiftKey) {
+          event.preventDefault();
+          onBulkSelect(asset.id, true, true);
+          return;
+        }
+
+        if (selectMode) {
+          onBulkSelect(asset.id, false, !selectedForBulk);
+          return;
+        }
+
+        onOpen();
+      }}
+      onDragEnd={onDragEnd}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        onDragStart(asset.id);
+      }}
+      type="button"
+    >
+      <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md bg-muted/30">
+        {showImagePreview ? (
+          <object
+            aria-label={`Thumbnail of ${asset.filename}`}
+            className="h-full w-full object-cover"
+            data={previewUrl}
+            type={asset.mimeType}
+          >
+            <AssetIcon className="size-10 text-muted-foreground" />
+          </object>
+        ) : (
+          <AssetIcon className="size-10 text-muted-foreground transition group-hover:text-primary" />
+        )}
+      </div>
+      <div className="mt-3 flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-medium text-sm">{asset.filename}</div>
+          <div className="truncate text-muted-foreground text-xs">
+            {asset.mimeType} - {sizeLabel}
+          </div>
+        </div>
+        <Badge className="shrink-0" variant={cdnVariant}>
+          {cdnLabel}
+        </Badge>
+      </div>
+    </button>
   );
 };
 
@@ -439,6 +713,7 @@ export const FileManager = ({
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectMode, setSelectMode] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
     () => new Set()
@@ -1149,6 +1424,32 @@ export const FileManager = ({
                 tooltip="Create new folder in the current location"
                 workspaceId={workspaceId}
               />
+              <div className="flex rounded-md border bg-background p-0.5">
+                <TooltipHint content="List view">
+                  <Button
+                    aria-label="Show files as a list"
+                    aria-pressed={viewMode === "list"}
+                    onClick={() => setViewMode("list")}
+                    size="icon-xs"
+                    type="button"
+                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                  >
+                    <ListIcon />
+                  </Button>
+                </TooltipHint>
+                <TooltipHint content="Grid view">
+                  <Button
+                    aria-label="Show files as a grid"
+                    aria-pressed={viewMode === "grid"}
+                    onClick={() => setViewMode("grid")}
+                    size="icon-xs"
+                    type="button"
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  >
+                    <LayoutGridIcon />
+                  </Button>
+                </TooltipHint>
+              </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1243,31 +1544,151 @@ export const FileManager = ({
             </div>
           ) : null}
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Kind</TableHead>
-              <TableHead>CDN</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        {viewMode === "list" ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Kind</TableHead>
+                <TableHead>CDN</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {hasFileManagerItems ? (
+                <>
+                  {filteredFolders.map((folder) => (
+                    <FolderTableRowClient
+                      folderHref={`/?${new URLSearchParams({
+                        ...(folder.path === "asset"
+                          ? {}
+                          : { folder: folder.path }),
+                        workspace: workspaceId,
+                      }).toString()}`}
+                      folderName={folder.name}
+                      folderPath={folder.path}
+                      key={folder.id}
+                      onAssetDrop={(folderPath) => {
+                        if (!draggedItemId) {
+                          return;
+                        }
+
+                        moveDraggedItems(draggedItemId, folderPath).catch(
+                          (moveErrorValue: unknown) => {
+                            setMoveError(
+                              moveErrorValue instanceof Error
+                                ? moveErrorValue.message
+                                : "Move failed"
+                            );
+                          }
+                        );
+                        setDraggedItemId(null);
+                      }}
+                      onBulkSelect={(folderPath, shiftKey, shouldSelect) =>
+                        handleBulkSelect(
+                          getFolderItemId(folderPath),
+                          shiftKey,
+                          shouldSelect
+                        )
+                      }
+                      onDragEnd={() => setDraggedItemId(null)}
+                      onDragStart={(folderPath) =>
+                        setDraggedItemId(getFolderItemId(folderPath))
+                      }
+                      onFileDrop={(folderPath, files) => {
+                        uploadDroppedFiles(files, folderPath).catch(
+                          (uploadError: unknown) => {
+                            setDropError(
+                              uploadError instanceof Error
+                                ? uploadError.message
+                                : "Upload failed"
+                            );
+                            setIsDropUploading(false);
+                          }
+                        );
+                      }}
+                      onOpen={(folderPath) => {
+                        setActiveFolderPath(folderPath);
+                        setLastSelectedItemId(getFolderItemId(folderPath));
+                      }}
+                      selected={activeFolderPath === folder.path}
+                      selectedForBulk={selectedItemIds.has(
+                        getFolderItemId(folder.path)
+                      )}
+                      selectMode={selectMode}
+                      workspaceId={workspaceId}
+                    />
+                  ))}
+                  {filteredAssets.map((asset) => {
+                    const { downloadUrl, previewUrl } = getAssetUrls(asset);
+                    const cdnState = getAssetCdnState(asset);
+
+                    return (
+                      <AssetTableRowClient
+                        assetId={asset.id}
+                        cdnLabel={cdnState.label}
+                        cdnVariant={cdnState.variant}
+                        downloadUrl={downloadUrl}
+                        filename={asset.filename}
+                        href={assetHref({
+                          assetId: asset.id,
+                          folderPath: selectedFolderPath,
+                          workspaceId,
+                        })}
+                        key={asset.id}
+                        mimeType={asset.mimeType}
+                        onBulkSelect={(assetId, shiftKey, shouldSelect) =>
+                          handleBulkSelect(
+                            getAssetItemId(assetId),
+                            shiftKey,
+                            shouldSelect
+                          )
+                        }
+                        onDeleted={handleDeleted}
+                        onDragEnd={() => setDraggedItemId(null)}
+                        onDragStart={(assetId) =>
+                          setDraggedItemId(getAssetItemId(assetId))
+                        }
+                        onOpen={() => {
+                          setActiveAssetId(asset.id);
+                          setLastSelectedItemId(getAssetItemId(asset.id));
+                          setIsRefreshingSelection(true);
+                        }}
+                        previewUrl={previewUrl}
+                        selected={selectedAsset?.id === asset.id}
+                        selectedForBulk={selectedItemIds.has(
+                          getAssetItemId(asset.id)
+                        )}
+                        selectMode={selectMode}
+                        sizeLabel={formatBytes(asset.sizeBytes)}
+                      />
+                    );
+                  })}
+                </>
+              ) : (
+                <TableRow>
+                  <TableCell
+                    className="h-32 text-center text-muted-foreground text-sm"
+                    colSpan={tableColumnCount}
+                  >
+                    {searchQuery.trim()
+                      ? "No files or folders match this search."
+                      : "This folder is empty."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {hasFileManagerItems ? (
               <>
                 {filteredFolders.map((folder) => (
-                  <FolderTableRowClient
-                    folderHref={`/?${new URLSearchParams({
-                      ...(folder.path === "asset"
-                        ? {}
-                        : { folder: folder.path }),
-                      workspace: workspaceId,
-                    }).toString()}`}
-                    folderName={folder.name}
-                    folderPath={folder.path}
+                  <FolderGridCard
+                    folder={folder}
                     key={folder.id}
                     onAssetDrop={(folderPath) => {
                       if (!draggedItemId) {
@@ -1311,33 +1732,32 @@ export const FileManager = ({
                     onOpen={(folderPath) => {
                       setActiveFolderPath(folderPath);
                       setLastSelectedItemId(getFolderItemId(folderPath));
+                      router.push(
+                        `/?${new URLSearchParams({
+                          ...(folderPath === "asset"
+                            ? {}
+                            : { folder: folderPath }),
+                          workspace: workspaceId,
+                        }).toString()}`
+                      );
                     }}
                     selected={activeFolderPath === folder.path}
                     selectedForBulk={selectedItemIds.has(
                       getFolderItemId(folder.path)
                     )}
                     selectMode={selectMode}
-                    workspaceId={workspaceId}
                   />
                 ))}
                 {filteredAssets.map((asset) => {
-                  const { downloadUrl, previewUrl } = getAssetUrls(asset);
+                  const { previewUrl } = getAssetUrls(asset);
                   const cdnState = getAssetCdnState(asset);
 
                   return (
-                    <AssetTableRowClient
-                      assetId={asset.id}
+                    <AssetGridCard
+                      asset={asset}
                       cdnLabel={cdnState.label}
                       cdnVariant={cdnState.variant}
-                      downloadUrl={downloadUrl}
-                      filename={asset.filename}
-                      href={assetHref({
-                        assetId: asset.id,
-                        folderPath: selectedFolderPath,
-                        workspaceId,
-                      })}
                       key={asset.id}
-                      mimeType={asset.mimeType}
                       onBulkSelect={(assetId, shiftKey, shouldSelect) =>
                         handleBulkSelect(
                           getAssetItemId(assetId),
@@ -1345,7 +1765,6 @@ export const FileManager = ({
                           shouldSelect
                         )
                       }
-                      onDeleted={handleDeleted}
                       onDragEnd={() => setDraggedItemId(null)}
                       onDragStart={(assetId) =>
                         setDraggedItemId(getAssetItemId(assetId))
@@ -1354,6 +1773,13 @@ export const FileManager = ({
                         setActiveAssetId(asset.id);
                         setLastSelectedItemId(getAssetItemId(asset.id));
                         setIsRefreshingSelection(true);
+                        router.push(
+                          assetHref({
+                            assetId: asset.id,
+                            folderPath: selectedFolderPath,
+                            workspaceId,
+                          }) as Route
+                        );
                       }}
                       previewUrl={previewUrl}
                       selected={selectedAsset?.id === asset.id}
@@ -1367,19 +1793,14 @@ export const FileManager = ({
                 })}
               </>
             ) : (
-              <TableRow>
-                <TableCell
-                  className="h-32 text-center text-muted-foreground text-sm"
-                  colSpan={tableColumnCount}
-                >
-                  {searchQuery.trim()
-                    ? "No files or folders match this search."
-                    : "This folder is empty."}
-                </TableCell>
-              </TableRow>
+              <div className="col-span-full flex min-h-32 items-center justify-center text-center text-muted-foreground text-sm">
+                {searchQuery.trim()
+                  ? "No files or folders match this search."
+                  : "This folder is empty."}
+              </div>
             )}
-          </TableBody>
-        </Table>
+          </div>
+        )}
         <button
           aria-label="Clear selected items"
           className="min-h-12 flex-1 cursor-default bg-transparent"
