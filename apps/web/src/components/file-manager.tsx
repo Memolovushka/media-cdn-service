@@ -629,7 +629,7 @@ const AssetGridCard = ({
   return (
     <button
       aria-pressed={selected || selectedForBulk}
-      className={`group flex min-h-44 flex-col rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+      className={`group flex min-h-48 flex-col rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
       draggable
       onClick={(event) => {
         if (event.shiftKey) {
@@ -666,16 +666,18 @@ const AssetGridCard = ({
           <AssetIcon className="size-10 text-muted-foreground transition group-hover:text-primary" />
         )}
       </div>
-      <div className="mt-3 flex min-w-0 items-start justify-between gap-2">
+      <div className="mt-3 flex min-w-0 flex-1 flex-col gap-2">
         <div className="min-w-0">
           <div className="truncate font-medium text-sm">{asset.filename}</div>
           <div className="truncate text-muted-foreground text-xs">
             {asset.mimeType} - {sizeLabel}
           </div>
         </div>
-        <Badge className="shrink-0" variant={cdnVariant}>
-          {cdnLabel}
-        </Badge>
+        <div className="flex min-h-5 items-center">
+          <Badge className="max-w-full truncate" variant={cdnVariant}>
+            {cdnLabel}
+          </Badge>
+        </div>
       </div>
     </button>
   );
