@@ -41,10 +41,10 @@
     Для пустой папки показывать не общий текст, а контекстные действия: Upload, Create folder, Drop files here. Для пустого поиска: `No results for "..."` + кнопка очистки поиска. Empty state должен помогать следующему действию.
 
 13. **Глобальный upload tray**
-    При загрузке нескольких файлов показать небольшой tray в углу: текущий файл, общий progress, ошибки, кнопка свернуть. Это лучше, чем только overlay, потому что пользователь может продолжать работать во время загрузки.
+    При загрузке нескольких файлов показать небольшой tray в углу: текущий файл, общий progress, ошибки, кнопка свернуть. Это лучше, чем только overlay, потому что пользователь может продолжать работать во время загрузки. **Done:** header Upload и drop-upload используют compact tray с общим progress, per-file статусами, сворачиванием и очисткой завершенных файлов.
 
 14. **Upload queue с retry**
-    Для каждого файла в очереди показывать статус: waiting, uploading, ready, failed. Для failed дать retry. Это особенно важно для медиа-сервиса, где файлы могут быть большими и сеть нестабильной.
+    Для каждого файла в очереди показывать статус: waiting, uploading, ready, failed. Для failed дать retry. Это особенно важно для медиа-сервиса, где файлы могут быть большими и сеть нестабильной. **Done:** каждый файл в очереди получает waiting/uploading/ready/failed status, failed uploads остаются в tray и могут быть запущены повторно через Retry.
 
 15. **Storage usage как тонкий quota meter**
     Текущий компактный формат сохранить, но добавить тонкую progress-line: used / limit, warning при 80%, danger при 95%. Не делать большой card: метрика должна быть видимой, но не доминировать.
@@ -69,7 +69,7 @@
 1. Grid-view + preview-first правую панель. **Done:** добавлен переключатель List/Grid и preview-first asset details panel.
 2. Batch action bar + drag selection рамкой. **Done:** batch action bar и drag selection рамкой shipped.
 3. CDN lifecycle + public URL snippets. **Done:** lifecycle card, compact Public CDN URL, and hidden optional snippets shipped.
-4. Upload tray + retry queue.
+4. Upload tray + retry queue. **Done:** compact upload tray and per-file retry queue shipped.
 5. Keyboard shortcuts + command palette.
 6. Activity/audit feed.
 

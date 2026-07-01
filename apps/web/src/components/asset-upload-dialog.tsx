@@ -4,11 +4,12 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { CloudUploadIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
-import { uploadFilesSequentially } from "@/components/asset-upload-client";
+import { useId, useRef } from "react";
+import {
+  AssetUploadTray,
+  useAssetUploadQueue,
+} from "@/components/asset-upload-queue";
 import { TooltipHint } from "@/components/tooltip-hint";
-
-const progressIntentStarted = 1;
 
 export const AssetUploadDialog = ({
   disabled,
@@ -22,35 +23,12 @@ export const AssetUploadDialog = ({
   const router = useRouter();
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const uploadFiles = async (files: File[]) => {
-    if (!(files.length && workspaceId) || isUploading) {
-      return;
-    }
-
-    setError(null);
-    setIsUploading(true);
-
-    try {
-      await uploadFilesSequentially({
-        cdnEnabled: false,
-        files,
-        folderPath,
-        onFileStart: () => undefined,
-        onProgress: () => progressIntentStarted,
-        workspaceId,
-      });
-      router.refresh();
-    } catch (uploadError) {
-      setError(
-        uploadError instanceof Error ? uploadError.message : "Upload failed"
-      );
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  const uploadQueue = useAssetUploadQueue({
+    onSettled: router.refresh,
+    workspaceId,
+  });
+  const isUploading =
+    uploadQueue.summary.uploading > 0 || uploadQueue.summary.waiting > 0;
 
   return (
     <div className="relative">
@@ -61,15 +39,9 @@ export const AssetUploadDialog = ({
         id={fileInputId}
         multiple
         onChange={(event) => {
-          uploadFiles(Array.from(event.target.files ?? [])).catch(
-            (uploadError: unknown) => {
-              setError(
-                uploadError instanceof Error
-                  ? uploadError.message
-                  : "Upload failed"
-              );
-              setIsUploading(false);
-            }
+          uploadQueue.enqueueFiles(
+            Array.from(event.target.files ?? []),
+            folderPath
           );
           event.target.value = "";
         }}
@@ -87,11 +59,7 @@ export const AssetUploadDialog = ({
           {isUploading ? "Uploading..." : "Upload"}
         </Button>
       </TooltipHint>
-      {error ? (
-        <div className="absolute right-0 mt-1 w-56 text-destructive text-xs">
-          {error}
-        </div>
-      ) : null}
+      <AssetUploadTray {...uploadQueue} />
     </div>
   );
 };

@@ -3,7 +3,6 @@
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Progress } from "@workspace/ui/components/progress";
 import {
   Select,
   SelectContent,
@@ -56,7 +55,10 @@ import {
   useTransition,
 } from "react";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
-import { uploadFilesSequentially } from "@/components/asset-upload-client";
+import {
+  AssetUploadTray,
+  useAssetUploadQueue,
+} from "@/components/asset-upload-queue";
 import {
   AssetTableRowClient,
   FolderTableRowClient,
@@ -875,6 +877,10 @@ export const FileManager = ({
   workspaceId: string;
 }) => {
   const router = useRouter();
+  const uploadQueue = useAssetUploadQueue({
+    onSettled: router.refresh,
+    workspaceId,
+  });
   const fileAreaRef = useRef<HTMLDivElement | null>(null);
   const baseSelectionIdsRef = useRef<Set<string>>(new Set());
   const [optimisticAssets, setOptimisticAssets] = useState(assets);
@@ -883,11 +889,7 @@ export const FileManager = ({
   );
   const [activeFolderPath, setActiveFolderPath] = useState("");
   const [dragDepth, setDragDepth] = useState(0);
-  const [dropError, setDropError] = useState<string | null>(null);
-  const [dropProgress, setDropProgress] = useState(0);
-  const [dropUploadLabel, setDropUploadLabel] = useState<string | null>(null);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [isDropUploading, setIsDropUploading] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [isRefreshingSelection, setIsRefreshingSelection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1432,41 +1434,15 @@ export const FileManager = ({
     }
   };
   const uploadDroppedFiles = useCallback(
-    async (files: File[], folderPath = selectedFolderPath) => {
-      if (!(files.length && workspaceId) || isDropUploading) {
+    (files: File[], folderPath = selectedFolderPath) => {
+      if (!(files.length && workspaceId)) {
         return;
       }
 
-      setDropError(null);
-      setDropProgress(1);
-      setDropUploadLabel(
-        `${files.length} file${files.length === 1 ? "" : "s"}`
-      );
-      setIsDropUploading(true);
-
-      try {
-        await uploadFilesSequentially({
-          cdnEnabled: false,
-          files,
-          folderPath,
-          onFileStart: (file) => setDropUploadLabel(file.name),
-          onProgress: setDropProgress,
-          workspaceId,
-        });
-        setDragDepth(0);
-        setDropProgress(0);
-        setDropUploadLabel(null);
-        setIsDropUploading(false);
-        router.refresh();
-      } catch (uploadError) {
-        setDropError(
-          uploadError instanceof Error ? uploadError.message : "Upload failed"
-        );
-        setDropProgress(0);
-        setIsDropUploading(false);
-      }
+      uploadQueue.enqueueFiles(files, folderPath);
+      setDragDepth(0);
     },
-    [isDropUploading, router, selectedFolderPath, workspaceId]
+    [selectedFolderPath, uploadQueue, workspaceId]
   );
 
   useEffect(() => {
@@ -1513,12 +1489,7 @@ export const FileManager = ({
       setDragDepth(0);
 
       const files = Array.from(event.dataTransfer?.files ?? []);
-      uploadDroppedFiles(files).catch((uploadError: unknown) => {
-        setDropError(
-          uploadError instanceof Error ? uploadError.message : "Upload failed"
-        );
-        setIsDropUploading(false);
-      });
+      uploadDroppedFiles(files);
     };
 
     window.addEventListener("dragenter", handleDragEnter);
@@ -1569,25 +1540,17 @@ export const FileManager = ({
 
   return (
     <div className="relative grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]">
-      {isDraggingFiles || isDropUploading ? (
+      {isDraggingFiles ? (
         <div className="pointer-events-none fixed inset-0 z-50 border-2 border-primary border-dashed bg-primary/5 p-4 backdrop-blur-[1px]">
           <div className="mx-auto mt-6 flex max-w-md items-center gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
             <CloudUploadIcon className="size-5 text-primary" />
             <div className="min-w-0 flex-1">
-              <div className="font-medium text-sm">
-                {isDropUploading
-                  ? "Uploading files"
-                  : "Drop anywhere to upload"}
-              </div>
+              <div className="font-medium text-sm">Drop anywhere to upload</div>
               <div className="truncate text-muted-foreground text-xs">
-                {dropUploadLabel ??
-                  `Files will be added to ${selectedFolderPath}`}
+                Files will be added to {selectedFolderPath}
               </div>
             </div>
           </div>
-          {dropProgress > 0 ? (
-            <Progress className="mx-auto mt-3 max-w-md" value={dropProgress} />
-          ) : null}
         </div>
       ) : null}
       {moveTargets.length ? (
@@ -1617,16 +1580,6 @@ export const FileManager = ({
               {folder.name}
             </button>
           ))}
-        </div>
-      ) : null}
-      {isDropUploading ? (
-        <div className="sr-only" role="status">
-          Uploading files
-        </div>
-      ) : null}
-      {dropError ? (
-        <div className="absolute -top-8 right-0 text-destructive text-xs">
-          {dropError}
         </div>
       ) : null}
       {moveError ? (
@@ -1814,18 +1767,9 @@ export const FileManager = ({
                       onDragStart={(folderPath) =>
                         setDraggedItemId(getFolderItemId(folderPath))
                       }
-                      onFileDrop={(folderPath, files) => {
-                        uploadDroppedFiles(files, folderPath).catch(
-                          (uploadError: unknown) => {
-                            setDropError(
-                              uploadError instanceof Error
-                                ? uploadError.message
-                                : "Upload failed"
-                            );
-                            setIsDropUploading(false);
-                          }
-                        );
-                      }}
+                      onFileDrop={(folderPath, files) =>
+                        uploadDroppedFiles(files, folderPath)
+                      }
                       onOpen={(folderPath) => {
                         setActiveFolderPath(folderPath);
                         setLastSelectedItemId(getFolderItemId(folderPath));
@@ -1935,18 +1879,9 @@ export const FileManager = ({
                     onDragStart={(folderPath) =>
                       setDraggedItemId(getFolderItemId(folderPath))
                     }
-                    onFileDrop={(folderPath, files) => {
-                      uploadDroppedFiles(files, folderPath).catch(
-                        (uploadError: unknown) => {
-                          setDropError(
-                            uploadError instanceof Error
-                              ? uploadError.message
-                              : "Upload failed"
-                          );
-                          setIsDropUploading(false);
-                        }
-                      );
-                    }}
+                    onFileDrop={(folderPath, files) =>
+                      uploadDroppedFiles(files, folderPath)
+                    }
                     onOpen={(folderPath) => {
                       setActiveFolderPath(folderPath);
                       setLastSelectedItemId(getFolderItemId(folderPath));
@@ -2035,6 +1970,7 @@ export const FileManager = ({
         isRefreshing={isRefreshingSelection}
         onAssetUpdated={handleAssetUpdated}
       />
+      <AssetUploadTray {...uploadQueue} />
       {selectMode ? (
         <SelectionActionBar
           allVisibleItemsSelected={allVisibleItemsSelected}
