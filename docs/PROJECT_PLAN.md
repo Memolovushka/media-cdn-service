@@ -119,6 +119,7 @@ HTTP API:
 - 2026-07-01 quota enforcement added: workspaces now have a default 1 GB storage quota, upload intent blocks files that would exceed quota, and the dashboard storage indicator uses the workspace quota.
 - 2026-07-01 UI/UX recommendations execution started: the file manager now has List/Grid view switching, media thumbnail cards, and a preview-first asset details panel.
 - 2026-07-01 UI/UX recommendations continued: selection mode now uses a floating batch action bar for Select all, Publish, Move, and Clear without resizing the file list.
+- 2026-07-01 UI/UX recommendations continued: file selection now supports an OS-style drag selection rectangle across visible files and folders.
 
 ### Phase 1: Foundation
 
@@ -294,7 +295,7 @@ Test plan:
 ## Ближайший порядок работ
 
 1. Permission and state-transition tests.
-2. Continue UI/UX recommendations: drag selection рамкой and CDN lifecycle polish.
+2. Continue UI/UX recommendations: CDN lifecycle polish and public URL snippets.
 3. Account settings polish: email change, profile name update, active sessions.
 4. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
 5. Audit log UI.

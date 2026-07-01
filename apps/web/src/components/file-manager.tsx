@@ -47,9 +47,11 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import {
   type ComponentProps,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -89,6 +91,14 @@ type SelectableItem =
   | { asset: DashboardAsset; id: string; kind: "asset" }
   | { folder: DashboardFolder; id: string; kind: "folder" };
 
+interface SelectionDragState {
+  currentClientX: number;
+  currentClientY: number;
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+}
+
 type ViewMode = "grid" | "list";
 
 const bytesPerUnit = 1024;
@@ -104,6 +114,15 @@ const hasFilesTransfer = (
   dataTransfer: DataTransfer | null
 ): dataTransfer is DataTransfer =>
   Boolean(dataTransfer?.types.includes("Files"));
+
+const isInteractiveSelectionTarget = (target: EventTarget | null) =>
+  target instanceof Element &&
+  !target.closest("[data-selection-drag-handle]") &&
+  Boolean(
+    target.closest(
+      "a, button, input, textarea, select, [role='button'], [role='menu'], [data-selectable-id]"
+    )
+  );
 
 const getAssetCdnState = (asset: DashboardAsset) => {
   const latestVersion = asset.versions.at(0) ?? null;
@@ -276,6 +295,46 @@ const getGridCardClassName = ({
   }
 
   return "border-border bg-background";
+};
+
+const getSelectionBoxStyle = (
+  dragState: SelectionDragState,
+  container: HTMLDivElement | null
+) => {
+  const containerRect = container?.getBoundingClientRect();
+
+  if (!containerRect) {
+    return null;
+  }
+
+  const left = Math.min(dragState.startClientX, dragState.currentClientX);
+  const top = Math.min(dragState.startClientY, dragState.currentClientY);
+  const width = Math.abs(dragState.currentClientX - dragState.startClientX);
+  const height = Math.abs(dragState.currentClientY - dragState.startClientY);
+
+  return {
+    height,
+    left: left - containerRect.left,
+    top: top - containerRect.top,
+    width,
+  };
+};
+
+const isElementInsideSelectionBox = (
+  elementRect: DOMRect,
+  dragState: SelectionDragState
+) => {
+  const left = Math.min(dragState.startClientX, dragState.currentClientX);
+  const right = Math.max(dragState.startClientX, dragState.currentClientX);
+  const top = Math.min(dragState.startClientY, dragState.currentClientY);
+  const bottom = Math.max(dragState.startClientY, dragState.currentClientY);
+
+  return (
+    elementRect.left <= right &&
+    elementRect.right >= left &&
+    elementRect.top <= bottom &&
+    elementRect.bottom >= top
+  );
 };
 
 const assetHref = ({
@@ -522,6 +581,7 @@ const FolderGridCard = ({
   onOpen,
   selected,
   selectedForBulk,
+  selectableId,
   selectMode,
 }: {
   folder: DashboardFolder;
@@ -537,11 +597,13 @@ const FolderGridCard = ({
   onOpen: (folderPath: string) => void;
   selected: boolean;
   selectedForBulk: boolean;
+  selectableId: string;
   selectMode: boolean;
 }) => (
   <button
     aria-pressed={selected || selectedForBulk}
     className={`group flex min-h-36 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+    data-selectable-id={selectableId}
     draggable
     onClick={(event) => {
       if (event.shiftKey) {
@@ -607,6 +669,7 @@ const AssetGridCard = ({
   previewUrl,
   selected,
   selectedForBulk,
+  selectableId,
   selectMode,
   sizeLabel,
 }: {
@@ -620,6 +683,7 @@ const AssetGridCard = ({
   previewUrl: null | string;
   selected: boolean;
   selectedForBulk: boolean;
+  selectableId: string;
   selectMode: boolean;
   sizeLabel: string;
 }) => {
@@ -630,6 +694,7 @@ const AssetGridCard = ({
     <button
       aria-pressed={selected || selectedForBulk}
       className={`group flex min-h-48 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+      data-selectable-id={selectableId}
       draggable
       onClick={(event) => {
         if (event.shiftKey) {
@@ -810,6 +875,8 @@ export const FileManager = ({
   workspaceId: string;
 }) => {
   const router = useRouter();
+  const fileAreaRef = useRef<HTMLDivElement | null>(null);
+  const baseSelectionIdsRef = useRef<Set<string>>(new Set());
   const [optimisticAssets, setOptimisticAssets] = useState(assets);
   const [activeAssetId, setActiveAssetId] = useState(
     selectedAssetId || assets.at(0)?.id || ""
@@ -826,6 +893,9 @@ export const FileManager = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [selectionDrag, setSelectionDrag] = useState<SelectionDragState | null>(
+    null
+  );
   const [selectMode, setSelectMode] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
     () => new Set()
@@ -1002,6 +1072,97 @@ export const FileManager = ({
 
       return nextIds;
     });
+  };
+  const updateSelectionFromDrag = (dragState: SelectionDragState) => {
+    const fileArea = fileAreaRef.current;
+
+    if (!fileArea) {
+      return;
+    }
+
+    const selectedByBox = new Set(baseSelectionIdsRef.current);
+    const selectableElements = fileArea.querySelectorAll<HTMLElement>(
+      "[data-selectable-id]"
+    );
+
+    for (const element of selectableElements) {
+      const itemId = element.dataset.selectableId;
+
+      if (
+        itemId &&
+        isElementInsideSelectionBox(element.getBoundingClientRect(), dragState)
+      ) {
+        selectedByBox.add(itemId);
+      }
+    }
+
+    setSelectedItemIds(selectedByBox);
+  };
+  const handleSelectionPointerDown = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (
+      event.button !== 0 ||
+      isInteractiveSelectionTarget(event.target) ||
+      !hasFileManagerItems
+    ) {
+      return;
+    }
+
+    const fileArea = fileAreaRef.current;
+
+    if (!fileArea) {
+      return;
+    }
+
+    event.preventDefault();
+    fileArea.setPointerCapture(event.pointerId);
+
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      baseSelectionIdsRef.current = new Set(selectedItemIds);
+    } else {
+      baseSelectionIdsRef.current = new Set();
+    }
+
+    const nextDragState = {
+      currentClientX: event.clientX,
+      currentClientY: event.clientY,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+    };
+
+    setSelectMode(true);
+    setSelectionDrag(nextDragState);
+    updateSelectionFromDrag(nextDragState);
+  };
+  const handleSelectionPointerMove = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (!selectionDrag || event.pointerId !== selectionDrag.pointerId) {
+      return;
+    }
+
+    const nextDragState = {
+      ...selectionDrag,
+      currentClientX: event.clientX,
+      currentClientY: event.clientY,
+    };
+
+    setSelectionDrag(nextDragState);
+    updateSelectionFromDrag(nextDragState);
+  };
+  const finishSelectionDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!selectionDrag || event.pointerId !== selectionDrag.pointerId) {
+      return;
+    }
+
+    if (fileAreaRef.current?.hasPointerCapture(event.pointerId)) {
+      fileAreaRef.current.releasePointerCapture(event.pointerId);
+    }
+
+    setSelectionDrag(null);
+    baseSelectionIdsRef.current = new Set();
   };
   const publishSelectedAssets = () => {
     if (!publishableSelectedAssets.length || isBulkPending) {
@@ -1402,6 +1563,9 @@ export const FileManager = ({
           )
       )
     : [];
+  const selectionBoxStyle = selectionDrag
+    ? getSelectionBoxStyle(selectionDrag, fileAreaRef.current)
+    : null;
 
   return (
     <div className="relative grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]">
@@ -1470,7 +1634,20 @@ export const FileManager = ({
           {moveError}
         </div>
       ) : null}
-      <div className="flex min-h-96 flex-col overflow-x-auto rounded-lg border">
+      <div
+        className="relative flex min-h-96 select-none flex-col overflow-x-auto rounded-lg border"
+        onPointerCancel={finishSelectionDrag}
+        onPointerDown={handleSelectionPointerDown}
+        onPointerMove={handleSelectionPointerMove}
+        onPointerUp={finishSelectionDrag}
+        ref={fileAreaRef}
+      >
+        {selectionBoxStyle ? (
+          <div
+            className="pointer-events-none absolute z-20 rounded-sm border border-primary bg-primary/10"
+            style={selectionBoxStyle}
+          />
+        ) : null}
         <div className="flex flex-col gap-2 border-b px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
@@ -1653,6 +1830,7 @@ export const FileManager = ({
                         setActiveFolderPath(folderPath);
                         setLastSelectedItemId(getFolderItemId(folderPath));
                       }}
+                      selectableId={getFolderItemId(folder.path)}
                       selected={activeFolderPath === folder.path}
                       selectedForBulk={selectedItemIds.has(
                         getFolderItemId(folder.path)
@@ -1697,6 +1875,7 @@ export const FileManager = ({
                           setIsRefreshingSelection(true);
                         }}
                         previewUrl={previewUrl}
+                        selectableId={getAssetItemId(asset.id)}
                         selected={selectedAsset?.id === asset.id}
                         selectedForBulk={selectedItemIds.has(
                           getAssetItemId(asset.id)
@@ -1780,6 +1959,7 @@ export const FileManager = ({
                         }).toString()}`
                       );
                     }}
+                    selectableId={getFolderItemId(folder.path)}
                     selected={activeFolderPath === folder.path}
                     selectedForBulk={selectedItemIds.has(
                       getFolderItemId(folder.path)
@@ -1821,6 +2001,7 @@ export const FileManager = ({
                         );
                       }}
                       previewUrl={previewUrl}
+                      selectableId={getAssetItemId(asset.id)}
                       selected={selectedAsset?.id === asset.id}
                       selectedForBulk={selectedItemIds.has(
                         getAssetItemId(asset.id)
@@ -1843,6 +2024,7 @@ export const FileManager = ({
         <button
           aria-label="Clear selected items"
           className="min-h-12 flex-1 cursor-default bg-transparent"
+          data-selection-drag-handle
           onClick={clearSelection}
           tabIndex={-1}
           type="button"

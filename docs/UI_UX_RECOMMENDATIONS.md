@@ -17,7 +17,7 @@
    Путь папки должен ощущаться как адресная строка: каждый сегмент кликабельный, рядом компактная кнопка копирования пути, поддержка перехода клавиатурой. Это усиливает ощущение OS-like file browser.
 
 5. **Drag selection рамкой**
-   Добавить выделение прямоугольной рамкой по области файлов, как в Finder/Explorer. Это современнее чекбоксов и хорошо сочетается с уже выбранным направлением: row highlight + Shift-range.
+   Добавить выделение прямоугольной рамкой по области файлов, как в Finder/Explorer. Это современнее чекбоксов и хорошо сочетается с уже выбранным направлением: row highlight + Shift-range. **Done:** пустая область файлов поддерживает pointer-drag рамку, которая выделяет пересеченные файлы и папки.
 
 6. **Умная зона drop-target при переносе**
    При drag файлов или папок показывать подсветку доступных папок, root-зоны и недоступных целей. Для запретных целей показывать короткий inline reason: `Cannot move folder into itself`.
@@ -67,7 +67,7 @@
 ## Приоритетный порядок
 
 1. Grid-view + preview-first правую панель. **Started:** добавлен переключатель List/Grid и preview-first asset details panel.
-2. Batch action bar + drag selection рамкой. **Partly done:** batch action bar shipped, drag selection рамкой next.
+2. Batch action bar + drag selection рамкой. **Done:** batch action bar и drag selection рамкой shipped.
 3. CDN lifecycle + public URL snippets.
 4. Upload tray + retry queue.
 5. Keyboard shortcuts + command palette.

@@ -169,6 +169,7 @@ export const FolderTableRowClient = ({
   onOpen,
   selected = false,
   selectedForBulk = false,
+  selectableId,
   selectMode = false,
   workspaceId,
 }: {
@@ -187,6 +188,7 @@ export const FolderTableRowClient = ({
   onOpen?: (folderPath: string) => void;
   selected?: boolean;
   selectedForBulk?: boolean;
+  selectableId?: string;
   selectMode?: boolean;
   workspaceId: string;
 }) => {
@@ -236,6 +238,7 @@ export const FolderTableRowClient = ({
           selected,
           selectedForBulk,
         })}
+        data-selectable-id={selectableId}
         draggable
         onClick={(event) => {
           if (event.shiftKey) {
@@ -396,6 +399,7 @@ export const AssetTableRowClient = ({
   selectMode = false,
   selected,
   selectedForBulk = false,
+  selectableId,
   sizeLabel,
 }: {
   assetId: string;
@@ -418,6 +422,7 @@ export const AssetTableRowClient = ({
   selectMode?: boolean;
   selected: boolean;
   selectedForBulk?: boolean;
+  selectableId?: string;
   sizeLabel: string;
 }) => {
   const router = useRouter();
@@ -457,6 +462,7 @@ export const AssetTableRowClient = ({
         aria-current={selected ? "page" : undefined}
         aria-selected={selected || selectedForBulk}
         className={getAssetRowClassName({ selected, selectedForBulk })}
+        data-selectable-id={selectableId}
         draggable
         onClick={(event) => {
           if (event.shiftKey) {
