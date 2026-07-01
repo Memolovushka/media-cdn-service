@@ -541,7 +541,7 @@ const FolderGridCard = ({
 }) => (
   <button
     aria-pressed={selected || selectedForBulk}
-    className={`group flex min-h-36 flex-col rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+    className={`group flex min-h-36 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
     draggable
     onClick={(event) => {
       if (event.shiftKey) {
@@ -589,7 +589,7 @@ const FolderGridCard = ({
     <div className="flex flex-1 items-center justify-center rounded-md bg-muted/30">
       <FolderIcon className="size-11 text-muted-foreground transition group-hover:text-primary" />
     </div>
-    <div className="mt-3 min-w-0">
+    <div className="mt-3 w-full min-w-0">
       <div className="truncate font-medium text-sm">{folder.name}</div>
       <div className="truncate text-muted-foreground text-xs">Folder</div>
     </div>
@@ -629,7 +629,7 @@ const AssetGridCard = ({
   return (
     <button
       aria-pressed={selected || selectedForBulk}
-      className={`group flex min-h-48 flex-col rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+      className={`group flex min-h-48 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
       draggable
       onClick={(event) => {
         if (event.shiftKey) {
@@ -666,8 +666,8 @@ const AssetGridCard = ({
           <AssetIcon className="size-10 text-muted-foreground transition group-hover:text-primary" />
         )}
       </div>
-      <div className="mt-3 flex min-w-0 flex-1 flex-col gap-2">
-        <div className="min-w-0">
+      <div className="mt-3 flex w-full min-w-0 flex-1 flex-col gap-2">
+        <div className="w-full min-w-0">
           <div className="truncate font-medium text-sm">{asset.filename}</div>
           <div className="truncate text-muted-foreground text-xs">
             {asset.mimeType} - {sizeLabel}
