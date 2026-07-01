@@ -15,6 +15,13 @@
       "when": 1781874000000,
       "tag": "0001_asset_folders",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782914481956,
+      "tag": "0002_dusty_blackheart",
+      "breakpoints": true
     }
   ]
 }

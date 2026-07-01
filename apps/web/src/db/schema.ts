@@ -15,6 +15,11 @@ const timestamps = {
     .notNull()
     .default(sql`(unixepoch())`),
 };
+const bytesPerKilobyte = 1024;
+const kilobytesPerMegabyte = 1024;
+const megabytesPerGigabyte = 1024;
+const defaultWorkspaceStorageQuotaBytes =
+  bytesPerKilobyte * kilobytesPerMegabyte * megabytesPerGigabyte;
 
 export const users = sqliteTable(
   "users",
@@ -93,6 +98,9 @@ export const workspaces = sqliteTable(
     ownerId: text("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    storageQuotaBytes: integer("storage_quota_bytes")
+      .notNull()
+      .default(defaultWorkspaceStorageQuotaBytes),
     ...timestamps,
   },
   (table) => [

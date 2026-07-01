@@ -1,4 +1,8 @@
-import { createUploadIntent, listWorkspaceAssets } from "@/server/assets";
+import {
+  createUploadIntent,
+  listWorkspaceAssets,
+  WorkspaceQuotaExceededError,
+} from "@/server/assets";
 import { getSessionUser } from "@/server/auth";
 import { getAppContext } from "@/server/context";
 import { forbidden, HTTP_STATUS, jsonError, unauthorized } from "@/server/http";
@@ -79,6 +83,10 @@ export const POST = async (request: Request) => {
       { status: HTTP_STATUS.created }
     );
   } catch (error) {
+    if (error instanceof WorkspaceQuotaExceededError) {
+      return jsonError(error.message, HTTP_STATUS.payloadTooLarge);
+    }
+
     return jsonError(
       error instanceof Error ? error.message : "Upload failed",
       HTTP_STATUS.badRequest

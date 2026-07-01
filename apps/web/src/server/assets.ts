@@ -6,10 +6,12 @@ import {
   assetVersions,
   auditEvents,
   workspaceMembers,
+  workspaces,
 } from "@/db/schema";
 
 const bytesPerKilobyte = 1024;
 const kilobytesPerMegabyte = 1024;
+const megabytesPerGigabyte = 1024;
 const maxUploadMegabytes = 250;
 const maxFilenameLength = 180;
 const maxFolderPathLength = 240;
@@ -19,6 +21,8 @@ const firstVersion = 1;
 const trailingSlashesPattern = /\/+$/;
 const maxUploadBytes =
   bytesPerKilobyte * kilobytesPerMegabyte * maxUploadMegabytes;
+const defaultWorkspaceStorageQuotaBytes =
+  bytesPerKilobyte * kilobytesPerMegabyte * megabytesPerGigabyte;
 const syntheticFolderIdPrefix = "asset-path";
 export const publicAssetCacheControl = "public, max-age=31536000, immutable";
 
@@ -59,8 +63,31 @@ export interface WorkspaceStorageUsage {
   cdnCopyCount: number;
   privateBytes: number;
   publicBytes: number;
+  quotaBytes: number;
   readyVersionCount: number;
   totalBytes: number;
+}
+
+export class WorkspaceQuotaExceededError extends Error {
+  constructor({
+    requestedBytes,
+    quotaBytes,
+    usedBytes,
+  }: {
+    requestedBytes: number;
+    quotaBytes: number;
+    usedBytes: number;
+  }) {
+    super("Workspace storage quota exceeded");
+    this.name = "WorkspaceQuotaExceededError";
+    this.requestedBytes = requestedBytes;
+    this.quotaBytes = quotaBytes;
+    this.usedBytes = usedBytes;
+  }
+
+  quotaBytes: number;
+  requestedBytes: number;
+  usedBytes: number;
 }
 
 export const sanitizeFilename = (filename: string) => {
@@ -196,6 +223,10 @@ export const getWorkspaceStorageUsage = async ({
     return null;
   }
 
+  const workspace = await db.query.workspaces.findFirst({
+    columns: { storageQuotaBytes: true },
+    where: eq(workspaces.id, workspaceId),
+  });
   const objectSize = sql<number>`coalesce(${assetVersions.sizeBytes}, ${assets.sizeBytes}, 0)`;
   const [usage] = await db
     .select({
@@ -221,9 +252,28 @@ export const getWorkspaceStorageUsage = async ({
     cdnCopyCount: Number(usage?.cdnCopyCount ?? 0),
     privateBytes,
     publicBytes,
+    quotaBytes:
+      workspace?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes,
     readyVersionCount: Number(usage?.readyVersionCount ?? 0),
     totalBytes: privateBytes + publicBytes,
   };
+};
+
+const getWorkspaceReservedStorageBytes = async ({
+  db,
+  workspaceId,
+}: {
+  db: Db;
+  workspaceId: string;
+}) => {
+  const [usage] = await db
+    .select({
+      totalBytes: sql<number>`coalesce(sum(${assets.sizeBytes}), 0)`,
+    })
+    .from(assets)
+    .where(and(eq(assets.workspaceId, workspaceId), isNull(assets.deletedAt)));
+
+  return Number(usage?.totalBytes ?? 0);
 };
 
 export const createWorkspaceFolder = async ({
@@ -610,6 +660,25 @@ export const createUploadIntent = async ({
 
   if (!(membership && canWriteWorkspace(membership.role))) {
     return null;
+  }
+
+  const workspace = await db.query.workspaces.findFirst({
+    columns: { storageQuotaBytes: true },
+    where: eq(workspaces.id, input.workspaceId),
+  });
+  const quotaBytes =
+    workspace?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes;
+  const usedBytes = await getWorkspaceReservedStorageBytes({
+    db,
+    workspaceId: input.workspaceId,
+  });
+
+  if (usedBytes + input.sizeBytes > quotaBytes) {
+    throw new WorkspaceQuotaExceededError({
+      requestedBytes: input.sizeBytes,
+      quotaBytes,
+      usedBytes,
+    });
   }
 
   const assetId = crypto.randomUUID();

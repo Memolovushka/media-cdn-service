@@ -116,6 +116,7 @@ HTTP API:
 - Account settings started: dashboard settings panel, sign out action, and email/password change form are in place.
 - 2026-06-29 feedback-driven UX pass completed: full-page drag-and-drop upload, upload into any visible folder by dropping onto it, asset drag-move targets, compact header storage usage, inline photo preview in the detail panel, and removal of the redundant preview eye action are deployed.
 - 2026-06-29 work note: today's work followed live product feedback and visual cleanup rather than the planned next-order backlog.
+- 2026-07-01 quota enforcement added: workspaces now have a default 1 GB storage quota, upload intent blocks files that would exceed quota, and the dashboard storage indicator uses the workspace quota.
 
 ### Phase 1: Foundation
 
@@ -213,7 +214,7 @@ Acceptance criteria:
 
 ### Phase 4: Production Hardening
 
-- [ ] Добавить quotas, rate limits, token scopes, virus/malware scanning hook и SVG safety.
+- [ ] Добавить rate limits, token scopes, virus/malware scanning hook и SVG safety.
 - [x] Подключить Better Auth Infra Dash для production auth visibility.
 - [x] Подключить Better Auth Sentinel client для security telemetry/challenges.
 - [x] Настроить обязательные production auth secrets: `BETTER_AUTH_SECRET` и `BETTER_AUTH_API_KEY`.
@@ -235,8 +236,8 @@ Acceptance criteria:
 Security и reliability задачи лучше вводить после UI happy path, но до публичного использования сервиса.
 
 - [x] Добавить read-only workspace storage usage calculation из D1 metadata для dashboard.
-- [ ] Добавить workspace quota fields или отдельную `workspace_usage` модель для quota enforcement.
-- [ ] Ограничить upload intent по quota до записи `assets`.
+- [x] Добавить workspace quota fields или отдельную `workspace_usage` модель для quota enforcement.
+- [x] Ограничить upload intent по quota до записи `assets`.
 - [ ] Добавить per-user/per-workspace rate limits для upload intent и content upload.
 - [ ] Реализовать API token hashing, prefix display и scoped permissions.
 - [ ] Добавить token auth path рядом с session auth для server-to-server API.
