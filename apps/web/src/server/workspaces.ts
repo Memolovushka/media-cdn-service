@@ -1,4 +1,4 @@
-import { like } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { auditEvents, workspaceMembers, workspaces } from "@/db/schema";
 import type { AuthUser } from "./assets";
@@ -78,5 +78,52 @@ export const createWorkspaceForUser = async ({
     id: workspaceId,
     name: workspaceName,
     slug,
+  };
+};
+
+export const renameWorkspaceForUser = async ({
+  db,
+  name,
+  user,
+  workspaceId,
+}: {
+  db: Db;
+  name: string;
+  user: AuthUser;
+  workspaceId: string;
+}) => {
+  const workspaceName = normalizeWorkspaceName(name);
+  const membership = await db.query.workspaceMembers.findFirst({
+    where: and(
+      eq(workspaceMembers.workspaceId, workspaceId),
+      eq(workspaceMembers.userId, user.id)
+    ),
+  });
+
+  if (!(membership?.role === "owner" || membership?.role === "admin")) {
+    return null;
+  }
+
+  const now = new Date();
+
+  await db
+    .update(workspaces)
+    .set({
+      name: workspaceName,
+      updatedAt: now,
+    })
+    .where(eq(workspaces.id, workspaceId));
+
+  await db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    workspaceId,
+    actorUserId: user.id,
+    eventType: "workspace.renamed",
+    metadataJson: JSON.stringify({ name: workspaceName }),
+  });
+
+  return {
+    id: workspaceId,
+    name: workspaceName,
   };
 };
