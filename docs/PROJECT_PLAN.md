@@ -302,7 +302,7 @@ Test plan:
 
 Current known state:
 
-- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `0a2b34e`.
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `42480b7`.
 - `GET /api/setup/status` returns `ok=true`.
 - Confirmed production bindings:
   - `bindings.DB=true`
@@ -315,7 +315,7 @@ Current known state:
   - email signup returns `200`;
   - `POST /api/workspaces` returns `201`;
   - dashboard render after workspace creation returns `200`.
-- Confirmed latest production setup check after commit `0a2b34e`:
+- Confirmed latest production setup check after commit `42480b7`:
   - `ok=true`;
   - `bindings.DB=true`;
   - `bindings.MEDIA_BUCKET=true`;
@@ -328,6 +328,8 @@ Current known state:
   - `d41a12c`: compact header storage usage;
   - `8e815e5`: inline image previews;
   - `0a2b34e`: redundant preview action removed.
+- Confirmed UI/UX recommendations deploy on 2026-07-01:
+  - `42480b7`: List/Grid file manager view switching, media thumbnail cards, preview-first asset details panel, and `docs/UI_UX_RECOMMENDATIONS.md`.
 - Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP
