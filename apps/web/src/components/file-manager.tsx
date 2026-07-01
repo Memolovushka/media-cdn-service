@@ -424,6 +424,7 @@ export const FileManager = ({
   const [activeAssetId, setActiveAssetId] = useState(
     selectedAssetId || assets.at(0)?.id || ""
   );
+  const [activeFolderPath, setActiveFolderPath] = useState("");
   const [dragDepth, setDragDepth] = useState(0);
   const [dropError, setDropError] = useState<string | null>(null);
   const [dropProgress, setDropProgress] = useState(0);
@@ -450,6 +451,7 @@ export const FileManager = ({
     const nextActiveAssetId = selectedAssetId || assets.at(0)?.id || "";
 
     setActiveAssetId(nextActiveAssetId);
+    setActiveFolderPath("");
     setIsRefreshingSelection(false);
     setSelectedItemIds(new Set());
     setLastSelectedItemId((currentAnchorId) => {
@@ -1301,6 +1303,11 @@ export const FileManager = ({
                         }
                       );
                     }}
+                    onOpen={(folderPath) => {
+                      setActiveFolderPath(folderPath);
+                      setLastSelectedItemId(getFolderItemId(folderPath));
+                    }}
+                    selected={activeFolderPath === folder.path}
                     selectedForBulk={selectedItemIds.has(
                       getFolderItemId(folder.path)
                     )}

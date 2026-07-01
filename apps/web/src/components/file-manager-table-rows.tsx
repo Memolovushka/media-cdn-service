@@ -147,14 +147,14 @@ const getAssetRowClassName = ({
   selectedForBulk: boolean;
 }) => {
   if (selectedForBulk) {
-    return "cursor-pointer bg-primary/10 hover:bg-primary/15";
+    return "cursor-pointer border-l-2 border-l-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.22)] hover:bg-primary/20";
   }
 
   if (selected) {
-    return "cursor-pointer bg-muted/60 hover:bg-muted/70";
+    return "cursor-pointer border-l-2 border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)] hover:bg-primary/15";
   }
 
-  return "cursor-pointer hover:bg-muted/40";
+  return "cursor-pointer border-l-2 border-l-transparent hover:bg-muted/40";
 };
 
 export const FolderTableRowClient = ({
@@ -166,6 +166,8 @@ export const FolderTableRowClient = ({
   onDragEnd,
   onDragStart,
   onFileDrop,
+  onOpen,
+  selected = false,
   selectedForBulk = false,
   selectMode = false,
   workspaceId,
@@ -182,6 +184,8 @@ export const FolderTableRowClient = ({
   onDragEnd?: () => void;
   onDragStart?: (folderPath: string) => void;
   onFileDrop?: (folderPath: string, files: File[]) => void;
+  onOpen?: (folderPath: string) => void;
+  selected?: boolean;
   selectedForBulk?: boolean;
   selectMode?: boolean;
   workspaceId: string;
@@ -191,7 +195,10 @@ export const FolderTableRowClient = ({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const openFolder = () => router.push(folderHref as Route);
+  const openFolder = () => {
+    onOpen?.(folderPath);
+    router.push(folderHref as Route);
+  };
   const toggleBulkSelection = (shiftKey: boolean, forceSelect = false) => {
     onBulkSelect?.(folderPath, shiftKey, forceSelect || !selectedForBulk);
   };
@@ -224,8 +231,9 @@ export const FolderTableRowClient = ({
   return (
     <>
       <TableRow
+        aria-selected={selected || selectedForBulk}
         className={getAssetRowClassName({
-          selected: false,
+          selected,
           selectedForBulk,
         })}
         draggable
@@ -447,6 +455,7 @@ export const AssetTableRowClient = ({
     <>
       <TableRow
         aria-current={selected ? "page" : undefined}
+        aria-selected={selected || selectedForBulk}
         className={getAssetRowClassName({ selected, selectedForBulk })}
         draggable
         onClick={(event) => {
