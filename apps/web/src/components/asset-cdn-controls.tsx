@@ -1,26 +1,9 @@
 "use client";
 
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@workspace/ui/components/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@workspace/ui/components/tooltip";
-import {
-  CheckIcon,
-  ClipboardIcon,
-  EyeIcon,
-  EyeOffIcon,
-  Globe2Icon,
-  MoreHorizontalIcon,
-  UnlinkIcon,
-} from "lucide-react";
+import { TooltipProvider } from "@workspace/ui/components/tooltip";
+import { CheckIcon, ClipboardIcon, Globe2Icon, UnlinkIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { TooltipHint } from "@/components/tooltip-hint";
@@ -48,89 +31,109 @@ interface AssetPatchResponse {
   publicUrl?: null | string;
 }
 
-const PublicUrlCopyRow = ({
-  isVisible,
-  onCopy,
-  onToggleVisibility,
-  url,
+type CdnLifecycleState = "blocked" | "private" | "public" | "publishing";
+type CopiedTarget = "html" | "next" | "url" | null;
+
+const getCdnLifecycleState = ({
+  enabled,
+  isPending,
+  publicUrl,
+  ready,
 }: {
-  isVisible: boolean;
+  enabled: boolean;
+  isPending: boolean;
+  publicUrl: null | string;
+  ready: boolean;
+}): CdnLifecycleState => {
+  if (!ready) {
+    return "blocked";
+  }
+
+  if (isPending) {
+    return "publishing";
+  }
+
+  if (enabled && publicUrl) {
+    return "public";
+  }
+
+  return "private";
+};
+
+const getLifecycleLabel = (state: CdnLifecycleState) => {
+  switch (state) {
+    case "blocked":
+      return "Blocked";
+    case "private":
+      return "Private";
+    case "public":
+      return "Public";
+    case "publishing":
+      return "Publishing";
+    default:
+      return "Private";
+  }
+};
+
+const getLifecycleDescription = (state: CdnLifecycleState) => {
+  switch (state) {
+    case "blocked":
+      return "Upload must finish before this file can be published.";
+    case "private":
+      return "Only authenticated workspace members can access this file.";
+    case "public":
+      return "This version has a stable public CDN URL.";
+    case "publishing":
+      return "Updating public CDN delivery for this file.";
+    default:
+      return "Only authenticated workspace members can access this file.";
+  }
+};
+
+const getLifecycleVariant = (state: CdnLifecycleState) => {
+  if (state === "public") {
+    return "default" as const;
+  }
+
+  if (state === "blocked") {
+    return "destructive" as const;
+  }
+
+  return "outline" as const;
+};
+
+const CopyableCodeBlock = ({
+  copied,
+  label,
+  onCopy,
+  value,
+}: {
+  copied: boolean;
+  label: string;
   onCopy: () => void;
-  onToggleVisibility: () => void;
-  url: string;
+  value: string;
 }) => (
-  <div className="flex flex-wrap items-center gap-1">
-    <TooltipHint content="Copy public CDN URL">
+  <div className="flex flex-col gap-1">
+    <div className="flex items-center justify-between gap-2">
+      <span className="font-medium text-muted-foreground text-xs">{label}</span>
+      <TooltipHint content={`Copy ${label}`}>
+        <Button onClick={onCopy} size="icon-xs" type="button" variant="ghost">
+          {copied ? <CheckIcon /> : <ClipboardIcon />}
+          <span className="sr-only">Copy {label}</span>
+        </Button>
+      </TooltipHint>
+    </div>
+    <TooltipHint content={`Copy ${label}`}>
       <button
-        aria-label="Copy public CDN URL"
-        className="min-h-7 max-w-72 rounded-md border bg-muted/30 px-2 py-1 text-left font-mono text-muted-foreground text-xs transition-colors hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        aria-label={`Copy ${label}`}
+        className="max-h-24 overflow-auto rounded-md border bg-muted/30 px-2 py-1.5 text-left font-mono text-muted-foreground text-xs transition-colors hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         onClick={onCopy}
         type="button"
       >
-        {isVisible ? (
-          <span className="break-all">{url}</span>
-        ) : (
-          <span className="block truncate">CDN URL</span>
-        )}
+        <code className="whitespace-pre-wrap break-all">{value}</code>
       </button>
     </TooltipHint>
-    <TooltipHint content={isVisible ? "Hide public URL" : "Show public URL"}>
-      <Button
-        aria-pressed={isVisible}
-        className="shrink-0"
-        onClick={onToggleVisibility}
-        size="icon"
-        type="button"
-        variant="outline"
-      >
-        {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-        <span className="sr-only">
-          {isVisible ? "Hide public URL" : "Show public URL"}
-        </span>
-      </Button>
-    </TooltipHint>
   </div>
-);
-
-const CdnActionsMenu = ({
-  copiedTarget,
-  disabled,
-  onCopyNextImageConfig,
-  showNextImageConfig,
-}: {
-  copiedTarget: "config" | "url" | null;
-  disabled: boolean;
-  onCopyNextImageConfig: () => void;
-  showNextImageConfig: boolean;
-}) => (
-  <Popover>
-    <TooltipProvider>
-      <Tooltip>
-        <PopoverTrigger asChild>
-          <TooltipTrigger asChild>
-            <Button size="icon-sm" type="button" variant="outline">
-              <MoreHorizontalIcon />
-              <span className="sr-only">CDN actions</span>
-            </Button>
-          </TooltipTrigger>
-        </PopoverTrigger>
-        <TooltipContent>CDN actions</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-    <PopoverContent align="start" className="w-44 gap-1 p-1">
-      <TooltipHint content="Copy the Next.js image config for this CDN path">
-        <button
-          className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0"
-          disabled={disabled || !showNextImageConfig}
-          onClick={onCopyNextImageConfig}
-          type="button"
-        >
-          {copiedTarget === "config" ? <CheckIcon /> : <ClipboardIcon />}
-          Copy Next config
-        </button>
-      </TooltipHint>
-    </PopoverContent>
-  </Popover>
 );
 
 export const AssetCdnControls = ({
@@ -143,11 +146,8 @@ export const AssetCdnControls = ({
   const router = useRouter();
   const [enabled, setEnabled] = useState(cdnEnabled);
   const [currentPublicUrl, setCurrentPublicUrl] = useState(publicUrl ?? null);
-  const [copiedTarget, setCopiedTarget] = useState<"config" | "url" | null>(
-    null
-  );
+  const [copiedTarget, setCopiedTarget] = useState<CopiedTarget>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPublicUrlVisible, setIsPublicUrlVisible] = useState(false);
   const [isPending, startTransition] = useTransition();
   const nextImageConfig = useMemo(() => {
     if (!currentPublicUrl) {
@@ -167,6 +167,19 @@ export const AssetCdnControls = ({
   ],
 },`;
   }, [currentPublicUrl, workspaceId]);
+  const htmlSnippet = useMemo(() => {
+    if (!currentPublicUrl) {
+      return null;
+    }
+
+    return `<img src="${currentPublicUrl}" alt="" loading="lazy" />`;
+  }, [currentPublicUrl]);
+  const lifecycleState = getCdnLifecycleState({
+    enabled,
+    isPending,
+    publicUrl: currentPublicUrl,
+    ready,
+  });
 
   const patchAsset = ({
     body,
@@ -203,7 +216,6 @@ export const AssetCdnControls = ({
 
       if (nextEnabled === false) {
         setCurrentPublicUrl(null);
-        setIsPublicUrlVisible(false);
       }
 
       if (payload?.publicUrl) {
@@ -214,117 +226,116 @@ export const AssetCdnControls = ({
     });
   };
 
-  const copyUrl = () => {
-    if (!currentPublicUrl) {
+  const copyValue = (target: Exclude<CopiedTarget, null>, value: string) => {
+    if (!value) {
       return;
     }
 
     startTransition(async () => {
-      await navigator.clipboard.writeText(currentPublicUrl);
-      setCopiedTarget("url");
+      await navigator.clipboard.writeText(value);
+      setCopiedTarget(target);
       window.setTimeout(() => setCopiedTarget(null), copiedResetDelayMs);
     });
   };
-
-  const copyNextImageConfig = () => {
-    if (!nextImageConfig) {
-      return;
-    }
-
-    startTransition(async () => {
-      await navigator.clipboard.writeText(nextImageConfig);
-      setCopiedTarget("config");
-      window.setTimeout(() => setCopiedTarget(null), copiedResetDelayMs);
-    });
-  };
-
-  let cdnUrlContent = (
-    <p className="text-muted-foreground text-xs">
-      Upload must finish before CDN publishing.
-    </p>
-  );
-
-  if (currentPublicUrl) {
-    cdnUrlContent = (
-      <div className="flex max-w-96 flex-col gap-1">
-        <PublicUrlCopyRow
-          isVisible={isPublicUrlVisible}
-          onCopy={copyUrl}
-          onToggleVisibility={() =>
-            setIsPublicUrlVisible((visible) => !visible)
-          }
-          url={currentPublicUrl}
-        />
-      </div>
-    );
-  } else if (ready) {
-    cdnUrlContent = (
-      <p className="text-muted-foreground text-xs">
-        Publish to get a public URL for your site.
-      </p>
-    );
-  }
 
   return (
     <TooltipProvider>
-      <div className="flex min-w-72 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {enabled ? (
-            <TooltipHint content="Remove this file from public CDN delivery">
-              <Button
-                disabled={isPending}
-                onClick={() => {
-                  setEnabled(false);
-                  patchAsset({
-                    body: { cdnEnabled: false },
-                    nextEnabled: false,
-                  });
-                }}
-                size="sm"
-                type="button"
-                variant="destructive"
-              >
-                <UnlinkIcon />
-                Disable CDN
-              </Button>
-            </TooltipHint>
-          ) : (
-            <TooltipHint content="Publish this ready file to the public CDN">
-              <Button
-                disabled={isPending || !ready}
-                onClick={() => {
-                  patchAsset({
-                    body: { cdnEnabled: true },
-                    nextEnabled: true,
-                  });
-                }}
-                size="sm"
-                type="button"
-              >
-                <Globe2Icon />
-                Publish to CDN
-              </Button>
-            </TooltipHint>
-          )}
+      <div className="flex min-w-72 flex-col gap-3">
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-medium text-sm">CDN delivery</div>
+              <p className="mt-1 text-muted-foreground text-xs">
+                {getLifecycleDescription(lifecycleState)}
+              </p>
+            </div>
+            <Badge variant={getLifecycleVariant(lifecycleState)}>
+              {getLifecycleLabel(lifecycleState)}
+            </Badge>
+          </div>
 
-          {currentPublicUrl ? (
-            <CdnActionsMenu
-              copiedTarget={copiedTarget}
-              disabled={isPending}
-              onCopyNextImageConfig={copyNextImageConfig}
-              showNextImageConfig={Boolean(nextImageConfig)}
-            />
-          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {enabled ? (
+              <TooltipHint content="Remove this file from public CDN delivery">
+                <Button
+                  disabled={isPending}
+                  onClick={() => {
+                    setEnabled(false);
+                    patchAsset({
+                      body: { cdnEnabled: false },
+                      nextEnabled: false,
+                    });
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="destructive"
+                >
+                  <UnlinkIcon />
+                  Disable CDN
+                </Button>
+              </TooltipHint>
+            ) : (
+              <TooltipHint content="Publish this ready file to the public CDN">
+                <Button
+                  disabled={isPending || !ready}
+                  onClick={() => {
+                    patchAsset({
+                      body: { cdnEnabled: true },
+                      nextEnabled: true,
+                    });
+                  }}
+                  size="sm"
+                  type="button"
+                >
+                  <Globe2Icon />
+                  Publish to CDN
+                </Button>
+              </TooltipHint>
+            )}
 
-          {copiedTarget === "url" ? (
-            <span className="flex items-center gap-1 text-primary text-xs">
-              <CheckIcon className="size-3" />
-              Copied
-            </span>
-          ) : null}
+            {copiedTarget ? (
+              <span className="flex items-center gap-1 text-primary text-xs">
+                <CheckIcon className="size-3" />
+                Copied
+              </span>
+            ) : null}
+          </div>
         </div>
 
-        {cdnUrlContent}
+        {currentPublicUrl ? (
+          <div className="flex max-w-96 flex-col gap-3 rounded-lg border p-3">
+            <CopyableCodeBlock
+              copied={copiedTarget === "url"}
+              label="Public URL"
+              onCopy={() => copyValue("url", currentPublicUrl)}
+              value={currentPublicUrl}
+            />
+
+            {nextImageConfig ? (
+              <CopyableCodeBlock
+                copied={copiedTarget === "next"}
+                label="Next.js snippet"
+                onCopy={() => copyValue("next", nextImageConfig)}
+                value={nextImageConfig}
+              />
+            ) : null}
+
+            {htmlSnippet ? (
+              <CopyableCodeBlock
+                copied={copiedTarget === "html"}
+                label="HTML snippet"
+                onCopy={() => copyValue("html", htmlSnippet)}
+                value={htmlSnippet}
+              />
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            {ready
+              ? "Publish to get a public URL and embed snippets."
+              : "Upload must finish before CDN publishing."}
+          </p>
+        )}
 
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
       </div>
