@@ -161,53 +161,60 @@ export const WorkspaceMenu = ({
             Create a separate workspace for another project or client.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-3" onSubmit={renameWorkspace}>
-          <div className="space-y-2">
-            <Label htmlFor={renameNameId}>Current workspace name</Label>
-            <div className="flex gap-2">
-              <Input
-                id={renameNameId}
-                maxLength={80}
-                onChange={(event) => setRenameName(event.target.value)}
-                value={renameName}
-              />
-              <Button
-                disabled={
-                  isRenamePending ||
-                  !renameName.trim() ||
-                  renameName.trim() === activeWorkspace?.name
-                }
-                size="icon"
-                type="submit"
-                variant="outline"
-              >
-                <CheckIcon />
-                <span className="sr-only">Rename workspace</span>
-              </Button>
-            </div>
-            {renameError ? (
-              <p className="text-destructive text-xs">{renameError}</p>
-            ) : null}
-          </div>
-        </form>
         <div className="space-y-2">
-          {workspaces.map((workspace) => (
-            <Button
-              className="w-full justify-start"
-              key={workspace.id}
-              onClick={() => {
-                setOpen(false);
-                router.push(`/?workspace=${encodeURIComponent(workspace.id)}`);
-              }}
-              type="button"
-              variant={
-                workspace.id === activeWorkspaceId ? "secondary" : "ghost"
-              }
-            >
-              <Building2Icon />
-              <span className="truncate">{workspace.name}</span>
-            </Button>
-          ))}
+          {workspaces.map((workspace) =>
+            workspace.id === activeWorkspaceId ? (
+              <form
+                className="flex items-center gap-2 rounded-md bg-muted/60 p-1"
+                key={workspace.id}
+                onSubmit={renameWorkspace}
+              >
+                <Building2Icon className="ml-2 size-3.5 shrink-0 text-muted-foreground" />
+                <Label className="sr-only" htmlFor={renameNameId}>
+                  Workspace name
+                </Label>
+                <Input
+                  className="h-7 min-w-0 border-transparent bg-transparent px-1 font-medium"
+                  id={renameNameId}
+                  maxLength={80}
+                  onChange={(event) => setRenameName(event.target.value)}
+                  value={renameName}
+                />
+                <Button
+                  disabled={
+                    isRenamePending ||
+                    !renameName.trim() ||
+                    renameName.trim() === workspace.name
+                  }
+                  size="icon-sm"
+                  type="submit"
+                  variant="ghost"
+                >
+                  <CheckIcon />
+                  <span className="sr-only">Rename workspace</span>
+                </Button>
+              </form>
+            ) : (
+              <Button
+                className="w-full justify-start"
+                key={workspace.id}
+                onClick={() => {
+                  setOpen(false);
+                  router.push(
+                    `/?workspace=${encodeURIComponent(workspace.id)}`
+                  );
+                }}
+                type="button"
+                variant="ghost"
+              >
+                <Building2Icon />
+                <span className="truncate">{workspace.name}</span>
+              </Button>
+            )
+          )}
+          {renameError ? (
+            <p className="text-destructive text-xs">{renameError}</p>
+          ) : null}
         </div>
         <form className="space-y-4" onSubmit={createWorkspace}>
           <div className="space-y-2">
