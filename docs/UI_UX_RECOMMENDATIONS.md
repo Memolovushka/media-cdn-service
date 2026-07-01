@@ -66,9 +66,9 @@
 
 ## Приоритетный порядок
 
-1. Grid-view + preview-first правую панель. **Started:** добавлен переключатель List/Grid и preview-first asset details panel.
+1. Grid-view + preview-first правую панель. **Done:** добавлен переключатель List/Grid и preview-first asset details panel.
 2. Batch action bar + drag selection рамкой. **Done:** batch action bar и drag selection рамкой shipped.
-3. CDN lifecycle + public URL snippets. **Done:** lifecycle card and visible copyable snippets shipped.
+3. CDN lifecycle + public URL snippets. **Done:** lifecycle card, compact Public CDN URL, and hidden optional snippets shipped.
 4. Upload tray + retry queue.
 5. Keyboard shortcuts + command palette.
 6. Activity/audit feed.
