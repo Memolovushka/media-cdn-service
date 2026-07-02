@@ -144,6 +144,7 @@ const defaultTableColumnCount = 5;
 const acceptedUploadMimeTypes =
   "image/*,video/*,audio/*,application/pdf,text/plain";
 const copiedResetDelayMs = 1600;
+const contextMenuOpeningEventName = "media-cdn-context-menu-opening";
 const selectionDragStartThreshold = 6;
 
 interface AssetPatchResponse {
@@ -1449,6 +1450,7 @@ export const FileManager = ({
   ) => {
     event.preventDefault();
     event.stopPropagation();
+    window.dispatchEvent(new Event(contextMenuOpeningEventName));
     setActiveAssetId(assetId);
     setIsRefreshingSelection(false);
     setLastSelectedItemId(getAssetItemId(assetId));
@@ -1465,6 +1467,7 @@ export const FileManager = ({
   ) => {
     event.preventDefault();
     event.stopPropagation();
+    window.dispatchEvent(new Event(contextMenuOpeningEventName));
     setActiveFolderPath(folderPath);
     setLastSelectedItemId(getFolderItemId(folderPath));
     setGridContextMenu({
@@ -1980,10 +1983,15 @@ export const FileManager = ({
     };
 
     window.addEventListener("click", closeGridContextMenu);
+    window.addEventListener(contextMenuOpeningEventName, closeGridContextMenu);
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       window.removeEventListener("click", closeGridContextMenu);
+      window.removeEventListener(
+        contextMenuOpeningEventName,
+        closeGridContextMenu
+      );
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [closeGridContextMenu, gridContextMenu]);

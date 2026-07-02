@@ -41,6 +41,8 @@ interface MenuPosition {
   y: number;
 }
 
+const contextMenuOpeningEventName = "media-cdn-context-menu-opening";
+
 const getErrorMessage = async (response: Response) => {
   const payload = (await response.json().catch(() => null)) as {
     error?: string;
@@ -115,6 +117,7 @@ const useRowContextMenu = () => {
   const openMenu = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    window.dispatchEvent(new Event(contextMenuOpeningEventName));
     setPosition({ x: event.clientX, y: event.clientY });
   };
 
@@ -131,11 +134,13 @@ const useRowContextMenu = () => {
 
     window.addEventListener("click", closeMenu);
     window.addEventListener("contextmenu", closeMenu);
+    window.addEventListener(contextMenuOpeningEventName, closeMenu);
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
       window.removeEventListener("click", closeMenu);
       window.removeEventListener("contextmenu", closeMenu);
+      window.removeEventListener(contextMenuOpeningEventName, closeMenu);
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [closeMenu, position]);
