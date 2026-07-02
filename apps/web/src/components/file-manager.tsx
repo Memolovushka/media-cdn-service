@@ -586,6 +586,76 @@ const WorkspaceActivityPanel = ({
   </section>
 );
 
+const FileManagerEmptyState = ({
+  onClearSearch,
+  onCreateFolder,
+  onUploadFiles,
+  searchQuery,
+}: {
+  onClearSearch: () => void;
+  onCreateFolder: () => void;
+  onUploadFiles: () => void;
+  searchQuery: string;
+}) => {
+  const trimmedSearchQuery = searchQuery.trim();
+
+  if (trimmedSearchQuery) {
+    return (
+      <div className="flex min-h-36 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
+        <div className="max-w-sm">
+          <div className="font-medium text-sm">
+            No results for "{trimmedSearchQuery}"
+          </div>
+          <div className="mt-1 text-muted-foreground text-xs">
+            Clear search to return to this folder.
+          </div>
+        </div>
+        <TooltipHint content="Clear the current search query">
+          <Button
+            onClick={onClearSearch}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <XIcon />
+            Clear search
+          </Button>
+        </TooltipHint>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-40 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
+      <div className="max-w-sm">
+        <div className="font-medium text-sm">This folder is empty</div>
+        <div className="mt-1 text-muted-foreground text-xs">
+          Upload files, create a folder, or drop files anywhere in this area.
+        </div>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2">
+        <TooltipHint content="Upload files to this folder">
+          <Button onClick={onUploadFiles} size="sm" type="button">
+            <CloudUploadIcon />
+            Upload
+          </Button>
+        </TooltipHint>
+        <TooltipHint content="Create a folder here">
+          <Button
+            onClick={onCreateFolder}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <FolderPlusIcon />
+            New folder
+          </Button>
+        </TooltipHint>
+      </div>
+    </div>
+  );
+};
+
 const AssetDetailsPanel = ({
   asset,
   isRefreshing,
@@ -2304,13 +2374,16 @@ export const FileManager = ({
                 </>
               ) : (
                 <TableRow>
-                  <TableCell
-                    className="h-32 text-center text-muted-foreground text-sm"
-                    colSpan={tableColumnCount}
-                  >
-                    {searchQuery.trim()
-                      ? "No files or folders match this search."
-                      : "This folder is empty."}
+                  <TableCell className="h-40" colSpan={tableColumnCount}>
+                    <FileManagerEmptyState
+                      onClearSearch={() => {
+                        setSearchQuery("");
+                        setIsSearchOpen(false);
+                      }}
+                      onCreateFolder={openCreateFolder}
+                      onUploadFiles={openUploadPicker}
+                      searchQuery={searchQuery}
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -2420,10 +2493,16 @@ export const FileManager = ({
                 })}
               </>
             ) : (
-              <div className="col-span-full flex min-h-32 items-center justify-center text-center text-muted-foreground text-sm">
-                {searchQuery.trim()
-                  ? "No files or folders match this search."
-                  : "This folder is empty."}
+              <div className="col-span-full">
+                <FileManagerEmptyState
+                  onClearSearch={() => {
+                    setSearchQuery("");
+                    setIsSearchOpen(false);
+                  }}
+                  onCreateFolder={openCreateFolder}
+                  onUploadFiles={openUploadPicker}
+                  searchQuery={searchQuery}
+                />
               </div>
             )}
           </div>

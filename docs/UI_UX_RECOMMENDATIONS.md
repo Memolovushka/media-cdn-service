@@ -38,7 +38,7 @@
     В правой панели сделать compact-блок: публичный URL, кнопка copy, Next.js snippet, HTML snippet. После копирования показывать микро-feedback `Copied`. Это превращает CDN в главный продуктовый value, а не вторичную настройку. **Done:** основной видимый блок показывает Public CDN URL, а Next.js и HTML snippets скрыты в раскрываемом `Embed snippets`.
 
 12. **Smart empty states по контексту**
-    Для пустой папки показывать не общий текст, а контекстные действия: Upload, Create folder, Drop files here. Для пустого поиска: `No results for "..."` + кнопка очистки поиска. Empty state должен помогать следующему действию.
+    Для пустой папки показывать не общий текст, а контекстные действия: Upload, Create folder, Drop files here. Для пустого поиска: `No results for "..."` + кнопка очистки поиска. Empty state должен помогать следующему действию. **Done:** list/grid empty states показывают Upload, New folder и drop hint для пустой папки, а пустой поиск показывает запрос и Clear search.
 
 13. **Глобальный upload tray**
     При загрузке нескольких файлов показать небольшой tray в углу: текущий файл, общий progress, ошибки, кнопка свернуть. Это лучше, чем только overlay, потому что пользователь может продолжать работать во время загрузки. **Done:** header Upload и drop-upload используют compact tray с общим progress, per-file статусами, сворачиванием и очисткой завершенных файлов.
