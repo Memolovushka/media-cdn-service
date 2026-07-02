@@ -124,6 +124,7 @@ HTTP API:
 - 2026-07-01 UI/UX recommendations continued: header uploads and drop uploads now use a compact upload tray with per-file waiting/uploading/ready/failed statuses and retry for failed files.
 - 2026-07-01 UI/UX recommendations continued: file manager now has a Cmd/Ctrl+K command palette plus keyboard shortcuts for search, folder creation, upload, rename, and clearing selection.
 - 2026-07-02 UI/UX recommendations continued: list-view context menus now expose core file actions directly: show details, rename, publish, copy public URL, download, select for move, and delete; folder menus include open, select for move, and delete.
+- 2026-07-02 feedback fix: grid-view file and folder cards now open the same lightweight right-click action surface, and list context menus keep working when another right-click happens while a menu is open.
 
 ### Phase 1: Foundation
 

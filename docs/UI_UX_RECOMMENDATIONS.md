@@ -59,7 +59,7 @@
     Добавить горячие клавиши: `/` search, `N` new folder, `U` upload, `F2` rename, `Delete` delete, `Enter` open, `Space` preview/select, `Esc` clear. Показывать их в tooltip/menu, но не перегружать экран подсказками. **Done:** `Cmd/Ctrl+K`, `/`, `N`, `U`, `F2` и `Esc` работают без перехвата ввода в текстовых полях; command palette показывает основные shortcuts.
 
 19. **Context menu как основной action surface**
-    Расширить правый клик: Rename, Move to, Copy public URL, Publish/Unpublish, Download, Delete, Show details. Для папок: Open, Rename, Move, Delete. Это соответствует ожиданию "как в Google Drive", но остается lightweight. **Done:** list-view right-click menu теперь поддерживает Show details, Rename, Publish to CDN, Copy public URL, Download, Select for move и Delete для файлов, а для папок Open, Select for move и Delete, оставаясь lightweight без новой menu-библиотеки.
+    Расширить правый клик: Rename, Move to, Copy public URL, Publish/Unpublish, Download, Delete, Show details. Для папок: Open, Rename, Move, Delete. Это соответствует ожиданию "как в Google Drive", но остается lightweight. **Done:** right-click menu теперь работает в list и grid: файлы поддерживают Show details, Rename, Preview, Publish to CDN, Copy public URL, Download и Select for move; list-view также сохраняет Delete через существующий confirm flow. Папки поддерживают Open и Select for move, а list-view также сохраняет Delete.
 
 20. **Визуальная система статусов и типов файлов**
     Ввести единый набор иконок/цветов для folders, images, videos, audio, documents, SVG, private/public, warning/blocked. Сейчас интерфейс функционален, но единая визуальная семантика сделает его быстрее для чтения и современнее.

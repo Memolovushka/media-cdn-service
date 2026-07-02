@@ -41,6 +41,7 @@ import {
   CloudUploadIcon,
   CommandIcon,
   DownloadIcon,
+  EyeIcon,
   FileAudioIcon,
   FileImageIcon,
   FileTextIcon,
@@ -62,6 +63,8 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import {
   type ComponentProps,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -70,6 +73,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import {
   AssetUploadTray,
@@ -130,6 +134,9 @@ interface SelectionDragState {
 
 type ViewMode = "grid" | "list";
 type RightPanelView = "activity" | "details";
+type GridContextMenuTarget =
+  | { assetId: string; kind: "asset"; x: number; y: number }
+  | { folderPath: string; kind: "folder"; x: number; y: number };
 
 const bytesPerUnit = 1024;
 const rootFolderPath = "asset";
@@ -143,6 +150,50 @@ interface AssetPatchResponse {
   asset?: Partial<DashboardAsset>;
   publicUrl?: null | string;
 }
+
+const ContextMenuSeparator = () => (
+  <div className="-mx-1 my-1 h-px bg-border/50" />
+);
+
+const ContextMenuItem = ({
+  children,
+  disabled,
+  onSelect,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  onSelect: () => void;
+}) => (
+  <button
+    className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0"
+    disabled={disabled}
+    onClick={onSelect}
+    role="menuitem"
+    type="button"
+  >
+    {children}
+  </button>
+);
+
+const FloatingContextMenu = ({
+  children,
+  target,
+}: {
+  children: ReactNode;
+  target: GridContextMenuTarget | null;
+}) =>
+  target
+    ? createPortal(
+        <div
+          className="fixed z-50 min-w-40 rounded-lg bg-popover/95 p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 backdrop-blur-sm"
+          role="menu"
+          style={{ left: target.x, top: target.y }}
+        >
+          {children}
+        </div>,
+        document.body
+      )
+    : null;
 
 const hasFilesTransfer = (
   dataTransfer: DataTransfer | null
@@ -826,6 +877,7 @@ const FolderGridCard = ({
   onDragEnd,
   onDragStart,
   onFileDrop,
+  onOpenContextMenu,
   onOpen,
   selected,
   selectedForBulk,
@@ -842,6 +894,10 @@ const FolderGridCard = ({
   onDragEnd: () => void;
   onDragStart: (folderPath: string) => void;
   onFileDrop: (folderPath: string, files: File[]) => void;
+  onOpenContextMenu: (
+    event: ReactMouseEvent<HTMLButtonElement>,
+    folderPath: string
+  ) => void;
   onOpen: (folderPath: string) => void;
   selected: boolean;
   selectedForBulk: boolean;
@@ -867,6 +923,7 @@ const FolderGridCard = ({
 
       onOpen(folder.path);
     }}
+    onContextMenu={(event) => onOpenContextMenu(event, folder.path)}
     onDragEnd={onDragEnd}
     onDragOver={(event) => {
       event.preventDefault();
@@ -913,6 +970,7 @@ const AssetGridCard = ({
   onBulkSelect,
   onDragEnd,
   onDragStart,
+  onOpenContextMenu,
   onOpen,
   previewUrl,
   selected,
@@ -927,6 +985,10 @@ const AssetGridCard = ({
   onBulkSelect: (assetId: string, shiftKey: boolean, selected: boolean) => void;
   onDragEnd: () => void;
   onDragStart: (assetId: string) => void;
+  onOpenContextMenu: (
+    event: ReactMouseEvent<HTMLButtonElement>,
+    assetId: string
+  ) => void;
   onOpen: () => void;
   previewUrl: null | string;
   selected: boolean;
@@ -958,6 +1020,7 @@ const AssetGridCard = ({
 
         onOpen();
       }}
+      onContextMenu={(event) => onOpenContextMenu(event, asset.id)}
       onDragEnd={onDragEnd}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
@@ -1158,6 +1221,8 @@ export const FileManager = ({
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
     () => new Set()
   );
+  const [gridContextMenu, setGridContextMenu] =
+    useState<GridContextMenuTarget | null>(null);
   const [lastSelectedItemId, setLastSelectedItemId] = useState<string | null>(
     null
   );
@@ -1258,6 +1323,18 @@ export const FileManager = ({
   const allVisibleItemsSelected =
     filteredItems.length > 0 &&
     filteredItems.every((item) => selectedItemIds.has(item.id));
+  const contextMenuAsset =
+    gridContextMenu?.kind === "asset"
+      ? (optimisticAssets.find(
+          (asset) => asset.id === gridContextMenu.assetId
+        ) ?? null)
+      : null;
+  const contextMenuFolder =
+    gridContextMenu?.kind === "folder"
+      ? (allFolders.find(
+          (folder) => folder.path === gridContextMenu.folderPath
+        ) ?? null)
+      : null;
 
   const handleDeleted = (assetId: string) => {
     setSelectedItemIds((currentIds) => {
@@ -1362,6 +1439,54 @@ export const FileManager = ({
   const runCommand = (command: () => void) => {
     command();
     setIsCommandOpen(false);
+  };
+  const closeGridContextMenu = useCallback(() => {
+    setGridContextMenu(null);
+  }, []);
+  const openAssetContextMenu = (
+    event: ReactMouseEvent<HTMLButtonElement>,
+    assetId: string
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveAssetId(assetId);
+    setIsRefreshingSelection(false);
+    setLastSelectedItemId(getAssetItemId(assetId));
+    setGridContextMenu({
+      assetId,
+      kind: "asset",
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+  const openFolderContextMenu = (
+    event: ReactMouseEvent<HTMLButtonElement>,
+    folderPath: string
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveFolderPath(folderPath);
+    setLastSelectedItemId(getFolderItemId(folderPath));
+    setGridContextMenu({
+      folderPath,
+      kind: "folder",
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+  const runGridContextAction = (action: () => void) => {
+    action();
+    closeGridContextMenu();
+  };
+  const copyAssetPublicUrl = (publicUrl: null | string | undefined) => {
+    if (!publicUrl) {
+      return;
+    }
+
+    navigator.clipboard
+      .writeText(publicUrl)
+      .then(() => showCommandFeedback("Public URL copied"))
+      .catch(() => showCommandFeedback("Copy failed"));
   };
   const toggleAllVisibleAssets = (checked: boolean) => {
     setSelectedItemIds((currentIds) => {
@@ -1844,6 +1969,26 @@ export const FileManager = ({
   }, [uploadDroppedFiles]);
 
   useEffect(() => {
+    if (!gridContextMenu) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeGridContextMenu();
+      }
+    };
+
+    window.addEventListener("click", closeGridContextMenu);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("click", closeGridContextMenu);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeGridContextMenu, gridContextMenu]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
@@ -2074,6 +2219,145 @@ export const FileManager = ({
           ) : null}
         </Command>
       </CommandDialog>
+      <FloatingContextMenu target={gridContextMenu}>
+        {contextMenuAsset ? (
+          <>
+            <ContextMenuItem
+              onSelect={() =>
+                runGridContextAction(() => {
+                  router.push(
+                    assetHref({
+                      assetId: contextMenuAsset.id,
+                      folderPath: selectedFolderPath,
+                      workspaceId,
+                    }) as Route
+                  );
+                })
+              }
+            >
+              <MousePointerClickIcon />
+              Show details
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={() =>
+                runGridContextAction(() =>
+                  requestRenameAsset(contextMenuAsset.id)
+                )
+              }
+            >
+              <PencilIcon />
+              Rename
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!getAssetUrls(contextMenuAsset).previewUrl}
+              onSelect={() =>
+                runGridContextAction(() => {
+                  const { previewUrl } = getAssetUrls(contextMenuAsset);
+
+                  if (previewUrl) {
+                    window.open(previewUrl, "_blank", "noopener,noreferrer");
+                  }
+                })
+              }
+            >
+              <EyeIcon />
+              Preview
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              disabled={!getAssetUrls(contextMenuAsset).downloadUrl}
+              onSelect={() =>
+                runGridContextAction(() => {
+                  const { downloadUrl } = getAssetUrls(contextMenuAsset);
+
+                  if (downloadUrl) {
+                    window.location.href = downloadUrl;
+                  }
+                })
+              }
+            >
+              <DownloadIcon />
+              Download
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={
+                !isAssetReady(contextMenuAsset) ||
+                isAssetPublished(contextMenuAsset)
+              }
+              onSelect={() =>
+                runGridContextAction(() =>
+                  publishAssetsToCdn([contextMenuAsset])
+                )
+              }
+            >
+              <Globe2Icon />
+              Publish to CDN
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!contextMenuAsset.versions.at(0)?.publicUrl}
+              onSelect={() =>
+                runGridContextAction(() =>
+                  copyAssetPublicUrl(contextMenuAsset.versions.at(0)?.publicUrl)
+                )
+              }
+            >
+              <ClipboardIcon />
+              Copy public URL
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={() =>
+                runGridContextAction(() => {
+                  handleBulkSelect(
+                    getAssetItemId(contextMenuAsset.id),
+                    false,
+                    true
+                  );
+                  setSelectMode(true);
+                })
+              }
+            >
+              <MousePointerClickIcon />
+              Select for move
+            </ContextMenuItem>
+          </>
+        ) : null}
+        {contextMenuFolder ? (
+          <>
+            <ContextMenuItem
+              onSelect={() =>
+                runGridContextAction(() => {
+                  router.push(
+                    `/?${new URLSearchParams({
+                      ...(contextMenuFolder.path === "asset"
+                        ? {}
+                        : { folder: contextMenuFolder.path }),
+                      workspace: workspaceId,
+                    }).toString()}` as Route
+                  );
+                })
+              }
+            >
+              <FolderIcon />
+              Open
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={() =>
+                runGridContextAction(() => {
+                  handleBulkSelect(
+                    getFolderItemId(contextMenuFolder.path),
+                    false,
+                    true
+                  );
+                  setSelectMode(true);
+                })
+              }
+            >
+              <MousePointerClickIcon />
+              Select for move
+            </ContextMenuItem>
+          </>
+        ) : null}
+      </FloatingContextMenu>
       {isDraggingFiles ? (
         <div className="pointer-events-none fixed inset-0 z-50 border-2 border-primary border-dashed bg-primary/5 p-4 backdrop-blur-[1px]">
           <div className="mx-auto mt-6 flex max-w-md items-center gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
@@ -2450,6 +2734,7 @@ export const FileManager = ({
                         }).toString()}`
                       );
                     }}
+                    onOpenContextMenu={openFolderContextMenu}
                     selectableId={getFolderItemId(folder.path)}
                     selected={activeFolderPath === folder.path}
                     selectedForBulk={selectedItemIds.has(
@@ -2491,6 +2776,7 @@ export const FileManager = ({
                           }) as Route
                         );
                       }}
+                      onOpenContextMenu={openAssetContextMenu}
                       previewUrl={previewUrl}
                       selectableId={getAssetItemId(asset.id)}
                       selected={selectedAsset?.id === asset.id}

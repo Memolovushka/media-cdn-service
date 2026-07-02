@@ -114,6 +114,7 @@ const useRowContextMenu = () => {
   const closeMenu = useCallback(() => setPosition(null), []);
   const openMenu = (event: MouseEvent) => {
     event.preventDefault();
+    event.stopPropagation();
     setPosition({ x: event.clientX, y: event.clientY });
   };
 
