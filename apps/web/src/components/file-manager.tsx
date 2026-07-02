@@ -49,6 +49,7 @@ import {
   FolderInputIcon,
   FolderPlusIcon,
   Globe2Icon,
+  HistoryIcon,
   LayoutGridIcon,
   ListIcon,
   MousePointerClickIcon,
@@ -104,6 +105,17 @@ export interface DashboardFolder {
   path: string;
 }
 
+export interface DashboardActivityEvent {
+  actorEmail: null | string;
+  actorName: null | string;
+  assetFilename: null | string;
+  assetId: null | string;
+  createdAt: Date | string;
+  eventType: string;
+  id: string;
+  metadata: Record<string, unknown>;
+}
+
 type SelectableItem =
   | { asset: DashboardAsset; id: string; kind: "asset" }
   | { folder: DashboardFolder; id: string; kind: "folder" };
@@ -117,6 +129,7 @@ interface SelectionDragState {
 }
 
 type ViewMode = "grid" | "list";
+type RightPanelView = "activity" | "details";
 
 const bytesPerUnit = 1024;
 const rootFolderPath = "asset";
@@ -238,6 +251,71 @@ const formatBytes = (bytes: number) => {
 
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 };
+
+const getMetadataString = (metadata: Record<string, unknown>, key: string) => {
+  const value = metadata[key];
+
+  return typeof value === "string" ? value : undefined;
+};
+
+const getActivitySubject = (event: DashboardActivityEvent) =>
+  getMetadataString(event.metadata, "filename") ??
+  event.assetFilename ??
+  getMetadataString(event.metadata, "path") ??
+  getMetadataString(event.metadata, "toPath") ??
+  "workspace";
+
+const getActivityTitle = (event: DashboardActivityEvent) => {
+  const subject = getActivitySubject(event);
+
+  switch (event.eventType) {
+    case "asset.cdn_disabled":
+      return `Disabled CDN for ${subject}`;
+    case "asset.cdn_enabled":
+      return `Published ${subject}`;
+    case "asset.deleted":
+      return `Deleted ${subject}`;
+    case "asset.private_downloaded":
+      return `Downloaded ${subject}`;
+    case "asset.previewed":
+      return `Previewed ${subject}`;
+    case "asset.updated": {
+      const folderPath = getMetadataString(event.metadata, "folderPath");
+
+      return folderPath === undefined
+        ? `Updated ${subject}`
+        : `Moved ${subject} to ${folderPath || "Main"}`;
+    }
+    case "asset.upload_completed":
+      return `Uploaded ${subject}`;
+    case "asset.upload_intent_created":
+      return `Queued upload for ${subject}`;
+    case "folder.created":
+      return `Created folder ${subject}`;
+    case "folder.deleted":
+      return `Deleted folder ${subject}`;
+    case "folder.moved": {
+      const fromPath = getMetadataString(event.metadata, "fromPath");
+      const toPath = getMetadataString(event.metadata, "toPath");
+
+      return `Moved folder ${fromPath ?? subject} to ${toPath ?? "Main"}`;
+    }
+    case "workspace.created":
+      return "Created workspace";
+    case "workspace.renamed":
+      return `Renamed workspace to ${subject}`;
+    default:
+      return event.eventType.replaceAll(".", " ");
+  }
+};
+
+const formatActivityTime = (createdAt: Date | string) =>
+  new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+  }).format(new Date(createdAt));
 
 const getAssetUrls = (asset: DashboardAsset) => {
   const latestVersion = asset.versions.at(0) ?? null;
@@ -455,6 +533,58 @@ const AssetPreviewSurface = ({
     </div>
   );
 };
+
+const WorkspaceActivityPanel = ({
+  events,
+}: {
+  events: DashboardActivityEvent[];
+}) => (
+  <section className="flex flex-col gap-3 rounded-lg border p-4">
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 font-semibold text-sm">
+          <HistoryIcon className="size-4 text-muted-foreground" />
+          Activity
+        </div>
+        <div className="text-muted-foreground text-xs">
+          Last {events.length || 0} workspace events
+        </div>
+      </div>
+    </div>
+
+    {events.length ? (
+      <ol className="flex max-h-[560px] flex-col overflow-y-auto">
+        {events.map((event) => (
+          <li
+            className="border-t py-3 first:border-t-0 first:pt-0"
+            key={event.id}
+          >
+            <div className="flex items-start gap-3">
+              <span className="mt-1 size-2 rounded-full bg-primary/70" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium text-sm">
+                  {getActivityTitle(event)}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+                  <span>{formatActivityTime(event.createdAt)}</span>
+                  {event.actorName || event.actorEmail ? (
+                    <span className="truncate">
+                      {event.actorName ?? event.actorEmail}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <div className="flex min-h-44 items-center justify-center rounded-lg border border-dashed text-center text-muted-foreground text-sm">
+        Activity will appear after uploads, moves, publishes, and deletes.
+      </div>
+    )}
+  </section>
+);
 
 const AssetDetailsPanel = ({
   asset,
@@ -909,12 +1039,14 @@ const SelectionActionBar = ({
 // biome-ignore-start lint/complexity/noExcessiveCognitiveComplexity: This client surface coordinates file listing, upload, drag/drop, selection, and detail-panel actions.
 export const FileManager = ({
   allFolders,
+  activityEvents,
   assets,
   selectedAssetId,
   selectedFolderPath,
   visibleFolders,
   workspaceId,
 }: {
+  activityEvents: DashboardActivityEvent[];
   allFolders: DashboardFolder[];
   assets: DashboardAsset[];
   selectedAssetId?: string;
@@ -947,6 +1079,8 @@ export const FileManager = ({
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
   const [renameRequestKey, setRenameRequestKey] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [rightPanelView, setRightPanelView] =
+    useState<RightPanelView>("details");
   const [selectionDrag, setSelectionDrag] = useState<SelectionDragState | null>(
     null
   );
@@ -2303,12 +2437,43 @@ export const FileManager = ({
           type="button"
         />
       </div>
-      <AssetDetailsPanel
-        asset={selectedAsset}
-        isRefreshing={isRefreshingSelection}
-        onAssetUpdated={handleAssetUpdated}
-        renameRequestKey={renameRequestKey}
-      />
+      <div className="flex flex-col gap-3">
+        <div className="flex w-fit rounded-md border bg-background p-0.5">
+          <TooltipHint content="Show selected file details">
+            <Button
+              aria-pressed={rightPanelView === "details"}
+              onClick={() => setRightPanelView("details")}
+              size="sm"
+              type="button"
+              variant={rightPanelView === "details" ? "secondary" : "ghost"}
+            >
+              Details
+            </Button>
+          </TooltipHint>
+          <TooltipHint content="Show workspace activity">
+            <Button
+              aria-pressed={rightPanelView === "activity"}
+              onClick={() => setRightPanelView("activity")}
+              size="sm"
+              type="button"
+              variant={rightPanelView === "activity" ? "secondary" : "ghost"}
+            >
+              <HistoryIcon />
+              Activity
+            </Button>
+          </TooltipHint>
+        </div>
+        {rightPanelView === "details" ? (
+          <AssetDetailsPanel
+            asset={selectedAsset}
+            isRefreshing={isRefreshingSelection}
+            onAssetUpdated={handleAssetUpdated}
+            renameRequestKey={renameRequestKey}
+          />
+        ) : (
+          <WorkspaceActivityPanel events={activityEvents} />
+        )}
+      </div>
       <AssetUploadTray {...uploadQueue} />
       {selectMode ? (
         <SelectionActionBar

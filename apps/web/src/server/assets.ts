@@ -5,6 +5,7 @@ import {
   assets,
   assetVersions,
   auditEvents,
+  users,
   workspaceMembers,
   workspaces,
 } from "@/db/schema";
@@ -24,6 +25,7 @@ const maxUploadBytes =
 const defaultWorkspaceStorageQuotaBytes =
   bytesPerKilobyte * kilobytesPerMegabyte * megabytesPerGigabyte;
 const syntheticFolderIdPrefix = "asset-path";
+const maxActivityEvents = 20;
 export const publicAssetCacheControl = "public, max-age=31536000, immutable";
 
 const allowedMimePrefixes = [
@@ -66,6 +68,17 @@ export interface WorkspaceStorageUsage {
   quotaBytes: number;
   readyVersionCount: number;
   totalBytes: number;
+}
+
+export interface WorkspaceActivityEvent {
+  actorEmail: null | string;
+  actorName: null | string;
+  assetFilename: null | string;
+  assetId: null | string;
+  createdAt: Date;
+  eventType: string;
+  id: string;
+  metadata: Record<string, unknown>;
 }
 
 export class WorkspaceQuotaExceededError extends Error {
@@ -257,6 +270,63 @@ export const getWorkspaceStorageUsage = async ({
     readyVersionCount: Number(usage?.readyVersionCount ?? 0),
     totalBytes: privateBytes + publicBytes,
   };
+};
+
+const parseAuditMetadata = (metadataJson: null | string) => {
+  if (!metadataJson) {
+    return {};
+  }
+
+  const parsed = (() => {
+    try {
+      return JSON.parse(metadataJson) as unknown;
+    } catch {
+      return null;
+    }
+  })();
+
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : {};
+};
+
+export const listWorkspaceActivity = async ({
+  db,
+  workspaceId,
+  userId,
+}: {
+  db: Db;
+  workspaceId: string;
+  userId: string;
+}): Promise<null | WorkspaceActivityEvent[]> => {
+  const membership = await getWorkspaceMembership({ db, workspaceId, userId });
+
+  if (!membership) {
+    return null;
+  }
+
+  const rows = await db
+    .select({
+      actorEmail: users.email,
+      actorName: users.name,
+      assetFilename: assets.filename,
+      assetId: auditEvents.assetId,
+      createdAt: auditEvents.createdAt,
+      eventType: auditEvents.eventType,
+      id: auditEvents.id,
+      metadataJson: auditEvents.metadataJson,
+    })
+    .from(auditEvents)
+    .leftJoin(users, eq(users.id, auditEvents.actorUserId))
+    .leftJoin(assets, eq(assets.id, auditEvents.assetId))
+    .where(eq(auditEvents.workspaceId, workspaceId))
+    .orderBy(desc(auditEvents.createdAt))
+    .limit(maxActivityEvents);
+
+  return rows.map((event) => ({
+    ...event,
+    metadata: parseAuditMetadata(event.metadataJson),
+  }));
 };
 
 const getWorkspaceReservedStorageBytes = async ({

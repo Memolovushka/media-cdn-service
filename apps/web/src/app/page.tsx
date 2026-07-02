@@ -28,6 +28,7 @@ import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
 import {
   getWorkspaceStorageUsage,
+  listWorkspaceActivity,
   listWorkspaceAssets,
   listWorkspaceFolders,
 } from "@/server/assets";
@@ -199,6 +200,13 @@ const Page = async ({ searchParams }: PageProps) => {
         userId: session.user.id,
       })
     : null;
+  const activityEvents = activeWorkspace
+    ? await listWorkspaceActivity({
+        db: ctx.db,
+        workspaceId: activeWorkspace.workspaceId,
+        userId: session.user.id,
+      })
+    : [];
   const visibleFolders =
     folders?.filter((folder) => {
       const parentPath = getParentFolderPath(folder.path);
@@ -290,6 +298,7 @@ const Page = async ({ searchParams }: PageProps) => {
               </div>
             </section>
             <FileManager
+              activityEvents={activityEvents ?? []}
               allFolders={folders ?? []}
               assets={dashboardAssets}
               selectedAssetId={selectedAssetId}

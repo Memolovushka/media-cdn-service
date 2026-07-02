@@ -50,7 +50,7 @@
     Текущий компактный формат сохранить, но добавить тонкую progress-line: used / limit, warning при 80%, danger при 95%. Не делать большой card: метрика должна быть видимой, но не доминировать.
 
 16. **Recent activity / audit feed в правой панели workspace**
-    Добавить вкладку Activity: uploaded, renamed, moved, published, downloaded, deleted. Для MVP можно показать последние 20 событий. Это делает продукт более профессиональным для командной работы и debugging.
+    Добавить вкладку Activity: uploaded, renamed, moved, published, downloaded, deleted. Для MVP можно показать последние 20 событий. Это делает продукт более профессиональным для командной работы и debugging. **Done:** правая панель получила Activity view с последними 20 audit events workspace: uploads, moves, publish/unpublish, previews/downloads, deletes, folder events и workspace changes.
 
 17. **Профессиональная адаптация под mobile/tablet**
     На mobile список должен превращаться в плотные rows/cards, а правая панель - в bottom sheet. Главные действия: upload, search, select, details. Не пытаться просто сжать desktop grid.
@@ -71,7 +71,7 @@
 3. CDN lifecycle + public URL snippets. **Done:** lifecycle card, compact Public CDN URL, and hidden optional snippets shipped.
 4. Upload tray + retry queue. **Done:** compact upload tray and per-file retry queue shipped.
 5. Keyboard shortcuts + command palette. **Done:** Cmd/Ctrl+K palette and keyboard workflow shipped.
-6. Activity/audit feed.
+6. Activity/audit feed. **Done:** recent workspace activity shipped in the right panel.
 
 ## Дизайн-направление
 
