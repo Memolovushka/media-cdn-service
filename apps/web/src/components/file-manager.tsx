@@ -580,6 +580,41 @@ const assetHref = ({
   return `/?${params.toString()}`;
 };
 
+const folderHref = ({
+  folderPath,
+  workspaceId,
+}: {
+  folderPath: string;
+  workspaceId: string;
+}) => {
+  const params = new URLSearchParams();
+
+  params.set("workspace", workspaceId);
+
+  if (folderPath !== rootFolderPath) {
+    params.set("folder", folderPath);
+  }
+
+  return `/?${params.toString()}`;
+};
+
+const getFolderBreadcrumbs = (folderPath: string) => {
+  const segments = folderPath.split("/").filter(Boolean);
+  const [, ...folderSegments] =
+    segments.at(0) === rootFolderPath
+      ? segments
+      : [rootFolderPath, ...segments];
+  const breadcrumbs = [{ label: "Main", path: rootFolderPath }];
+  let currentPath = rootFolderPath;
+
+  for (const segment of folderSegments) {
+    currentPath = `${currentPath}/${segment}`;
+    breadcrumbs.push({ label: segment, path: currentPath });
+  }
+
+  return breadcrumbs;
+};
+
 const AssetDetailsPanelSkeleton = () => (
   <section className="flex flex-col gap-4 rounded-lg border p-4">
     <Skeleton className="h-64 w-full rounded-md" />
@@ -1377,6 +1412,10 @@ export const FileManager = ({
   const publishableSelectedAssets = selectedAssets.filter(
     (asset) => isAssetReady(asset) && !isAssetPublished(asset)
   );
+  const folderBreadcrumbs = useMemo(
+    () => getFolderBreadcrumbs(selectedFolderPath),
+    [selectedFolderPath]
+  );
   const hasFileManagerItems = Boolean(
     filteredFolders.length || filteredAssets.length
   );
@@ -1501,6 +1540,17 @@ export const FileManager = ({
   const runCommand = (command: () => void) => {
     command();
     setIsCommandOpen(false);
+  };
+  const navigateToFolder = (folderPath: string) => {
+    setActiveFolderPath(folderPath);
+    setLastSelectedItemId(getFolderItemId(folderPath));
+    router.push(folderHref({ folderPath, workspaceId }) as Route);
+  };
+  const copyCurrentFolderPath = () => {
+    navigator.clipboard
+      .writeText(selectedFolderPath)
+      .then(() => showCommandFeedback("Folder path copied"))
+      .catch(() => showCommandFeedback("Copy failed"));
   };
   const closeGridContextMenu = useCallback(() => {
     setGridContextMenu(null);
@@ -2492,8 +2542,48 @@ export const FileManager = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
               <div className="font-medium text-sm">Files</div>
-              <div className="truncate text-muted-foreground text-xs">
-                {selectedFolderPath}
+              <div className="mt-1 flex min-w-0 items-center gap-1 text-muted-foreground text-xs">
+                <nav
+                  aria-label="Current folder path"
+                  className="flex min-w-0 items-center gap-1 overflow-x-auto"
+                >
+                  {folderBreadcrumbs.map((breadcrumb, index) => {
+                    const isLast = index === folderBreadcrumbs.length - 1;
+
+                    return (
+                      <div
+                        className="flex min-w-0 items-center gap-1"
+                        key={breadcrumb.path}
+                      >
+                        {index ? <span>/</span> : null}
+                        <button
+                          aria-current={isLast ? "page" : undefined}
+                          className={`max-w-36 truncate rounded-sm px-1 py-0.5 text-left outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                            isLast
+                              ? "font-medium text-foreground"
+                              : "text-muted-foreground"
+                          }`}
+                          onClick={() => navigateToFolder(breadcrumb.path)}
+                          type="button"
+                        >
+                          {breadcrumb.label}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </nav>
+                <TooltipHint content="Copy folder path">
+                  <Button
+                    aria-label="Copy current folder path"
+                    className="size-6 shrink-0"
+                    onClick={copyCurrentFolderPath}
+                    size="icon-xs"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ClipboardIcon />
+                  </Button>
+                </TooltipHint>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1">
