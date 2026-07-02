@@ -344,7 +344,7 @@ Current known state:
   - `f930884`: compact Public CDN URL kept visible while Next.js and HTML snippets are hidden behind `Embed snippets`.
   - `1332179`: compact upload tray and per-file retry queue.
   - `536f271`: Cmd/Ctrl+K command palette and keyboard shortcuts.
-  - Pending deploy: expanded list-view context menu action surface.
+  - `4b2d212`: expanded list-view context menu action surface.
 - Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP
