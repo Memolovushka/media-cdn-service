@@ -47,7 +47,7 @@
     Для каждого файла в очереди показывать статус: waiting, uploading, ready, failed. Для failed дать retry. Это особенно важно для медиа-сервиса, где файлы могут быть большими и сеть нестабильной. **Done:** каждый файл в очереди получает waiting/uploading/ready/failed status, failed uploads остаются в tray и могут быть запущены повторно через Retry.
 
 15. **Storage usage как тонкий quota meter**
-    Текущий компактный формат сохранить, но добавить тонкую progress-line: used / limit, warning при 80%, danger при 95%. Не делать большой card: метрика должна быть видимой, но не доминировать.
+    Текущий компактный формат сохранить, но добавить тонкую progress-line: used / limit, warning при 80%, danger при 95%. Не делать большой card: метрика должна быть видимой, но не доминировать. **Done:** header storage summary сохранил компактный текст и получил тонкий quota meter с warning при 80% и danger при 95%.
 
 16. **Recent activity / audit feed в правой панели workspace**
     Добавить вкладку Activity: uploaded, renamed, moved, published, downloaded, deleted. Для MVP можно показать последние 20 событий. Это делает продукт более профессиональным для командной работы и debugging. **Done:** правая панель получила Activity view с последними 20 audit events workspace: uploads, moves, publish/unpublish, previews/downloads, deletes, folder events и workspace changes.
