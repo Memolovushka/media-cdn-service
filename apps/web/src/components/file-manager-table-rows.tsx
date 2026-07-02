@@ -16,7 +16,11 @@ import {
   ClipboardIcon,
   DownloadIcon,
   EyeIcon,
+  FileAudioIcon,
   FileIcon,
+  FileImageIcon,
+  FileTextIcon,
+  FileVideoIcon,
   FolderIcon,
   FolderOpenIcon,
   Globe2Icon,
@@ -42,6 +46,62 @@ interface MenuPosition {
 }
 
 const contextMenuOpeningEventName = "media-cdn-context-menu-opening";
+
+const getAssetTypeVisual = (mimeType: string) => {
+  if (mimeType === "image/svg+xml") {
+    return {
+      Icon: FileImageIcon,
+      label: "SVG",
+      tileClassName: "bg-emerald-500/10 text-emerald-700",
+    };
+  }
+
+  if (mimeType.startsWith("image/")) {
+    return {
+      Icon: FileImageIcon,
+      label: "Image",
+      tileClassName: "bg-sky-500/10 text-sky-700",
+    };
+  }
+
+  if (mimeType.startsWith("video/")) {
+    return {
+      Icon: FileVideoIcon,
+      label: "Video",
+      tileClassName: "bg-violet-500/10 text-violet-700",
+    };
+  }
+
+  if (mimeType.startsWith("audio/")) {
+    return {
+      Icon: FileAudioIcon,
+      label: "Audio",
+      tileClassName: "bg-amber-500/10 text-amber-700",
+    };
+  }
+
+  if (mimeType === "application/pdf") {
+    return {
+      Icon: FileTextIcon,
+      label: "PDF",
+      tileClassName: "bg-rose-500/10 text-rose-700",
+    };
+  }
+
+  if (mimeType.startsWith("text/")) {
+    return {
+      Icon: FileTextIcon,
+      label: "Text",
+      tileClassName: "bg-cyan-500/10 text-cyan-700",
+    };
+  }
+
+  return {
+    Icon: FileIcon,
+    label: "File",
+    tileClassName: "bg-muted text-muted-foreground",
+  };
+};
 
 const getErrorMessage = async (response: Response) => {
   const payload = (await response.json().catch(() => null)) as {
@@ -308,8 +368,10 @@ export const FolderTableRowClient = ({
         tabIndex={0}
       >
         <TableCell>
-          <div className="flex min-w-0 items-center gap-1 text-primary">
-            <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+          <div className="flex min-w-0 items-center gap-2 text-primary">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
+              <FolderIcon className="size-4" />
+            </span>
             <span className="truncate font-medium">{folderName}</span>
           </div>
         </TableCell>
@@ -453,6 +515,8 @@ export const AssetTableRowClient = ({
 }) => {
   const router = useRouter();
   const { closeMenu, openMenu, position } = useRowContextMenu();
+  const assetVisual = getAssetTypeVisual(mimeType);
+  const AssetTypeIcon = assetVisual.Icon;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -530,13 +594,20 @@ export const AssetTableRowClient = ({
         tabIndex={0}
       >
         <TableCell>
-          <div className="flex min-w-0 items-center gap-1 text-left text-primary">
-            <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+          <div className="flex min-w-0 items-center gap-2 text-left text-primary">
+            <span
+              className={`flex size-7 shrink-0 items-center justify-center rounded-md ${assetVisual.tileClassName}`}
+            >
+              <AssetTypeIcon className="size-4" />
+            </span>
             <span className="min-w-0 truncate font-medium">{filename}</span>
           </div>
         </TableCell>
         <TableCell className="max-w-40 truncate text-muted-foreground">
-          {mimeType}
+          <span className="font-medium text-foreground text-xs">
+            {assetVisual.label}
+          </span>
+          <span className="ml-2 text-xs">{mimeType}</span>
         </TableCell>
         <TableCell>
           <Badge variant={cdnVariant}>{cdnLabel}</Badge>

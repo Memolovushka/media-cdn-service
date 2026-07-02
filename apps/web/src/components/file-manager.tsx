@@ -414,6 +414,62 @@ const getAssetTypeIcon = (mimeType: string) => {
   return FileTextIcon;
 };
 
+const getAssetTypeVisual = (mimeType: string) => {
+  if (mimeType === "image/svg+xml") {
+    return {
+      Icon: FileImageIcon,
+      label: "SVG",
+      tileClassName: "bg-emerald-500/10 text-emerald-700",
+    };
+  }
+
+  if (isImageMimeType(mimeType)) {
+    return {
+      Icon: FileImageIcon,
+      label: "Image",
+      tileClassName: "bg-sky-500/10 text-sky-700",
+    };
+  }
+
+  if (isVideoMimeType(mimeType)) {
+    return {
+      Icon: FileVideoIcon,
+      label: "Video",
+      tileClassName: "bg-violet-500/10 text-violet-700",
+    };
+  }
+
+  if (isAudioMimeType(mimeType)) {
+    return {
+      Icon: FileAudioIcon,
+      label: "Audio",
+      tileClassName: "bg-amber-500/10 text-amber-700",
+    };
+  }
+
+  if (isPdfMimeType(mimeType)) {
+    return {
+      Icon: FileTextIcon,
+      label: "PDF",
+      tileClassName: "bg-rose-500/10 text-rose-700",
+    };
+  }
+
+  if (isTextMimeType(mimeType)) {
+    return {
+      Icon: FileTextIcon,
+      label: "Text",
+      tileClassName: "bg-cyan-500/10 text-cyan-700",
+    };
+  }
+
+  return {
+    Icon: FileTextIcon,
+    label: "File",
+    tileClassName: "bg-muted text-muted-foreground",
+  };
+};
+
 const getAssetPreviewLabel = (mimeType: string) => {
   if (isImageMimeType(mimeType)) {
     return "Image preview";
@@ -954,8 +1010,8 @@ const FolderGridCard = ({
     }}
     type="button"
   >
-    <div className="flex flex-1 items-center justify-center rounded-md bg-muted/30">
-      <FolderIcon className="size-11 text-muted-foreground transition group-hover:text-primary" />
+    <div className="flex flex-1 items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
+      <FolderIcon className="size-11 transition group-hover:text-amber-800" />
     </div>
     <div className="mt-3 w-full min-w-0">
       <div className="truncate font-medium text-sm">{folder.name}</div>
@@ -998,7 +1054,8 @@ const AssetGridCard = ({
   selectMode: boolean;
   sizeLabel: string;
 }) => {
-  const AssetIcon = getAssetTypeIcon(asset.mimeType);
+  const assetVisual = getAssetTypeVisual(asset.mimeType);
+  const AssetIcon = assetVisual.Icon;
   const showImagePreview = previewUrl && isImageMimeType(asset.mimeType);
 
   return (
@@ -1029,7 +1086,11 @@ const AssetGridCard = ({
       }}
       type="button"
     >
-      <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md bg-muted/30">
+      <div
+        className={`flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md ${
+          showImagePreview ? "bg-muted/30" : assetVisual.tileClassName
+        }`}
+      >
         {showImagePreview ? (
           <object
             aria-label={`Thumbnail of ${asset.filename}`}
@@ -1040,14 +1101,14 @@ const AssetGridCard = ({
             <AssetIcon className="size-10 text-muted-foreground" />
           </object>
         ) : (
-          <AssetIcon className="size-10 text-muted-foreground transition group-hover:text-primary" />
+          <AssetIcon className="size-10 transition group-hover:scale-105" />
         )}
       </div>
       <div className="mt-3 flex w-full min-w-0 flex-1 flex-col gap-2">
         <div className="w-full min-w-0">
           <div className="truncate font-medium text-sm">{asset.filename}</div>
           <div className="truncate text-muted-foreground text-xs">
-            {asset.mimeType} - {sizeLabel}
+            {assetVisual.label} - {sizeLabel}
           </div>
         </div>
         <div className="flex min-h-5 items-center">

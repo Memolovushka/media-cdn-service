@@ -62,7 +62,7 @@
     Расширить правый клик: Rename, Move to, Copy public URL, Publish/Unpublish, Download, Delete, Show details. Для папок: Open, Rename, Move, Delete. Это соответствует ожиданию "как в Google Drive", но остается lightweight. **Done:** right-click menu теперь работает в list и grid: файлы поддерживают Show details, Rename, Preview, Publish to CDN, Copy public URL, Download и Select for move; list-view также сохраняет Delete через существующий confirm flow. Папки поддерживают Open и Select for move, а list-view также сохраняет Delete.
 
 20. **Визуальная система статусов и типов файлов**
-    Ввести единый набор иконок/цветов для folders, images, videos, audio, documents, SVG, private/public, warning/blocked. Сейчас интерфейс функционален, но единая визуальная семантика сделает его быстрее для чтения и современнее.
+    Ввести единый набор иконок/цветов для folders, images, videos, audio, documents, SVG, private/public, warning/blocked. Сейчас интерфейс функционален, но единая визуальная семантика сделает его быстрее для чтения и современнее. **Done:** list и grid используют единые colored type markers для folders, images, SVG, videos, audio, PDF, text и generic files; list-view дополнительно показывает человекочитаемый kind рядом с MIME.
 
 ## Приоритетный порядок
 
