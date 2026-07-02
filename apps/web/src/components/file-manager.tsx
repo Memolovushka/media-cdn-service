@@ -1344,6 +1344,11 @@ export const FileManager = ({
 
     setRenameRequestKey((currentKey) => currentKey + 1);
   }, [selectedAsset]);
+  const requestRenameAsset = useCallback((assetId: string) => {
+    setActiveAssetId(assetId);
+    setIsRefreshingSelection(false);
+    setRenameRequestKey((currentKey) => currentKey + 1);
+  }, []);
   const copySelectedAssetUrl = () => {
     if (!selectedAssetPublicUrl) {
       return;
@@ -2360,7 +2365,13 @@ export const FileManager = ({
                           setLastSelectedItemId(getAssetItemId(asset.id));
                           setIsRefreshingSelection(true);
                         }}
+                        onPublish={() => publishAssetsToCdn([asset])}
+                        onRename={() => requestRenameAsset(asset.id)}
                         previewUrl={previewUrl}
+                        publicUrl={asset.versions.at(0)?.publicUrl ?? null}
+                        publishDisabled={
+                          !isAssetReady(asset) || isAssetPublished(asset)
+                        }
                         selectableId={getAssetItemId(asset.id)}
                         selected={selectedAsset?.id === asset.id}
                         selectedForBulk={selectedItemIds.has(

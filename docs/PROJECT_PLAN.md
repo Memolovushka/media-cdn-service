@@ -123,6 +123,7 @@ HTTP API:
 - 2026-07-01 UI/UX recommendations continued: CDN controls now show a lifecycle card plus a compact Public CDN URL; Next.js and HTML snippets are hidden behind an optional `Embed snippets` toggle.
 - 2026-07-01 UI/UX recommendations continued: header uploads and drop uploads now use a compact upload tray with per-file waiting/uploading/ready/failed statuses and retry for failed files.
 - 2026-07-01 UI/UX recommendations continued: file manager now has a Cmd/Ctrl+K command palette plus keyboard shortcuts for search, folder creation, upload, rename, and clearing selection.
+- 2026-07-02 UI/UX recommendations continued: list-view context menus now expose core file actions directly: show details, rename, publish, copy public URL, download, select for move, and delete; folder menus include open, select for move, and delete.
 
 ### Phase 1: Foundation
 
@@ -298,7 +299,7 @@ Test plan:
 ## Ближайший порядок работ
 
 1. Permission and state-transition tests.
-2. Continue UI/UX recommendations: activity/audit feed.
+2. Continue UI/UX recommendations: mobile/tablet adaptation and unified file/status visual semantics.
 3. Account settings polish: email change, profile name update, active sessions.
 4. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
 5. Audit log UI.
@@ -343,6 +344,7 @@ Current known state:
   - `f930884`: compact Public CDN URL kept visible while Next.js and HTML snippets are hidden behind `Embed snippets`.
   - `1332179`: compact upload tray and per-file retry queue.
   - `536f271`: Cmd/Ctrl+K command palette and keyboard shortcuts.
+  - Pending deploy: expanded list-view context menu action surface.
 - Local Windows OpenNext builds are unreliable because generated server-function dependency symlinks fail with `Access is denied`; production deploy should use GitHub Actions unless this is fixed upstream or locally.
 
 ## Риски и ограничения MVP

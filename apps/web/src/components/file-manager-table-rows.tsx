@@ -13,12 +13,15 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { TableCell, TableRow } from "@workspace/ui/components/table";
 import {
+  ClipboardIcon,
   DownloadIcon,
   EyeIcon,
   FileIcon,
   FolderIcon,
   FolderOpenIcon,
+  Globe2Icon,
   MousePointerClickIcon,
+  PencilIcon,
   TrashIcon,
 } from "lucide-react";
 import type { Route } from "next";
@@ -336,6 +339,15 @@ export const FolderTableRowClient = ({
           <FolderOpenIcon />
           Open
         </MenuItem>
+        <MenuItem
+          onSelect={() => {
+            closeMenu();
+            toggleBulkSelection(false, true);
+          }}
+        >
+          <MousePointerClickIcon />
+          Select for move
+        </MenuItem>
         <MenuSeparator />
         <MenuItem
           onSelect={() => {
@@ -395,7 +407,11 @@ export const AssetTableRowClient = ({
   onDragEnd,
   onDragStart,
   onOpen,
+  onPublish,
+  onRename,
   previewUrl,
+  publicUrl,
+  publishDisabled = false,
   selectMode = false,
   selected,
   selectedForBulk = false,
@@ -418,7 +434,11 @@ export const AssetTableRowClient = ({
   onDragEnd?: () => void;
   onDragStart?: (assetId: string) => void;
   onOpen?: () => void;
+  onPublish?: () => void;
+  onRename?: () => void;
   previewUrl?: null | string;
+  publicUrl?: null | string;
+  publishDisabled?: boolean;
   selectMode?: boolean;
   selected: boolean;
   selectedForBulk?: boolean;
@@ -433,6 +453,13 @@ export const AssetTableRowClient = ({
   const openAsset = () => {
     onOpen?.();
     router.push(href as Route);
+  };
+  const copyPublicUrl = () => {
+    if (!publicUrl) {
+      return;
+    }
+
+    navigator.clipboard.writeText(publicUrl).catch(() => undefined);
   };
   const toggleBulkSelection = (shiftKey: boolean, forceSelect = false) => {
     onBulkSelect?.(assetId, shiftKey, forceSelect || !selectedForBulk);
@@ -536,7 +563,16 @@ export const AssetTableRowClient = ({
           }}
         >
           <MousePointerClickIcon />
-          Open
+          Show details
+        </MenuItem>
+        <MenuItem
+          onSelect={() => {
+            closeMenu();
+            onRename?.();
+          }}
+        >
+          <PencilIcon />
+          Rename
         </MenuItem>
         <MenuItem
           disabled={!previewUrl}
@@ -562,6 +598,35 @@ export const AssetTableRowClient = ({
         >
           <DownloadIcon />
           Download
+        </MenuItem>
+        <MenuItem
+          disabled={publishDisabled}
+          onSelect={() => {
+            closeMenu();
+            onPublish?.();
+          }}
+        >
+          <Globe2Icon />
+          Publish to CDN
+        </MenuItem>
+        <MenuItem
+          disabled={!publicUrl}
+          onSelect={() => {
+            closeMenu();
+            copyPublicUrl();
+          }}
+        >
+          <ClipboardIcon />
+          Copy public URL
+        </MenuItem>
+        <MenuItem
+          onSelect={() => {
+            closeMenu();
+            toggleBulkSelection(false, true);
+          }}
+        >
+          <MousePointerClickIcon />
+          Select for move
         </MenuItem>
         <MenuSeparator />
         <MenuItem
