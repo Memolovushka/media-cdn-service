@@ -124,7 +124,7 @@ const CopyableCodeBlock = ({
       <span className="font-medium text-muted-foreground text-xs">{label}</span>
       <TooltipHint content={`Copy ${label}`}>
         <Button onClick={onCopy} size="icon-xs" type="button" variant="ghost">
-          {copied ? <CheckIcon /> : <ClipboardIcon />}
+          {copied ? <CheckIcon className="text-primary" /> : <ClipboardIcon />}
           <span className="sr-only">Copy {label}</span>
         </Button>
       </TooltipHint>
@@ -299,13 +299,6 @@ export const AssetCdnControls = ({
                 </Button>
               </TooltipHint>
             )}
-
-            {copiedTarget ? (
-              <span className="flex items-center gap-1 text-primary text-xs">
-                <CheckIcon className="size-3" />
-                Copied
-              </span>
-            ) : null}
           </div>
         </div>
 
