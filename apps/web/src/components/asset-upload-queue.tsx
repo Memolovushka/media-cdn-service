@@ -1,8 +1,17 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
 import { Progress } from "@workspace/ui/components/progress";
 import {
+  AlertTriangleIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -11,9 +20,17 @@ import {
   XIcon,
 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { uploadAsset } from "@/components/asset-upload-client";
+import {
+  maxUploadMegabytes,
+  uploadAsset,
+} from "@/components/asset-upload-client";
 
 type UploadQueueStatus = "failed" | "ready" | "uploading" | "waiting";
+
+interface ExistingUploadAsset {
+  filename: string;
+  folderPath: string;
+}
 
 interface UploadQueueItem {
   error?: string;
@@ -26,10 +43,68 @@ interface UploadQueueItem {
   status: UploadQueueStatus;
 }
 
+interface UploadReviewItem {
+  conflict: boolean;
+  file: File;
+  id: string;
+  issue?: string;
+  name: string;
+  sizeBytes: number;
+  typeLabel: string;
+}
+
+interface UploadReviewRequest {
+  folderPath?: string;
+  items: UploadReviewItem[];
+}
+
 const maxVisibleItems = 4;
+const bytesPerUnit = 1024;
+const acceptedUploadMimeTypesLabel = "Images, video, audio, PDF, and text";
+const allowedMimePrefixes = [
+  "image/",
+  "video/",
+  "audio/",
+  "application/pdf",
+  "text/plain",
+];
 
 const getQueueItemId = () =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+
+const formatBytes = (bytes: number) => {
+  if (bytes < bytesPerUnit) {
+    return `${bytes} B`;
+  }
+
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / bytesPerUnit;
+  let unitIndex = 0;
+
+  while (value >= bytesPerUnit && unitIndex < units.length - 1) {
+    value /= bytesPerUnit;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const isAllowedMimeType = (mimeType: string) =>
+  allowedMimePrefixes.some((prefix) =>
+    prefix.endsWith("/") ? mimeType.startsWith(prefix) : mimeType === prefix
+  );
+
+const getFileIssue = (file: File) => {
+  if (file.size > maxUploadMegabytes * bytesPerUnit * bytesPerUnit) {
+    return `Larger than ${maxUploadMegabytes} MB`;
+  }
+
+  if (!isAllowedMimeType(file.type)) {
+    return "Unsupported type";
+  }
+
+  return;
+};
 
 const getStatusLabel = (status: UploadQueueStatus) => {
   switch (status) {
@@ -50,14 +125,28 @@ const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Upload failed";
 
 export const useAssetUploadQueue = ({
+  existingAssets = [],
   onSettled,
   workspaceId,
 }: {
+  existingAssets?: ExistingUploadAsset[];
   onSettled: () => void;
   workspaceId?: string;
 }) => {
   const [items, setItems] = useState<UploadQueueItem[]>([]);
+  const [reviewRequest, setReviewRequest] =
+    useState<UploadReviewRequest | null>(null);
   const isRunningRef = useRef(false);
+  const existingNameKeys = useMemo(
+    () =>
+      new Set(
+        existingAssets.map(
+          (asset) =>
+            `${asset.folderPath.toLowerCase()}/${asset.filename.toLowerCase()}`
+        )
+      ),
+    [existingAssets]
+  );
 
   const runQueue = useCallback(async () => {
     if (isRunningRef.current || !workspaceId) {
@@ -147,7 +236,7 @@ export const useAssetUploadQueue = ({
     }
   }, [onSettled, workspaceId]);
 
-  const enqueueFiles = useCallback(
+  const addFilesToQueue = useCallback(
     (files: File[], folderPath?: string) => {
       if (!(files.length && workspaceId)) {
         return;
@@ -170,6 +259,47 @@ export const useAssetUploadQueue = ({
     },
     [runQueue, workspaceId]
   );
+
+  const enqueueFiles = useCallback(
+    (files: File[], folderPath?: string) => {
+      if (!(files.length && workspaceId)) {
+        return;
+      }
+
+      setReviewRequest({
+        folderPath,
+        items: files.map((file) => ({
+          conflict: existingNameKeys.has(
+            `${(folderPath ?? "asset").toLowerCase()}/${file.name.toLowerCase()}`
+          ),
+          file,
+          id: getQueueItemId(),
+          issue: getFileIssue(file),
+          name: file.name,
+          sizeBytes: file.size,
+          typeLabel: file.type || "Unknown type",
+        })),
+      });
+    },
+    [existingNameKeys, workspaceId]
+  );
+
+  const cancelUploadReview = useCallback(() => {
+    setReviewRequest(null);
+  }, []);
+
+  const confirmUploadReview = useCallback(() => {
+    if (!reviewRequest) {
+      return;
+    }
+
+    const validFiles = reviewRequest.items
+      .filter((item) => !item.issue)
+      .map((item) => item.file);
+
+    addFilesToQueue(validFiles, reviewRequest.folderPath);
+    setReviewRequest(null);
+  }, [addFilesToQueue, reviewRequest]);
 
   const retryItem = useCallback(
     (itemId: string) => {
@@ -211,13 +341,139 @@ export const useAssetUploadQueue = ({
   }, [items]);
 
   return {
+    cancelUploadReview,
     clearCompleted,
+    confirmUploadReview,
     dismissQueue,
     enqueueFiles,
     items,
+    reviewRequest,
     retryItem,
     summary,
   };
+};
+
+export const AssetUploadReviewDialog = ({
+  cancelUploadReview,
+  confirmUploadReview,
+  reviewRequest,
+}: {
+  cancelUploadReview: () => void;
+  confirmUploadReview: () => void;
+  reviewRequest: UploadReviewRequest | null;
+}) => {
+  const reviewSummary = useMemo(() => {
+    const items = reviewRequest?.items ?? [];
+    const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
+    const blockedCount = items.filter((item) => item.issue).length;
+    const conflictCount = items.filter((item) => item.conflict).length;
+
+    return {
+      conflictCount,
+      totalBytes,
+      validCount: items.length - blockedCount,
+    };
+  }, [reviewRequest]);
+
+  return (
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) {
+          cancelUploadReview();
+        }
+      }}
+      open={Boolean(reviewRequest)}
+    >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Review upload</DialogTitle>
+          <DialogDescription>
+            Check the batch before files are added to the private upload queue.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted/20 p-3 text-xs">
+            <div>
+              <div className="text-muted-foreground">Destination</div>
+              <div className="truncate font-medium">
+                {reviewRequest?.folderPath ?? "asset"}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Batch size</div>
+              <div className="font-medium">
+                {formatBytes(reviewSummary.totalBytes)}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Accepted types</div>
+              <div className="font-medium">{acceptedUploadMimeTypesLabel}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">CDN state</div>
+              <div className="font-medium">Private by default</div>
+            </div>
+          </div>
+          {reviewSummary.conflictCount ? (
+            <div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-amber-700 text-xs dark:text-amber-300">
+              <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {reviewSummary.conflictCount} filename conflict
+                {reviewSummary.conflictCount === 1 ? "" : "s"} found. Upload is
+                storage-safe and will keep both files; rename after upload if
+                the list should be clearer.
+              </span>
+            </div>
+          ) : null}
+          <div className="max-h-72 overflow-y-auto rounded-md border">
+            {(reviewRequest?.items ?? []).map((item) => (
+              <div
+                className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b px-3 py-2 last:border-b-0"
+                key={item.id}
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-xs">
+                    {item.name}
+                  </div>
+                  <div className="truncate text-muted-foreground text-xs">
+                    {item.typeLabel} | {formatBytes(item.sizeBytes)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {item.conflict ? (
+                    <span className="rounded border border-amber-500/40 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">
+                      Keep both
+                    </span>
+                  ) : null}
+                  {item.issue ? (
+                    <span className="rounded border border-destructive/40 px-1.5 py-0.5 text-destructive">
+                      {item.issue}
+                    </span>
+                  ) : (
+                    <span className="rounded border px-1.5 py-0.5 text-muted-foreground">
+                      Ready
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={cancelUploadReview} type="button" variant="outline">
+            Cancel
+          </Button>
+          <Button
+            disabled={reviewSummary.validCount === 0}
+            onClick={confirmUploadReview}
+            type="button"
+          >
+            Add {reviewSummary.validCount} to queue
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 export const AssetUploadTray = ({

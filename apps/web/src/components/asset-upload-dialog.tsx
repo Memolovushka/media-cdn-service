@@ -6,6 +6,7 @@ import { CloudUploadIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef } from "react";
 import {
+  AssetUploadReviewDialog,
   AssetUploadTray,
   useAssetUploadQueue,
 } from "@/components/asset-upload-queue";
@@ -59,6 +60,7 @@ export const AssetUploadDialog = ({
           {isUploading ? "Uploading..." : "Upload"}
         </Button>
       </TooltipHint>
+      <AssetUploadReviewDialog {...uploadQueue} />
       <AssetUploadTray {...uploadQueue} />
     </div>
   );

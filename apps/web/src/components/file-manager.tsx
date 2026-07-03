@@ -83,6 +83,7 @@ import {
 import { createPortal } from "react-dom";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
 import {
+  AssetUploadReviewDialog,
   AssetUploadTray,
   useAssetUploadQueue,
 } from "@/components/asset-upload-queue";
@@ -1431,10 +1432,6 @@ export const FileManager = ({
   workspaceId: string;
 }) => {
   const router = useRouter();
-  const uploadQueue = useAssetUploadQueue({
-    onSettled: router.refresh,
-    workspaceId,
-  });
   const fileAreaRef = useRef<HTMLDivElement | null>(null);
   const commandUploadInputRef = useRef<HTMLInputElement | null>(null);
   const baseSelectionIdsRef = useRef<Set<string>>(new Set());
@@ -1473,6 +1470,11 @@ export const FileManager = ({
   const [bulkMoveTarget, setBulkMoveTarget] = useState(rootFolderPath);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [isBulkPending, startBulkTransition] = useTransition();
+  const uploadQueue = useAssetUploadQueue({
+    existingAssets: optimisticAssets,
+    onSettled: router.refresh,
+    workspaceId,
+  });
 
   useEffect(() => {
     setOptimisticAssets(assets);
@@ -2693,12 +2695,15 @@ export const FileManager = ({
       </FloatingContextMenu>
       {isDraggingFiles ? (
         <div className="pointer-events-none fixed inset-0 z-50 border-2 border-primary border-dashed bg-primary/5 p-4 backdrop-blur-[1px]">
-          <div className="mx-auto mt-6 flex max-w-md items-center gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
-            <CloudUploadIcon className="size-5 text-primary" />
+          <div className="mx-auto mt-6 flex max-w-lg items-start gap-3 rounded-md border bg-popover/95 px-3 py-2 shadow-sm">
+            <CloudUploadIcon className="mt-0.5 size-5 text-primary" />
             <div className="min-w-0 flex-1">
-              <div className="font-medium text-sm">Drop anywhere to upload</div>
-              <div className="truncate text-muted-foreground text-xs">
-                Files will be added to {selectedFolderPath}
+              <div className="font-medium text-sm">
+                Drop to review this upload
+              </div>
+              <div className="text-muted-foreground text-xs">
+                Destination: {selectedFolderPath} | Max 250 MB per file |
+                Private until you publish to CDN
               </div>
             </div>
           </div>
@@ -3296,6 +3301,7 @@ export const FileManager = ({
           selectedAsset={selectedAsset}
         />
       </aside>
+      <AssetUploadReviewDialog {...uploadQueue} />
       <AssetUploadTray {...uploadQueue} />
       {selectMode ? (
         <SelectionActionBar
