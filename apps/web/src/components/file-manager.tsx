@@ -1063,12 +1063,17 @@ const FolderGridCard = ({
     }}
     type="button"
   >
-    <div className="flex aspect-[4/3] w-full items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
-      <FolderIcon className="size-11 transition group-hover:text-amber-800" />
+    <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
+      <FolderIcon className="size-11 transition group-hover:scale-105 group-hover:text-amber-800" />
+      <span className="absolute top-2 right-2 rounded-md bg-background/85 px-1.5 py-0.5 font-medium text-[0.6875rem] text-muted-foreground shadow-xs ring-1 ring-border/70">
+        Folder
+      </span>
     </div>
     <div className="mt-3 w-full min-w-0">
       <div className="truncate font-medium text-sm">{folder.name}</div>
-      <div className="truncate text-muted-foreground text-xs">Folder</div>
+      <div className="truncate text-muted-foreground text-xs">
+        Workspace folder
+      </div>
     </div>
   </button>
 );
@@ -1140,10 +1145,16 @@ const AssetGridCard = ({
       type="button"
     >
       <div
-        className={`flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md ${
+        className={`relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md ${
           showImagePreview ? "bg-muted/30" : assetVisual.tileClassName
         }`}
       >
+        <Badge
+          className="absolute top-2 right-2 max-w-[calc(100%-1rem)] truncate shadow-xs ring-1 ring-border/70"
+          variant={cdnVariant}
+        >
+          {cdnLabel}
+        </Badge>
         {showImagePreview ? (
           <object
             aria-label={`Thumbnail of ${asset.filename}`}
@@ -1157,7 +1168,7 @@ const AssetGridCard = ({
           <AssetIcon className="size-10 transition group-hover:scale-105" />
         )}
       </div>
-      <div className="mt-3 flex w-full min-w-0 flex-1 flex-col gap-2">
+      <div className="mt-3 flex w-full min-w-0 flex-1 flex-col justify-between gap-2">
         <div className="w-full min-w-0">
           <div className="truncate font-medium text-sm leading-5">
             {asset.filename}
@@ -1166,10 +1177,9 @@ const AssetGridCard = ({
             {assetVisual.label} - {sizeLabel}
           </div>
         </div>
-        <div className="flex min-h-5 items-center">
-          <Badge className="max-w-full truncate" variant={cdnVariant}>
-            {cdnLabel}
-          </Badge>
+        <div className="flex min-h-5 items-center justify-between gap-2 text-muted-foreground text-xs">
+          <span className="truncate">{asset.mimeType}</span>
+          <span className="shrink-0">{sizeLabel}</span>
         </div>
       </div>
     </button>

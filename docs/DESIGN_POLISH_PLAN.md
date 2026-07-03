@@ -109,3 +109,4 @@
 
 - 2026-07-03: First polish slice implemented locally: compact dashboard header, Upload moved into the file-manager toolbar, unified file surface styling, stable list row height, uniform grid card dimensions, and sticky inspector framing. Local `bun run check` and `bun run typecheck` passed.
 - 2026-07-03: Second polish slice implemented locally: right inspector now has a compact header, fixed preview area, inline filename section, compact metadata grid, adjacent download action, and flatter CDN controls. Local `bun run check` and `bun run typecheck` passed.
+- 2026-07-03: Third polish slice implemented locally: list rows now have stable hover/focus actions for preview, copy URL, open, and delete; grid cards have fixed status placement over preview and richer bottom metadata. Local `bun run check` and `bun run typecheck` passed.

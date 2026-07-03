@@ -216,14 +216,14 @@ const getAssetRowClassName = ({
   selectedForBulk: boolean;
 }) => {
   if (selectedForBulk) {
-    return "h-12 cursor-pointer border-l-2 border-l-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.22)] hover:bg-primary/20";
+    return "group h-12 cursor-pointer border-l-2 border-l-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.22)] hover:bg-primary/20";
   }
 
   if (selected) {
-    return "h-12 cursor-pointer border-l-2 border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)] hover:bg-primary/15";
+    return "group h-12 cursor-pointer border-l-2 border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)] hover:bg-primary/15";
   }
 
-  return "h-12 cursor-pointer border-l-2 border-l-transparent hover:bg-muted/40";
+  return "group h-12 cursor-pointer border-l-2 border-l-transparent hover:bg-muted/40";
 };
 
 export const FolderTableRowClient = ({
@@ -379,21 +379,33 @@ export const FolderTableRowClient = ({
         <TableCell className="text-muted-foreground text-xs">-</TableCell>
         <TableCell className="text-xs">-</TableCell>
         <TableCell
-          className="text-right"
+          className="w-28 text-right"
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <TooltipHint content={`Delete folder ${folderName}`}>
-            <Button
-              aria-label={`Delete ${folderName}`}
-              disabled={isPending}
-              onClick={() => setDeleteOpen(true)}
-              size="icon"
-              variant="ghost"
-            >
-              <TrashIcon />
-            </Button>
-          </TooltipHint>
+          <div className="flex justify-end gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            <TooltipHint content={`Open folder ${folderName}`}>
+              <Button
+                aria-label={`Open ${folderName}`}
+                onClick={openFolder}
+                size="icon-sm"
+                variant="ghost"
+              >
+                <FolderOpenIcon />
+              </Button>
+            </TooltipHint>
+            <TooltipHint content={`Delete folder ${folderName}`}>
+              <Button
+                aria-label={`Delete ${folderName}`}
+                disabled={isPending}
+                onClick={() => setDeleteOpen(true)}
+                size="icon-sm"
+                variant="ghost"
+              >
+                <TrashIcon />
+              </Button>
+            </TooltipHint>
+          </div>
         </TableCell>
       </TableRow>
 
@@ -616,21 +628,49 @@ export const AssetTableRowClient = ({
         </TableCell>
         <TableCell className="text-xs">{sizeLabel}</TableCell>
         <TableCell
-          className="text-right"
+          className="w-32 text-right"
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <TooltipHint content={`Delete file ${filename}`}>
-            <Button
-              aria-label={`Delete ${filename}`}
-              disabled={isPending}
-              onClick={() => setDeleteOpen(true)}
-              size="icon"
-              variant="ghost"
-            >
-              <TrashIcon />
-            </Button>
-          </TooltipHint>
+          <div className="flex justify-end gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            <TooltipHint content={`Preview ${filename}`}>
+              <Button
+                aria-label={`Preview ${filename}`}
+                disabled={!previewUrl}
+                onClick={() => {
+                  if (previewUrl) {
+                    window.open(previewUrl, "_blank", "noopener,noreferrer");
+                  }
+                }}
+                size="icon-sm"
+                variant="ghost"
+              >
+                <EyeIcon />
+              </Button>
+            </TooltipHint>
+            <TooltipHint content={`Copy public URL for ${filename}`}>
+              <Button
+                aria-label={`Copy public URL for ${filename}`}
+                disabled={!publicUrl}
+                onClick={copyPublicUrl}
+                size="icon-sm"
+                variant="ghost"
+              >
+                <ClipboardIcon />
+              </Button>
+            </TooltipHint>
+            <TooltipHint content={`Delete file ${filename}`}>
+              <Button
+                aria-label={`Delete ${filename}`}
+                disabled={isPending}
+                onClick={() => setDeleteOpen(true)}
+                size="icon-sm"
+                variant="ghost"
+              >
+                <TrashIcon />
+              </Button>
+            </TooltipHint>
+          </div>
         </TableCell>
       </TableRow>
 
