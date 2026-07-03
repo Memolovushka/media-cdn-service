@@ -130,6 +130,8 @@ HTTP API:
 - 2026-07-03 UI/UX recommendations continued: the file area path is now an interactive breadcrumb/address bar with client-side segment navigation and compact copy-path action.
 - 2026-07-03 UI/UX recommendations continued: right-panel filename editing now follows native inline rename behavior with no Save button, Enter/blur save, and Escape cancel.
 - 2026-07-03 UI/UX recommendations continued: drag-move targets now keep root, valid folders, and blocked folders visible with inline reasons for same-folder, self, and child-folder drops.
+- 2026-07-03 UI/UX recommendations continued: file delete now shows an Undo toast backed by a restore endpoint for soft-deleted assets.
+- 2026-07-03 docs update: README now describes the actual Media CDN Service product, stack, local commands, deploy flow, and production health check.
 
 ### Phase 1: Foundation
 

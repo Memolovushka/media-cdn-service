@@ -1,5 +1,6 @@
 "use client";
 
+import { Toaster } from "@workspace/ui/components/sonner";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import type * as React from "react";
 
@@ -12,5 +13,6 @@ export const Providers = ({ children }: { children: React.ReactNode }) => (
     enableSystem
   >
     {children}
+    <Toaster richColors />
   </NextThemesProvider>
 );

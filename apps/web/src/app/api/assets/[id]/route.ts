@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { assets, assetVersions, auditEvents } from "@/db/schema";
 import {
   canPublishToCdn,
+  canWriteWorkspace,
+  getWorkspaceMembership,
   getWritableAsset,
   makePublicAssetUrl,
   makePublicR2Key,
@@ -217,6 +219,36 @@ const requireWritableAsset = async ({
   return asset;
 };
 
+const requireRestorableAsset = async ({
+  assetId,
+  ctx,
+  userId,
+}: {
+  assetId: string;
+  ctx: AppContext;
+  userId: string;
+}) => {
+  const asset = await ctx.db.query.assets.findFirst({
+    where: eq(assets.id, assetId),
+  });
+
+  if (!asset) {
+    throw new AssetPatchError("Not found", HTTP_STATUS.notFound);
+  }
+
+  const membership = await getWorkspaceMembership({
+    db: ctx.db,
+    workspaceId: asset.workspaceId,
+    userId,
+  });
+
+  if (!(membership && canWriteWorkspace(membership.role))) {
+    throw new AssetPatchError("Not found", HTTP_STATUS.notFound);
+  }
+
+  return asset;
+};
+
 const buildAssetUpdates = ({
   asset,
   now,
@@ -350,6 +382,64 @@ export const PATCH = async (request: Request, context: RouteContext) => {
 
     return jsonError(
       error instanceof Error ? error.message : "Invalid update",
+      error instanceof AssetPatchError ? error.status : HTTP_STATUS.badRequest
+    );
+  }
+};
+
+export const POST = async (request: Request, context: RouteContext) => {
+  const ctx = await getAppContext();
+  const user = await getSessionUser(ctx, request);
+
+  if (!user) {
+    return unauthorized();
+  }
+
+  const body = (await request.json().catch(() => null)) as {
+    action?: string;
+  } | null;
+
+  if (body?.action !== "restore") {
+    return jsonError("Unsupported asset action", HTTP_STATUS.badRequest);
+  }
+
+  const { id: assetId } = await context.params;
+
+  try {
+    const asset = await requireRestorableAsset({
+      assetId,
+      ctx,
+      userId: user.id,
+    });
+    const now = new Date();
+
+    await ctx.db
+      .update(assets)
+      .set({ deletedAt: null, updatedAt: now })
+      .where(eq(assets.id, asset.id));
+
+    await ctx.db.insert(auditEvents).values({
+      id: crypto.randomUUID(),
+      workspaceId: asset.workspaceId,
+      actorUserId: user.id,
+      assetId: asset.id,
+      eventType: "asset.restored",
+      metadataJson: JSON.stringify({ filename: asset.filename }),
+    });
+
+    return Response.json({
+      asset: { ...asset, deletedAt: null, updatedAt: now },
+    });
+  } catch (error) {
+    if (
+      error instanceof AssetPatchError &&
+      error.status === HTTP_STATUS.notFound
+    ) {
+      return notFound();
+    }
+
+    return jsonError(
+      error instanceof Error ? error.message : "Restore failed",
       error instanceof AssetPatchError ? error.status : HTTP_STATUS.badRequest
     );
   }

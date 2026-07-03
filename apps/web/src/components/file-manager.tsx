@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { toast } from "@workspace/ui/components/sonner";
 import {
   Table,
   TableBody,
@@ -1431,6 +1432,9 @@ export const FileManager = ({
       : null;
 
   const handleDeleted = (assetId: string) => {
+    const deletedAsset =
+      optimisticAssets.find((asset) => asset.id === assetId) ?? null;
+
     setSelectedItemIds((currentIds) => {
       const nextIds = new Set(currentIds);
       nextIds.delete(getAssetItemId(assetId));
@@ -1444,6 +1448,42 @@ export const FileManager = ({
       }
 
       return nextAssets;
+    });
+
+    if (!deletedAsset) {
+      return;
+    }
+
+    toast("File deleted", {
+      description: deletedAsset.filename,
+      duration: 8000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          fetch(`/api/assets/${assetId}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ action: "restore" }),
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Restore failed");
+              }
+
+              setOptimisticAssets((currentAssets) =>
+                currentAssets.some((asset) => asset.id === deletedAsset.id)
+                  ? currentAssets
+                  : [deletedAsset, ...currentAssets]
+              );
+              setActiveAssetId(deletedAsset.id);
+              router.refresh();
+              toast.success("File restored");
+            })
+            .catch(() => toast.error("Restore failed"));
+        },
+      },
     });
   };
   const handleAssetUpdated = (nextAsset: DashboardAsset) => {
