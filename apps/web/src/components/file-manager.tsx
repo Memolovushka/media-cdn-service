@@ -744,41 +744,57 @@ const FileManagerEmptyState = ({
 
   if (trimmedSearchQuery) {
     return (
-      <div className="flex min-h-36 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
+      <div className="mx-auto flex min-h-52 max-w-xl flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-muted/20 px-6 py-10 text-center">
+        <div className="flex size-11 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-xs ring-1 ring-border">
+          <SearchIcon className="size-5" />
+        </div>
         <div className="max-w-sm">
-          <div className="font-medium text-sm">
+          <div className="font-medium text-sm leading-5">
             No results for "{trimmedSearchQuery}"
           </div>
           <div className="mt-1 text-muted-foreground text-xs">
-            Clear search to return to this folder.
+            Clear search to return to this folder and continue browsing.
           </div>
         </div>
-        <TooltipHint content="Clear the current search query">
-          <Button
-            onClick={onClearSearch}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <XIcon />
-            Clear search
-          </Button>
-        </TooltipHint>
+        <div className="flex flex-wrap justify-center gap-2">
+          <TooltipHint content="Clear the current search query">
+            <Button onClick={onClearSearch} size="sm" type="button">
+              <XIcon />
+              Clear search
+            </Button>
+          </TooltipHint>
+          <TooltipHint content="Upload files to this folder">
+            <Button
+              onClick={onUploadFiles}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <CloudUploadIcon />
+              Upload
+            </Button>
+          </TooltipHint>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-40 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
-      <div className="max-w-sm">
-        <div className="font-medium text-sm">This folder is empty</div>
+    <div className="mx-auto flex min-h-64 max-w-2xl flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-muted/20 px-6 py-10 text-center">
+      <div className="flex size-12 items-center justify-center rounded-lg bg-background text-primary shadow-xs ring-1 ring-border">
+        <CloudUploadIcon className="size-5" />
+      </div>
+      <div className="max-w-md">
+        <div className="font-medium text-sm leading-5">
+          Drop files into this folder
+        </div>
         <div className="mt-1 text-muted-foreground text-xs">
-          Upload files, create a folder, or drop files anywhere in this area.
+          Upload media, create a folder, or drag files onto the workspace area.
         </div>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <TooltipHint content="Upload files to this folder">
-          <Button onClick={onUploadFiles} size="sm" type="button">
+          <Button onClick={onUploadFiles} type="button">
             <CloudUploadIcon />
             Upload
           </Button>
@@ -794,6 +810,17 @@ const FileManagerEmptyState = ({
             New folder
           </Button>
         </TooltipHint>
+      </div>
+      <div className="grid w-full max-w-md grid-cols-3 gap-2 pt-2 text-muted-foreground text-xs">
+        <div className="rounded-md bg-background/70 px-2 py-2 ring-1 ring-border/70">
+          Images
+        </div>
+        <div className="rounded-md bg-background/70 px-2 py-2 ring-1 ring-border/70">
+          Video
+        </div>
+        <div className="rounded-md bg-background/70 px-2 py-2 ring-1 ring-border/70">
+          Audio/PDF
+        </div>
       </div>
     </div>
   );
