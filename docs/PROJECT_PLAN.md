@@ -128,6 +128,7 @@ HTTP API:
 - 2026-07-02 feedback fix: opening a new right-click menu now closes any existing file-manager context menu, preventing stacked menus across list rows and grid cards.
 - 2026-07-02 UI/UX recommendations continued: file manager now uses consistent colored type markers for folders, images, SVG, video, audio, PDF, text, and generic files across list and grid views.
 - 2026-07-03 UI/UX recommendations continued: the file area path is now an interactive breadcrumb/address bar with client-side segment navigation and compact copy-path action.
+- 2026-07-03 UI/UX recommendations continued: right-panel filename editing now follows native inline rename behavior with no Save button, Enter/blur save, and Escape cancel.
 
 ### Phase 1: Foundation
 

@@ -55,7 +55,6 @@ import {
   ListIcon,
   MousePointerClickIcon,
   PencilIcon,
-  SaveIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react";
@@ -902,23 +901,17 @@ const AssetDetailsPanel = ({
                     event.preventDefault();
                     saveFilename();
                   }
+
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setFilename(asset.filename);
+                    setError(null);
+                    filenameInputRef.current?.select();
+                  }
                 }}
                 ref={filenameInputRef}
                 value={filename}
               />
-            </TooltipHint>
-            <TooltipHint content="Save filename">
-              <Button
-                disabled={isPending || !filename.trim()}
-                onClick={saveFilename}
-                onMouseDown={(event) => event.preventDefault()}
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <SaveIcon />
-                <span className="sr-only">Rename file</span>
-              </Button>
             </TooltipHint>
           </div>
           <div className="mt-1 truncate text-muted-foreground text-xs">
