@@ -1040,70 +1040,86 @@ const FolderGridCard = ({
   selectedForBulk: boolean;
   selectableId: string;
   selectMode: boolean;
-}) => (
-  <button
-    aria-pressed={selected || selectedForBulk}
-    className={`group flex h-48 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
-    data-selectable-id={selectableId}
-    draggable
-    onClick={(event) => {
-      if (event.shiftKey) {
-        event.preventDefault();
-        onBulkSelect(folder.path, true, true);
-        return;
-      }
+}) => {
+  const [isDragTarget, setIsDragTarget] = useState(false);
 
-      if (selectMode) {
-        onBulkSelect(folder.path, false, !selectedForBulk);
-        return;
-      }
-
-      onOpen(folder.path);
-    }}
-    onContextMenu={(event) => onOpenContextMenu(event, folder.path)}
-    onDragEnd={onDragEnd}
-    onDragOver={(event) => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = event.dataTransfer.types.includes("Files")
-        ? "copy"
-        : "move";
-    }}
-    onDragStart={(event) => {
-      event.dataTransfer.effectAllowed = "move";
-      onDragStart(folder.path);
-    }}
-    onDrop={(event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (event.dataTransfer.types.includes("Files")) {
-        const files = Array.from(event.dataTransfer.files);
-
-        if (files.length) {
-          onFileDrop(folder.path, files);
+  return (
+    <button
+      aria-pressed={selected || selectedForBulk}
+      className={`group flex h-48 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${
+        isDragTarget
+          ? "border-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24)]"
+          : getGridCardClassName({ selected, selectedForBulk })
+      }`}
+      data-selectable-id={selectableId}
+      draggable
+      onClick={(event) => {
+        if (event.shiftKey) {
+          event.preventDefault();
+          onBulkSelect(folder.path, true, true);
+          return;
         }
 
-        return;
-      }
+        if (selectMode) {
+          onBulkSelect(folder.path, false, !selectedForBulk);
+          return;
+        }
 
-      onAssetDrop(folder.path);
-    }}
-    type="button"
-  >
-    <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
-      <FolderIcon className="size-11 transition group-hover:scale-105 group-hover:text-amber-800" />
-      <span className="absolute top-2 right-2 rounded-md bg-background/85 px-1.5 py-0.5 font-medium text-[0.6875rem] text-muted-foreground shadow-xs ring-1 ring-border/70">
-        Folder
-      </span>
-    </div>
-    <div className="mt-3 w-full min-w-0">
-      <div className="truncate font-medium text-sm">{folder.name}</div>
-      <div className="truncate text-muted-foreground text-xs">
-        Workspace folder
+        onOpen(folder.path);
+      }}
+      onContextMenu={(event) => onOpenContextMenu(event, folder.path)}
+      onDragEnd={() => {
+        setIsDragTarget(false);
+        onDragEnd();
+      }}
+      onDragEnter={() => setIsDragTarget(true)}
+      onDragLeave={() => setIsDragTarget(false)}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = event.dataTransfer.types.includes(
+          "Files"
+        )
+          ? "copy"
+          : "move";
+      }}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        onDragStart(folder.path);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragTarget(false);
+
+        if (event.dataTransfer.types.includes("Files")) {
+          const files = Array.from(event.dataTransfer.files);
+
+          if (files.length) {
+            onFileDrop(folder.path, files);
+          }
+
+          return;
+        }
+
+        onAssetDrop(folder.path);
+      }}
+      type="button"
+    >
+      <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
+        <FolderIcon className="size-11 transition group-hover:scale-105 group-hover:text-amber-800" />
+        <span className="absolute top-2 right-2 rounded-md bg-background/85 px-1.5 py-0.5 font-medium text-[0.6875rem] text-muted-foreground shadow-xs ring-1 ring-border/70">
+          Folder
+        </span>
       </div>
-    </div>
-  </button>
-);
+      <div className="mt-3 w-full min-w-0">
+        <div className="truncate font-medium text-sm">{folder.name}</div>
+        <div className="truncate text-muted-foreground text-xs">
+          Workspace folder
+        </div>
+      </div>
+    </button>
+  );
+};
 
 const AssetGridCard = ({
   asset,
@@ -1630,8 +1646,14 @@ export const FileManager = ({
 
     navigator.clipboard
       .writeText(selectedAssetPublicUrl)
-      .then(() => showCommandFeedback("Public URL copied"))
-      .catch(() => showCommandFeedback("Copy failed"));
+      .then(() => {
+        showCommandFeedback("Public URL copied");
+        toast.success("Public URL copied");
+      })
+      .catch(() => {
+        showCommandFeedback("Copy failed");
+        toast.error("Copy failed");
+      });
   };
   const runCommand = (command: () => void) => {
     command();
@@ -1645,8 +1667,14 @@ export const FileManager = ({
   const copyCurrentFolderPath = () => {
     navigator.clipboard
       .writeText(selectedFolderPath)
-      .then(() => showCommandFeedback("Folder path copied"))
-      .catch(() => showCommandFeedback("Copy failed"));
+      .then(() => {
+        showCommandFeedback("Folder path copied");
+        toast.success("Folder path copied");
+      })
+      .catch(() => {
+        showCommandFeedback("Copy failed");
+        toast.error("Copy failed");
+      });
   };
   const closeGridContextMenu = useCallback(() => {
     setGridContextMenu(null);
@@ -1695,8 +1723,14 @@ export const FileManager = ({
 
     navigator.clipboard
       .writeText(publicUrl)
-      .then(() => showCommandFeedback("Public URL copied"))
-      .catch(() => showCommandFeedback("Copy failed"));
+      .then(() => {
+        showCommandFeedback("Public URL copied");
+        toast.success("Public URL copied");
+      })
+      .catch(() => {
+        showCommandFeedback("Copy failed");
+        toast.error("Copy failed");
+      });
   };
   const toggleAllVisibleAssets = (checked: boolean) => {
     setSelectedItemIds((currentIds) => {

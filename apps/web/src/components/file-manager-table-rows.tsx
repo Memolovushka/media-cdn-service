@@ -11,6 +11,7 @@ import {
 } from "@workspace/ui/components/alert-dialog";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { toast } from "@workspace/ui/components/sonner";
 import { TableCell, TableRow } from "@workspace/ui/components/table";
 import {
   ClipboardIcon,
@@ -264,6 +265,7 @@ export const FolderTableRowClient = ({
   const router = useRouter();
   const { closeMenu, openMenu, position } = useRowContextMenu();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDragTarget, setIsDragTarget] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const openFolder = () => {
@@ -303,10 +305,14 @@ export const FolderTableRowClient = ({
     <>
       <TableRow
         aria-selected={selected || selectedForBulk}
-        className={getAssetRowClassName({
+        className={`${getAssetRowClassName({
           selected,
           selectedForBulk,
-        })}
+        })} ${
+          isDragTarget
+            ? "bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24)]"
+            : ""
+        }`}
         data-selectable-id={selectableId}
         draggable
         onClick={(event) => {
@@ -324,7 +330,18 @@ export const FolderTableRowClient = ({
           openFolder();
         }}
         onContextMenu={openMenu}
-        onDragEnd={onDragEnd}
+        onDragEnd={() => {
+          setIsDragTarget(false);
+          onDragEnd?.();
+        }}
+        onDragEnter={(event) => {
+          const isFileDrop = event.dataTransfer.types.includes("Files");
+
+          if (onAssetDrop || (isFileDrop && onFileDrop)) {
+            setIsDragTarget(true);
+          }
+        }}
+        onDragLeave={() => setIsDragTarget(false)}
         onDragOver={(event) => {
           const isFileDrop = event.dataTransfer.types.includes("Files");
 
@@ -342,6 +359,7 @@ export const FolderTableRowClient = ({
         onDrop={(event) => {
           event.preventDefault();
           event.stopPropagation();
+          setIsDragTarget(false);
 
           if (event.dataTransfer.types.includes("Files")) {
             const files = Array.from(event.dataTransfer.files);
@@ -541,7 +559,10 @@ export const AssetTableRowClient = ({
       return;
     }
 
-    navigator.clipboard.writeText(publicUrl).catch(() => undefined);
+    navigator.clipboard
+      .writeText(publicUrl)
+      .then(() => toast.success("Public URL copied"))
+      .catch(() => toast.error("Copy failed"));
   };
   const toggleBulkSelection = (shiftKey: boolean, forceSelect = false) => {
     onBulkSelect?.(assetId, shiftKey, forceSelect || !selectedForBulk);
