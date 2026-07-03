@@ -248,7 +248,7 @@ export const AssetCdnControls = ({
   return (
     <TooltipProvider>
       <div className="flex min-w-72 flex-col gap-3">
-        <div className="rounded-lg border bg-muted/20 p-3">
+        <div className="border-b pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="font-medium text-sm">CDN delivery</div>
@@ -310,7 +310,7 @@ export const AssetCdnControls = ({
         </div>
 
         {currentPublicUrl ? (
-          <div className="flex max-w-96 flex-col gap-2 rounded-lg border p-3">
+          <div className="flex max-w-96 flex-col gap-2">
             <CopyableCodeBlock
               copied={copiedTarget === "url"}
               label="Public CDN URL"

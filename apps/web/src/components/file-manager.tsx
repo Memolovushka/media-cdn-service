@@ -847,6 +847,12 @@ const AssetDetailsPanel = ({
   const { downloadUrl, latestVersion, previewUrl } = getAssetUrls(asset);
   const isReady = latestVersion?.uploadStatus === "ready";
   const cdnState = getAssetCdnState(asset);
+  const metadataItems = [
+    { label: "Type", value: asset.mimeType },
+    { label: "Size", value: formatBytes(asset.sizeBytes) },
+    { label: "Folder", value: asset.folderPath },
+    { label: "Upload", value: latestVersion?.uploadStatus ?? "pending" },
+  ];
   const saveFilename = () => {
     const nextFilename = filename.trim();
 
@@ -880,7 +886,15 @@ const AssetDetailsPanel = ({
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border bg-background p-4">
+    <section className="flex flex-col gap-4 rounded-lg border bg-background p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-medium text-sm">Inspector</div>
+          <div className="text-muted-foreground text-xs">Selected file</div>
+        </div>
+        <Badge variant={cdnState.variant}>{cdnState.label}</Badge>
+      </div>
+
       <AssetPreviewSurface
         asset={asset}
         isReady={isReady}
@@ -889,6 +903,9 @@ const AssetDetailsPanel = ({
 
       <div className="flex items-start justify-between gap-3 border-b pb-3">
         <div className="min-w-0 flex-1">
+          <div className="mb-1 font-medium text-muted-foreground text-xs">
+            Filename
+          </div>
           <div className="flex items-center gap-1">
             <TooltipHint content="Rename this file">
               <Input
@@ -915,20 +932,13 @@ const AssetDetailsPanel = ({
               />
             </TooltipHint>
           </div>
-          <div className="mt-1 truncate text-muted-foreground text-xs">
-            {asset.mimeType} - {formatBytes(asset.sizeBytes)}
-          </div>
           {error ? (
             <div className="mt-1 text-destructive text-xs">{error}</div>
           ) : null}
         </div>
-        <Badge variant={cdnState.variant}>{cdnState.label}</Badge>
-      </div>
-
-      <div className="flex items-center gap-1">
         {downloadUrl ? (
           <TooltipHint content="Download private file">
-            <Button asChild size="icon" variant="ghost">
+            <Button asChild size="icon-sm" variant="outline">
               <a href={downloadUrl}>
                 <DownloadIcon />
                 <span className="sr-only">Download</span>
@@ -937,12 +947,26 @@ const AssetDetailsPanel = ({
           </TooltipHint>
         ) : (
           <TooltipHint content="Download is available after upload finishes">
-            <Button disabled size="icon" variant="ghost">
+            <Button disabled size="icon-sm" variant="outline">
               <DownloadIcon />
               <span className="sr-only">Download</span>
             </Button>
           </TooltipHint>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-b pb-3">
+        {metadataItems.map((item) => (
+          <div
+            className="min-w-0 rounded-md bg-muted/30 px-2 py-1.5"
+            key={item.label}
+          >
+            <div className="text-[0.6875rem] text-muted-foreground">
+              {item.label}
+            </div>
+            <div className="truncate font-medium text-xs">{item.value}</div>
+          </div>
+        ))}
       </div>
 
       <AssetCdnControls
