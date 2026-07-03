@@ -27,6 +27,7 @@ import {
   KeyRoundIcon,
   LogOutIcon,
   SettingsIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, useTransition } from "react";
@@ -42,7 +43,19 @@ import {
 import { TooltipHint } from "@/components/tooltip-hint";
 
 interface AccountActionsProps {
+  billing: {
+    configured: boolean;
+    plan: string;
+    planLabel: string;
+    status: string;
+    workspaceCount: number;
+    workspaceLimit: number;
+  };
   email?: null | string;
+  products: Array<{
+    label: string;
+    slug: string;
+  }>;
 }
 
 const minPasswordLength = 8;
@@ -60,7 +73,11 @@ const getAuthErrorMessage = (error: unknown) => {
   return "Account update failed";
 };
 
-export const AccountActions = ({ email }: AccountActionsProps) => {
+export const AccountActions = ({
+  billing,
+  email,
+  products,
+}: AccountActionsProps) => {
   const router = useRouter();
   const currentPasswordId = useId();
   const newPasswordId = useId();
@@ -74,6 +91,7 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [billingAction, setBillingAction] = useState<string | null>(null);
 
   useEffect(() => {
     setCommandPaletteShortcut(readCommandPaletteShortcut());
@@ -131,6 +149,32 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
     });
   };
 
+  const startCheckout = (slug: string) => {
+    setBillingAction(slug);
+    startTransition(async () => {
+      const checkoutClient = authClient as typeof authClient & {
+        checkout: (input: { slug: string }) => Promise<unknown>;
+      };
+
+      await checkoutClient.checkout({ slug });
+      setBillingAction(null);
+    });
+  };
+
+  const openBillingPortal = () => {
+    setBillingAction("portal");
+    startTransition(async () => {
+      const portalClient = authClient as typeof authClient & {
+        customer: {
+          portal: () => Promise<unknown>;
+        };
+      };
+
+      await portalClient.customer.portal();
+      setBillingAction(null);
+    });
+  };
+
   return (
     <div className="flex gap-2">
       <Popover onOpenChange={setOpen} open={open}>
@@ -156,6 +200,61 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
           </div>
 
           <div className="space-y-3">
+            <div className="rounded-md border bg-muted/20 p-3">
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-xs">Billing</div>
+                  <div className="text-muted-foreground text-xs">
+                    {billing.planLabel} / {billing.status}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    Workspaces: {billing.workspaceCount} /{" "}
+                    {billing.workspaceLimit}
+                  </div>
+                </div>
+                <SparklesIcon className="size-4 shrink-0 text-primary" />
+              </div>
+              {billing.configured ? (
+                <div className="grid gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {products.map((product) => (
+                      <Button
+                        disabled={isPending}
+                        key={product.slug}
+                        onClick={() => startCheckout(product.slug)}
+                        size="sm"
+                        type="button"
+                        variant={
+                          billing.plan === product.slug
+                            ? "secondary"
+                            : "outline"
+                        }
+                      >
+                        {billingAction === product.slug
+                          ? "Opening..."
+                          : product.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    disabled={isPending}
+                    onClick={openBillingPortal}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {billingAction === "portal"
+                      ? "Opening..."
+                      : "Manage billing"}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Polar is not configured yet. Add POLAR env vars to enable
+                  checkout.
+                </p>
+              )}
+            </div>
             <div className="rounded-md border bg-muted/20 p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div className="min-w-0">

@@ -55,6 +55,31 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   });
 }
 
+if (process.env.POLAR_ACCESS_TOKEN) {
+  Object.assign(bindings, {
+    POLAR_ACCESS_TOKEN: alchemy.secret.env("POLAR_ACCESS_TOKEN"),
+    POLAR_SERVER: process.env.POLAR_SERVER ?? "sandbox",
+  });
+}
+
+if (process.env.POLAR_PRODUCT_PRO_ID) {
+  Object.assign(bindings, {
+    POLAR_PRODUCT_PRO_ID: process.env.POLAR_PRODUCT_PRO_ID,
+  });
+}
+
+if (process.env.POLAR_PRODUCT_TEAM_ID) {
+  Object.assign(bindings, {
+    POLAR_PRODUCT_TEAM_ID: process.env.POLAR_PRODUCT_TEAM_ID,
+  });
+}
+
+if (process.env.POLAR_WEBHOOK_SECRET) {
+  Object.assign(bindings, {
+    POLAR_WEBHOOK_SECRET: alchemy.secret.env("POLAR_WEBHOOK_SECRET"),
+  });
+}
+
 export const website = await Nextjs("website", {
   adopt: true,
   bindings,

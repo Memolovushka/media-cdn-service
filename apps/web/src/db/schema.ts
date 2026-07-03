@@ -36,6 +36,38 @@ export const users = sqliteTable(
   (table) => [uniqueIndex("users_email_idx").on(table.email)]
 );
 
+export const userBilling = sqliteTable(
+  "user_billing",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    plan: text("plan", {
+      enum: ["free", "pro", "team"],
+    })
+      .notNull()
+      .default("free"),
+    billingStatus: text("billing_status", {
+      enum: ["active", "canceled", "free", "past_due", "revoked"],
+    })
+      .notNull()
+      .default("free"),
+    polarCustomerId: text("polar_customer_id"),
+    polarSubscriptionId: text("polar_subscription_id"),
+    polarProductId: text("polar_product_id"),
+    currentPeriodEnd: integer("current_period_end", { mode: "timestamp" }),
+    workspaceLimit: integer("workspace_limit").notNull().default(1),
+    storageQuotaBytes: integer("storage_quota_bytes")
+      .notNull()
+      .default(defaultWorkspaceStorageQuotaBytes),
+    ...timestamps,
+  },
+  (table) => [
+    index("user_billing_plan_idx").on(table.plan),
+    index("user_billing_subscription_idx").on(table.polarSubscriptionId),
+  ]
+);
+
 export const sessions = sqliteTable(
   "sessions",
   {
@@ -342,6 +374,7 @@ export const assetFoldersRelations = relations(assetFolders, ({ one }) => ({
 
 export const schema = {
   users,
+  userBilling,
   sessions,
   accounts,
   verifications,

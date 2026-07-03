@@ -1,6 +1,7 @@
-import { and, eq, like } from "drizzle-orm";
+import { and, count, eq, like } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { auditEvents, workspaceMembers, workspaces } from "@/db/schema";
+import { getBillingPlan } from "@/server/billing";
 import type { AuthUser } from "./assets";
 
 const maxWorkspaceNameLength = 80;
@@ -36,6 +37,23 @@ export const createWorkspaceForUser = async ({
   user: AuthUser;
 }) => {
   const workspaceName = normalizeWorkspaceName(name);
+  const [billing, workspaceCountResult] = await Promise.all([
+    getBillingPlan({ db, userId: user.id }),
+    db
+      .select({ value: count() })
+      .from(workspaces)
+      .where(eq(workspaces.ownerId, user.id)),
+  ]);
+  const ownedWorkspaceCount = workspaceCountResult.at(0)?.value ?? 0;
+
+  if (ownedWorkspaceCount >= billing.workspaceLimit) {
+    throw new Error(
+      `Your current plan allows ${billing.workspaceLimit} workspace${
+        billing.workspaceLimit === 1 ? "" : "s"
+      }. Upgrade billing to create more.`
+    );
+  }
+
   const slugBase = slugifyWorkspaceName(workspaceName);
   const existing = await db
     .select({ slug: workspaces.slug })
@@ -57,6 +75,7 @@ export const createWorkspaceForUser = async ({
     name: workspaceName,
     slug,
     ownerId: user.id,
+    storageQuotaBytes: billing.storageQuotaBytes,
   });
 
   await db.insert(workspaceMembers).values({

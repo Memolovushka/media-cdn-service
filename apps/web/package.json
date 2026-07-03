@@ -26,6 +26,8 @@
     "@better-auth/infra": "^0.2.14",
     "@opennextjs/cloudflare": "^1.19.11",
     "@orpc/server": "^1.13.5",
+    "@polar-sh/better-auth": "^1.8.4",
+    "@polar-sh/sdk": "^0.48.1",
     "@workspace/api": "workspace:*",
     "@workspace/env": "workspace:*",
     "@workspace/ui": "workspace:*",

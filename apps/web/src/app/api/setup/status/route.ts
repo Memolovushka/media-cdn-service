@@ -15,6 +15,7 @@ export const GET = async () => {
     const hasGoogleCredentials = Boolean(
       appEnv.GOOGLE_CLIENT_ID && appEnv.GOOGLE_CLIENT_SECRET
     );
+    const hasPolarConfig = Boolean(appEnv.POLAR_ACCESS_TOKEN);
 
     if (!hasDbBinding) {
       return Response.json({
@@ -23,6 +24,7 @@ export const GET = async () => {
           DB: false,
           MEDIA_BUCKET: hasMediaBucketBinding,
           GOOGLE: hasGoogleCredentials,
+          POLAR: hasPolarConfig,
         },
         database: {
           ready: false,
@@ -40,6 +42,7 @@ export const GET = async () => {
       "accounts",
       "sessions",
       "workspaces",
+      "user_billing",
       "asset_folders",
     ];
     const missingTables = requiredTables.filter(
@@ -52,6 +55,7 @@ export const GET = async () => {
         DB: true,
         MEDIA_BUCKET: hasMediaBucketBinding,
         GOOGLE: hasGoogleCredentials,
+        POLAR: hasPolarConfig,
       },
       database: {
         ready: missingTables.length === 0,

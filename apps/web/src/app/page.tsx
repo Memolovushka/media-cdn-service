@@ -22,6 +22,11 @@ import {
   listWorkspaceAssets,
   listWorkspaceFolders,
 } from "@/server/assets";
+import {
+  billingPlans,
+  getBillingPlan,
+  getBillingProductConfig,
+} from "@/server/billing";
 import { getAppContext } from "@/server/context";
 
 const fileBrowserRootPath = "asset";
@@ -166,6 +171,14 @@ const Page = async ({ searchParams }: PageProps) => {
   const cdnReadyAssetCount = dashboardAssets.filter(
     (asset) => asset.cdnEnabled
   ).length;
+  const userBilling = await getBillingPlan({
+    db: ctx.db,
+    userId: session.user.id,
+  });
+  const billingProducts = getBillingProductConfig({
+    proProductId: ctx.env.POLAR_PRODUCT_PRO_ID,
+    teamProductId: ctx.env.POLAR_PRODUCT_TEAM_ID,
+  });
 
   return (
     <main className="min-h-svh bg-muted/20">
@@ -207,7 +220,23 @@ const Page = async ({ searchParams }: PageProps) => {
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             <ThemeToggle />
-            <AccountActions email={session.user.email} />
+            <AccountActions
+              billing={{
+                configured: Boolean(
+                  ctx.env.POLAR_ACCESS_TOKEN && billingProducts.length
+                ),
+                plan: userBilling.plan,
+                planLabel: billingPlans[userBilling.plan].label,
+                status: userBilling.billingStatus,
+                workspaceCount: memberships.length,
+                workspaceLimit: userBilling.workspaceLimit,
+              }}
+              email={session.user.email}
+              products={billingProducts.map((product) => ({
+                label: billingPlans[product.plan].label,
+                slug: product.slug,
+              }))}
+            />
           </div>
         </header>
 
