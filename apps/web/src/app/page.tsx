@@ -12,6 +12,7 @@ import { FileManager } from "@/components/file-manager";
 import { StorageUsageSummary } from "@/components/storage-usage-summary";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TooltipHint } from "@/components/tooltip-hint";
+import { WorkspaceHomeLink } from "@/components/workspace-home-link";
 import { WorkspaceMenu } from "@/components/workspace-menu";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
 import { workspaceMembers, workspaces } from "@/db/schema";
@@ -171,7 +172,18 @@ const Page = async ({ searchParams }: PageProps) => {
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
         <header className="flex flex-col gap-3 border-b bg-background/70 pb-4 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <h1 className="font-semibold text-lg tracking-normal">Media CDN</h1>
+            <h1 className="font-semibold text-lg tracking-normal">
+              {activeWorkspace ? (
+                <WorkspaceHomeLink
+                  className="rounded-sm outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  workspaceId={activeWorkspace.workspaceId}
+                >
+                  Media CDN
+                </WorkspaceHomeLink>
+              ) : (
+                "Media CDN"
+              )}
+            </h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
               {activeWorkspace ? (
                 <WorkspaceMenu
