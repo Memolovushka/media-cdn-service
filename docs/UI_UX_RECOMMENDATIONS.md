@@ -53,7 +53,7 @@
     Добавить вкладку Activity: uploaded, renamed, moved, published, downloaded, deleted. Для MVP можно показать последние 20 событий. Это делает продукт более профессиональным для командной работы и debugging. **Done:** правая панель получила Activity view с последними 20 audit events workspace: uploads, moves, publish/unpublish, previews/downloads, deletes, folder events и workspace changes.
 
 17. **Профессиональная адаптация под mobile/tablet**
-    На mobile список должен превращаться в плотные rows/cards, а правая панель - в bottom sheet. Главные действия: upload, search, select, details. Не пытаться просто сжать desktop grid.
+    На mobile список должен превращаться в плотные rows/cards, а правая панель - в bottom sheet. Главные действия: upload, search, select, details. Не пытаться просто сжать desktop grid. **Done:** на mobile/tablet desktop inspector больше не занимает место под файловой областью; Details/Activity открываются в bottom sheet, а выбор файла сразу поднимает preview/details.
 
 18. **Keyboard-first workflow**
     Добавить горячие клавиши: `/` search, `N` new folder, `U` upload, `F2` rename, `Delete` delete, `Enter` open, `Space` preview/select, `Esc` clear. Показывать их в tooltip/menu, но не перегружать экран подсказками. **Done:** `Cmd/Ctrl+K`, `/`, `N`, `U`, `F2` и `Esc` работают без перехвата ввода в текстовых полях; command palette показывает основные shortcuts.

@@ -21,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@workspace/ui/components/sheet";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { toast } from "@workspace/ui/components/sonner";
 import {
@@ -1007,6 +1014,72 @@ const AssetDetailsPanel = ({
   );
 };
 
+const RightPanelControls = ({
+  onViewChange,
+  view,
+}: {
+  onViewChange: (view: RightPanelView) => void;
+  view: RightPanelView;
+}) => (
+  <div className="flex w-fit rounded-md border bg-background p-0.5 shadow-xs">
+    <TooltipHint content="Show selected file details">
+      <Button
+        aria-pressed={view === "details"}
+        onClick={() => onViewChange("details")}
+        size="sm"
+        type="button"
+        variant={view === "details" ? "secondary" : "ghost"}
+      >
+        Details
+      </Button>
+    </TooltipHint>
+    <TooltipHint content="Show workspace activity">
+      <Button
+        aria-pressed={view === "activity"}
+        onClick={() => onViewChange("activity")}
+        size="sm"
+        type="button"
+        variant={view === "activity" ? "secondary" : "ghost"}
+      >
+        <HistoryIcon />
+        Activity
+      </Button>
+    </TooltipHint>
+  </div>
+);
+
+const RightPanelContent = ({
+  activityEvents,
+  isRefreshingSelection,
+  onAssetUpdated,
+  onViewChange,
+  renameRequestKey,
+  rightPanelView,
+  selectedAsset,
+}: {
+  activityEvents: DashboardActivityEvent[];
+  isRefreshingSelection: boolean;
+  onAssetUpdated: (asset: DashboardAsset) => void;
+  onViewChange: (view: RightPanelView) => void;
+  renameRequestKey: number;
+  rightPanelView: RightPanelView;
+  selectedAsset: DashboardAsset | null | undefined;
+}) => (
+  <>
+    <RightPanelControls onViewChange={onViewChange} view={rightPanelView} />
+    {rightPanelView === "details" ? (
+      <AssetDetailsPanel
+        asset={selectedAsset}
+        isRefreshing={isRefreshingSelection}
+        onAssetUpdated={onAssetUpdated}
+        renameRequestKey={renameRequestKey}
+      />
+    ) : (
+      <WorkspaceActivityPanel events={activityEvents} />
+    )}
+  </>
+);
+
 const FolderGridCard = ({
   folder,
   onAssetDrop,
@@ -1384,6 +1457,7 @@ export const FileManager = ({
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [rightPanelView, setRightPanelView] =
     useState<RightPanelView>("details");
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
   const [selectionDrag, setSelectionDrag] = useState<SelectionDragState | null>(
     null
   );
@@ -2356,7 +2430,7 @@ export const FileManager = ({
     : null;
 
   return (
-    <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
+    <div className="relative grid gap-4 pb-16 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-0 xl:grid-cols-[minmax(0,1fr)_400px]">
       <Input
         accept={acceptedUploadMimeTypes}
         className="sr-only"
@@ -2984,6 +3058,8 @@ export const FileManager = ({
                         onOpen={() => {
                           setActiveAssetId(asset.id);
                           setLastSelectedItemId(getAssetItemId(asset.id));
+                          setRightPanelView("details");
+                          setIsMobilePanelOpen(true);
                           setIsRefreshingSelection(true);
                         }}
                         onPublish={() => publishAssetsToCdn([asset])}
@@ -3104,6 +3180,8 @@ export const FileManager = ({
                       onOpen={() => {
                         setActiveAssetId(asset.id);
                         setLastSelectedItemId(getAssetItemId(asset.id));
+                        setRightPanelView("details");
+                        setIsMobilePanelOpen(true);
                         setIsRefreshingSelection(true);
                         router.push(
                           assetHref({
@@ -3150,42 +3228,73 @@ export const FileManager = ({
           type="button"
         />
       </div>
-      <aside className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
-        <div className="flex w-fit rounded-md border bg-background p-0.5 shadow-xs">
-          <TooltipHint content="Show selected file details">
+      {selectMode ? null : (
+        <div className="fixed inset-x-3 bottom-3 z-40 flex gap-2 rounded-lg border bg-background/95 p-1 shadow-lg backdrop-blur-sm lg:hidden">
+          <Sheet onOpenChange={setIsMobilePanelOpen} open={isMobilePanelOpen}>
             <Button
-              aria-pressed={rightPanelView === "details"}
-              onClick={() => setRightPanelView("details")}
+              className="flex-1"
+              onClick={() => {
+                setRightPanelView("details");
+                setIsMobilePanelOpen(true);
+              }}
               size="sm"
               type="button"
-              variant={rightPanelView === "details" ? "secondary" : "ghost"}
+              variant={rightPanelView === "details" ? "secondary" : "outline"}
             >
               Details
             </Button>
-          </TooltipHint>
-          <TooltipHint content="Show workspace activity">
             <Button
-              aria-pressed={rightPanelView === "activity"}
-              onClick={() => setRightPanelView("activity")}
+              className="flex-1"
+              onClick={() => {
+                setRightPanelView("activity");
+                setIsMobilePanelOpen(true);
+              }}
               size="sm"
               type="button"
-              variant={rightPanelView === "activity" ? "secondary" : "ghost"}
+              variant={rightPanelView === "activity" ? "secondary" : "outline"}
             >
               <HistoryIcon />
               Activity
             </Button>
-          </TooltipHint>
+            <SheetContent
+              className="max-h-[86vh] overflow-y-auto rounded-t-xl p-3"
+              side="bottom"
+            >
+              <SheetHeader className="px-1 pt-1 pb-3 text-left">
+                <SheetTitle>
+                  {rightPanelView === "details" ? "Details" : "Activity"}
+                </SheetTitle>
+                <SheetDescription className="truncate">
+                  {rightPanelView === "details"
+                    ? selectedAsset?.filename || "No file selected"
+                    : `${activityEvents.length} recent workspace events`}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="flex flex-col gap-3 pb-4">
+                <RightPanelContent
+                  activityEvents={activityEvents}
+                  isRefreshingSelection={isRefreshingSelection}
+                  onAssetUpdated={handleAssetUpdated}
+                  onViewChange={setRightPanelView}
+                  renameRequestKey={renameRequestKey}
+                  rightPanelView={rightPanelView}
+                  selectedAsset={selectedAsset}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-        {rightPanelView === "details" ? (
-          <AssetDetailsPanel
-            asset={selectedAsset}
-            isRefreshing={isRefreshingSelection}
-            onAssetUpdated={handleAssetUpdated}
-            renameRequestKey={renameRequestKey}
-          />
-        ) : (
-          <WorkspaceActivityPanel events={activityEvents} />
-        )}
+      )}
+      <aside className="hidden flex-col gap-3 lg:sticky lg:top-4 lg:flex lg:self-start">
+        <RightPanelContent
+          activityEvents={activityEvents}
+          isRefreshingSelection={isRefreshingSelection}
+          onAssetUpdated={handleAssetUpdated}
+          onViewChange={setRightPanelView}
+          renameRequestKey={renameRequestKey}
+          rightPanelView={rightPanelView}
+          selectedAsset={selectedAsset}
+        />
       </aside>
       <AssetUploadTray {...uploadQueue} />
       {selectMode ? (

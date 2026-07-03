@@ -21,6 +21,7 @@ import { Fragment } from "react";
 import { AccountActions } from "@/components/account-actions";
 import { FileManager } from "@/components/file-manager";
 import { StorageUsageSummary } from "@/components/storage-usage-summary";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { TooltipHint } from "@/components/tooltip-hint";
 import { WorkspaceMenu } from "@/components/workspace-menu";
 import { WorkspaceOnboarding } from "@/components/workspace-onboarding";
@@ -250,6 +251,7 @@ const Page = async ({ searchParams }: PageProps) => {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
+            <ThemeToggle />
             <AccountActions email={session.user.email} />
           </div>
         </header>
