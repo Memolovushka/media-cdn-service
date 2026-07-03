@@ -20,7 +20,7 @@
    Добавить выделение прямоугольной рамкой по области файлов, как в Finder/Explorer. Это современнее чекбоксов и хорошо сочетается с уже выбранным направлением: row highlight + Shift-range. **Done:** пустая область файлов поддерживает pointer-drag рамку, которая выделяет пересеченные файлы и папки.
 
 6. **Умная зона drop-target при переносе**
-   При drag файлов или папок показывать подсветку доступных папок, root-зоны и недоступных целей. Для запретных целей показывать короткий inline reason: `Cannot move folder into itself`.
+   При drag файлов или папок показывать подсветку доступных папок, root-зоны и недоступных целей. Для запретных целей показывать короткий inline reason: `Cannot move folder into itself`. **Done:** drag-move strip теперь показывает root и папки как targets, оставляет недоступные цели видимыми, но приглушенными, и выводит inline reason для same-folder/self/child-folder cases.
 
 7. **Batch action bar вместо отдельного select-mode блока**
    Когда выбрано несколько элементов, снизу или над списком должна появляться плавающая action bar: Move, Publish, Download, Delete, Clear. Она должна быть компактной, sticky и не ломать высоту таблицы. **Done:** Select mode теперь использует floating action bar для Select all, Publish, Move и Clear.

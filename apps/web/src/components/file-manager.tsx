@@ -2196,13 +2196,23 @@ export const FileManager = ({
     ? [
         { id: rootFolderPath, name: "Main", path: rootFolderPath },
         ...moveFolderOptions,
-      ].filter(
-        (folder) =>
-          folder.path !== draggedAsset?.folderPath &&
-          !draggedFolderPaths.some((folderPath) =>
-            isFolderInsideFolder(folder.path, folderPath)
-          )
-      )
+      ].map((folder) => {
+        const blockedFolderPath = draggedFolderPaths.find((folderPath) =>
+          isFolderInsideFolder(folder.path, folderPath)
+        );
+        let disabledReason: null | string = null;
+
+        if (folder.path === draggedAsset?.folderPath) {
+          disabledReason = "Already in this folder";
+        } else if (blockedFolderPath) {
+          disabledReason =
+            folder.path === blockedFolderPath
+              ? "Cannot move folder into itself"
+              : "Cannot move folder into its child";
+        }
+
+        return { ...folder, disabledReason };
+      })
     : [];
   const selectionBoxStyle = selectionDrag
     ? getSelectionBoxStyle(selectionDrag, fileAreaRef.current)
@@ -2487,11 +2497,27 @@ export const FileManager = ({
         <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap gap-2 rounded-t-lg border-primary/40 border-x border-t bg-background/95 p-2 shadow-sm">
           {moveTargets.map((folder) => (
             <button
-              className="rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs hover:border-primary/50 hover:text-foreground"
+              aria-disabled={Boolean(folder.disabledReason)}
+              className={`rounded-md border px-2 py-1 text-left text-xs ${
+                folder.disabledReason
+                  ? "cursor-not-allowed border-dashed bg-muted/30 text-muted-foreground/70"
+                  : "bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+              }`}
               key={folder.path}
-              onDragOver={(event) => event.preventDefault()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = folder.disabledReason
+                  ? "none"
+                  : "move";
+              }}
               onDrop={(event) => {
                 event.preventDefault();
+                if (folder.disabledReason) {
+                  setMoveError(folder.disabledReason);
+                  setDraggedItemId(null);
+                  return;
+                }
+
                 if (draggedItemId) {
                   moveDraggedItems(draggedItemId, folder.path).catch(
                     (moveErrorValue: unknown) => {
@@ -2507,7 +2533,12 @@ export const FileManager = ({
               }}
               type="button"
             >
-              {folder.name}
+              <span className="block font-medium">{folder.name}</span>
+              {folder.disabledReason ? (
+                <span className="block max-w-44 truncate">
+                  {folder.disabledReason}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
