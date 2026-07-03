@@ -233,16 +233,17 @@ export const AssetCdnControls = ({
     });
   };
 
-  const copyValue = (target: Exclude<CopiedTarget, null>, value: string) => {
+  const copyValue = async (
+    target: Exclude<CopiedTarget, null>,
+    value: string
+  ) => {
     if (!value) {
       return;
     }
 
-    startTransition(async () => {
-      await navigator.clipboard.writeText(value);
-      setCopiedTarget(target);
-      window.setTimeout(() => setCopiedTarget(null), copiedResetDelayMs);
-    });
+    await navigator.clipboard.writeText(value);
+    setCopiedTarget(target);
+    window.setTimeout(() => setCopiedTarget(null), copiedResetDelayMs);
   };
 
   return (
