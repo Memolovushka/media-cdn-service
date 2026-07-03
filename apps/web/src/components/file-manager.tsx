@@ -623,8 +623,8 @@ const getFolderBreadcrumbs = (folderPath: string) => {
 };
 
 const AssetDetailsPanelSkeleton = () => (
-  <section className="flex flex-col gap-4 rounded-lg border bg-background p-4">
-    <Skeleton className="h-64 w-full rounded-md" />
+  <section className="flex flex-col gap-3 rounded-lg border bg-background p-3">
+    <Skeleton className="h-56 w-full rounded-md" />
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-4 w-2/3" />
@@ -658,7 +658,7 @@ const AssetPreviewSurface = ({
 
     return (
       <div
-        className={`flex min-h-56 flex-col items-center justify-center gap-2 rounded-lg border bg-muted/20 p-4 text-center text-muted-foreground text-sm ${className ?? ""}`}
+        className={`flex min-h-48 flex-col items-center justify-center gap-2 rounded-lg border bg-muted/20 p-4 text-center text-muted-foreground text-xs ${className ?? ""}`}
       >
         <AssetIcon className="size-8" />
         Preview is available after upload finishes.
@@ -668,15 +668,15 @@ const AssetPreviewSurface = ({
 
   return (
     <div
-      className={`flex aspect-[4/3] min-h-56 items-center justify-center overflow-hidden rounded-lg border bg-muted/20 ${className ?? ""}`}
+      className={`flex aspect-[4/3] min-h-48 items-center justify-center overflow-hidden rounded-lg border bg-muted/20 ${className ?? ""}`}
     >
       <object
         aria-label={`Preview of ${asset.filename}`}
-        className="h-full max-h-[460px] min-h-64 w-full object-contain"
+        className="h-full max-h-[420px] min-h-52 w-full object-contain"
         data={previewUrl}
         type={asset.mimeType}
       >
-        <div className="flex min-h-56 items-center justify-center p-4 text-center text-muted-foreground text-sm">
+        <div className="flex min-h-48 items-center justify-center p-4 text-center text-muted-foreground text-xs">
           {previewLabel} is not available for this file.
         </div>
       </object>
@@ -689,11 +689,11 @@ const WorkspaceActivityPanel = ({
 }: {
   events: DashboardActivityEvent[];
 }) => (
-  <section className="flex flex-col gap-3 rounded-lg border bg-background p-4">
+  <section className="flex flex-col gap-3 rounded-lg border bg-background p-3">
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 font-semibold text-sm">
-          <HistoryIcon className="size-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 font-medium text-sm">
+          <HistoryIcon className="size-3.5 text-muted-foreground" />
           Activity
         </div>
         <div className="text-muted-foreground text-xs">
@@ -703,16 +703,16 @@ const WorkspaceActivityPanel = ({
     </div>
 
     {events.length ? (
-      <ol className="flex max-h-[560px] flex-col overflow-y-auto">
+      <ol className="flex max-h-[520px] flex-col overflow-y-auto">
         {events.map((event) => (
           <li
-            className="border-t py-3 first:border-t-0 first:pt-0"
+            className="border-t py-2.5 first:border-t-0 first:pt-0"
             key={event.id}
           >
             <div className="flex items-start gap-3">
-              <span className="mt-1 size-2 rounded-full bg-primary/70" />
+              <span className="mt-1 size-1.5 rounded-full bg-primary/70" />
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium text-sm">
+                <div className="truncate font-medium text-[0.8125rem]">
                   {getActivityTitle(event)}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
@@ -729,7 +729,7 @@ const WorkspaceActivityPanel = ({
         ))}
       </ol>
     ) : (
-      <div className="flex min-h-44 items-center justify-center rounded-lg border border-dashed text-center text-muted-foreground text-sm">
+      <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed text-center text-muted-foreground text-xs">
         Activity will appear after uploads, moves, publishes, and deletes.
       </div>
     )}
@@ -751,12 +751,12 @@ const FileManagerEmptyState = ({
 
   if (trimmedSearchQuery) {
     return (
-      <div className="mx-auto flex min-h-52 max-w-xl flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-muted/20 px-6 py-10 text-center">
-        <div className="flex size-11 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-xs ring-1 ring-border">
-          <SearchIcon className="size-5" />
+      <div className="mx-auto flex min-h-44 max-w-xl flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/20 px-5 py-8 text-center">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-xs ring-1 ring-border">
+          <SearchIcon className="size-4" />
         </div>
         <div className="max-w-sm">
-          <div className="font-medium text-sm leading-5">
+          <div className="font-medium text-[0.8125rem] leading-5">
             No results for "{trimmedSearchQuery}"
           </div>
           <div className="mt-1 text-muted-foreground text-xs">
@@ -787,12 +787,12 @@ const FileManagerEmptyState = ({
   }
 
   return (
-    <div className="mx-auto flex min-h-64 max-w-2xl flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-muted/20 px-6 py-10 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg bg-background text-primary shadow-xs ring-1 ring-border">
-        <CloudUploadIcon className="size-5" />
+    <div className="mx-auto flex min-h-56 max-w-2xl flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/20 px-5 py-8 text-center">
+      <div className="flex size-10 items-center justify-center rounded-lg bg-background text-primary shadow-xs ring-1 ring-border">
+        <CloudUploadIcon className="size-4" />
       </div>
       <div className="max-w-md">
-        <div className="font-medium text-sm leading-5">
+        <div className="font-medium text-[0.8125rem] leading-5">
           Drop files into this folder
         </div>
         <div className="mt-1 text-muted-foreground text-xs">
@@ -818,14 +818,14 @@ const FileManagerEmptyState = ({
           </Button>
         </TooltipHint>
       </div>
-      <div className="grid w-full max-w-md grid-cols-3 gap-2 pt-2 text-muted-foreground text-xs">
-        <div className="rounded-md bg-background/70 px-2 py-2 ring-1 ring-border/70">
+      <div className="grid w-full max-w-sm grid-cols-3 gap-2 pt-1 text-[0.6875rem] text-muted-foreground">
+        <div className="rounded-md bg-background/70 px-2 py-1.5 ring-1 ring-border/70">
           Images
         </div>
-        <div className="rounded-md bg-background/70 px-2 py-2 ring-1 ring-border/70">
+        <div className="rounded-md bg-background/70 px-2 py-1.5 ring-1 ring-border/70">
           Video
         </div>
-        <div className="rounded-md bg-background/70 px-2 py-2 ring-1 ring-border/70">
+        <div className="rounded-md bg-background/70 px-2 py-1.5 ring-1 ring-border/70">
           Audio/PDF
         </div>
       </div>
@@ -866,8 +866,8 @@ const AssetDetailsPanel = ({
 
   if (!asset) {
     return (
-      <section className="rounded-lg border bg-background p-4">
-        <div className="flex h-44 items-center justify-center text-center text-muted-foreground text-sm">
+      <section className="rounded-lg border bg-background p-3">
+        <div className="flex h-36 items-center justify-center text-center text-muted-foreground text-xs">
           Select a file to manage preview, download, and CDN settings.
         </div>
       </section>
@@ -920,7 +920,7 @@ const AssetDetailsPanel = ({
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border bg-background p-4 shadow-sm">
+    <section className="flex flex-col gap-3 rounded-lg border bg-background p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="font-medium text-sm">Inspector</div>
@@ -935,16 +935,16 @@ const AssetDetailsPanel = ({
         previewUrl={previewUrl}
       />
 
-      <div className="flex items-start justify-between gap-3 border-b pb-3">
+      <div className="flex items-start justify-between gap-2 border-b pb-3">
         <div className="min-w-0 flex-1">
-          <div className="mb-1 font-medium text-muted-foreground text-xs">
+          <div className="mb-1 font-medium text-[0.6875rem] text-muted-foreground">
             Filename
           </div>
           <div className="flex items-center gap-1">
             <TooltipHint content="Rename this file">
               <Input
                 aria-label="Filename"
-                className="h-8 min-w-0 font-semibold text-sm"
+                className="h-7 min-w-0 font-medium text-[0.8125rem]"
                 disabled={isPending}
                 onBlur={saveFilename}
                 onChange={(event) => setFilename(event.target.value)}
@@ -989,7 +989,7 @@ const AssetDetailsPanel = ({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 border-b pb-3">
+      <div className="grid grid-cols-2 gap-1.5 border-b pb-3">
         {metadataItems.map((item) => (
           <div
             className="min-w-0 rounded-md bg-muted/30 px-2 py-1.5"
@@ -1286,14 +1286,14 @@ const AssetGridCard = ({
       </div>
       <div className="mt-3 flex w-full min-w-0 flex-1 flex-col justify-between gap-2">
         <div className="w-full min-w-0">
-          <div className="truncate font-medium text-sm leading-5">
+          <div className="truncate font-medium text-[0.8125rem] leading-5">
             {asset.filename}
           </div>
           <div className="truncate text-muted-foreground text-xs">
-            {assetVisual.label} - {sizeLabel}
+            {assetVisual.label}
           </div>
         </div>
-        <div className="flex min-h-5 items-center justify-between gap-2 text-muted-foreground text-xs">
+        <div className="flex min-h-5 items-center justify-between gap-2 text-[0.6875rem] text-muted-foreground">
           <span className="truncate">{asset.mimeType}</span>
           <span className="shrink-0">{sizeLabel}</span>
         </div>

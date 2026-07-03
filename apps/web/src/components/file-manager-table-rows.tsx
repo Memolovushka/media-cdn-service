@@ -390,14 +390,16 @@ export const FolderTableRowClient = ({
             <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
               <FolderIcon className="size-4" />
             </span>
-            <span className="truncate font-medium text-sm">{folderName}</span>
+            <span className="truncate font-medium text-[0.8125rem]">
+              {folderName}
+            </span>
           </div>
         </TableCell>
         <TableCell className="text-muted-foreground text-xs">Folder</TableCell>
         <TableCell className="text-muted-foreground text-xs">-</TableCell>
-        <TableCell className="text-xs">-</TableCell>
+        <TableCell className="text-muted-foreground text-xs">-</TableCell>
         <TableCell
-          className="w-28 text-right"
+          className="w-24 text-right"
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
@@ -633,7 +635,7 @@ export const AssetTableRowClient = ({
             >
               <AssetTypeIcon className="size-4" />
             </span>
-            <span className="min-w-0 truncate font-medium text-sm">
+            <span className="min-w-0 truncate font-medium text-[0.8125rem]">
               {filename}
             </span>
           </div>
@@ -642,14 +644,16 @@ export const AssetTableRowClient = ({
           <span className="font-medium text-foreground text-xs">
             {assetVisual.label}
           </span>
-          <span className="ml-2 text-xs">{mimeType}</span>
+          <span className="ml-2 text-[0.6875rem]">{mimeType}</span>
         </TableCell>
         <TableCell>
           <Badge variant={cdnVariant}>{cdnLabel}</Badge>
         </TableCell>
-        <TableCell className="text-xs">{sizeLabel}</TableCell>
+        <TableCell className="text-muted-foreground text-xs">
+          {sizeLabel}
+        </TableCell>
         <TableCell
-          className="w-32 text-right"
+          className="w-28 text-right"
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >

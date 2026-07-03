@@ -31,7 +31,7 @@
    - Row height: 44-48px.
    - Card radius: максимум 8px.
    - Все панели должны иметь одинаковую border/background логику.
-   - **Mostly done:** file surface, rows, grid cards, inspector и toolbar получили более стабильные размеры, radius и border/background логику.
+   - **Done:** file surface, rows, grid cards, inspector, toolbar, empty states и activity panel используют стабильные размеры, 8px radius и согласованную border/background логику.
 
 4. **Улучшить typography**
    - Filename: 13-14px medium.
@@ -39,7 +39,7 @@
    - Section labels: compact muted labels.
    - Убрать крупный текст из рабочих панелей.
    - Сделать hierarchy: файл важнее MIME/size/status.
-   - **Mostly done:** list/grid/inspector используют более плотную hierarchy: filename впереди, metadata и MIME приглушены.
+   - **Done:** list/grid/inspector используют плотную hierarchy: filename 13px medium, metadata 11-12px muted, section labels compact, MIME/size/status не спорят с именем файла.
 
 5. **Переделать right inspector panel**
    - Preview сверху с фиксированным aspect ratio.
@@ -86,11 +86,11 @@
    - Спрятать вторичные details.
    - Сократить лишние borders.
    - Не плодить cards внутри cards.
-   - **Mostly done:** secondary snippets спрятаны за disclosure, redundant preview action убран, основные действия уплотнены в toolbar/context menu/inspector.
+   - **Done:** secondary snippets спрятаны за disclosure, redundant preview action и дублирующий page breadcrumb убраны, основные действия уплотнены в toolbar/context menu/inspector.
 
 11. **Собрать цветовую систему**
-    - Neutral background.
-    - One primary accent.
+   - Neutral background.
+   - One primary accent.
    - Semantic colors для public/private/warning/error.
    - Умеренные accents для file types.
    - Единый selected state для list/grid/context menu.
@@ -106,7 +106,7 @@
 6. Mobile/tablet adaptation.
 7. Activity feed visual integration.
 
-Status: priorities 1-7 are shipped. Remaining design work is now refinement: tighter mobile rows/cards, deeper typography pass, and any future visual QA feedback from real usage.
+Status: priorities 1-7 are shipped. The former spacing, typography, and visual-noise refinement items are now marked Done after the final polish pass. Remaining design work is only future visual QA feedback from real usage.
 
 ## Acceptance criteria
 
@@ -126,3 +126,4 @@ Status: priorities 1-7 are shipped. Remaining design work is now refinement: tig
 - 2026-07-03: Fourth polish slice shipped and deployed: empty folder and empty search states now render as action-oriented drop-zone surfaces with clear primary actions and supported media hints. `bun run check`, `bun run typecheck`, GitHub Actions deploy, and production setup check passed.
 - 2026-07-03: Fifth polish slice shipped and deployed: copy actions show toast feedback and folder drop targets highlight in both list and grid views during drag-over. `bun run check`, `bun run typecheck`, GitHub Actions deploy, and production setup check passed.
 - 2026-07-03: Sixth polish slice shipped and deployed: mobile/tablet Details and Activity open in a bottom sheet, selected files raise the mobile details surface, and the header has a persisted White/Black/System theme switcher.
+- 2026-07-03: Seventh polish slice shipped and deployed: final spacing/typography/noise pass removed the duplicated page breadcrumb, tightened inspector/activity/empty-state spacing, reduced repeated grid metadata, and made list row typography denser.

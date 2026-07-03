@@ -134,6 +134,7 @@ HTTP API:
 - 2026-07-03 docs update: README now describes the actual Media CDN Service product, stack, local commands, deploy flow, and production health check.
 - 2026-07-03 UI/UX recommendations continued: mobile/tablet file manager now keeps the desktop inspector out of the narrow layout and opens Details/Activity in a bottom sheet.
 - 2026-07-03 dashboard polish: the header now includes a persisted White/Black/System theme switcher powered by the existing next-themes provider.
+- 2026-07-03 design polish completed: final spacing, typography, and visual-noise pass removed the duplicated page breadcrumb, tightened inspector/activity/empty states, reduced repeated grid metadata, and updated the design plan from Mostly done to Done.
 
 ### Phase 1: Foundation
 

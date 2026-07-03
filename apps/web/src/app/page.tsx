@@ -1,11 +1,3 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@workspace/ui/components/breadcrumb";
 import { Button } from "@workspace/ui/components/button";
 import {
   Card,
@@ -14,10 +6,7 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card";
 import { eq } from "drizzle-orm";
-import type { Route } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
-import { Fragment } from "react";
 import { AccountActions } from "@/components/account-actions";
 import { FileManager } from "@/components/file-manager";
 import { StorageUsageSummary } from "@/components/storage-usage-summary";
@@ -35,57 +24,16 @@ import {
 import { getAppContext } from "@/server/context";
 
 const fileBrowserRootPath = "asset";
-const fileBrowserRootLabel = "Main";
 
 const getParentFolderPath = (folderPath: string) =>
   folderPath.includes("/")
     ? folderPath.slice(0, folderPath.lastIndexOf("/"))
     : "";
 
-const folderHref = ({
-  folderPath,
-  workspaceId,
-}: {
-  folderPath: string;
-  workspaceId?: string;
-}) => {
-  const params = new URLSearchParams();
-
-  if (workspaceId) {
-    params.set("workspace", workspaceId);
-  }
-
-  if (folderPath !== fileBrowserRootPath) {
-    params.set("folder", folderPath);
-  }
-
-  const query = params.toString();
-
-  return query ? `/?${query}` : "/";
-};
-
 const getFileBrowserFolderPath = (folderPath?: string) =>
   folderPath?.startsWith(`${fileBrowserRootPath}/`)
     ? folderPath
     : fileBrowserRootPath;
-
-const getFolderBreadcrumbSegments = ({
-  folderPath,
-  workspaceId,
-}: {
-  folderPath: string;
-  workspaceId?: string;
-}) =>
-  folderPath.split("/").map((segment, index, segments) => ({
-    href: folderHref({
-      folderPath: segments.slice(0, index + 1).join("/"),
-      workspaceId,
-    }),
-    name:
-      index === 0 && segment === fileBrowserRootPath
-        ? fileBrowserRootLabel
-        : segment,
-  }));
 
 const SetupRequired = ({ message }: { message: string }) => (
   <main className="flex min-h-svh items-center justify-center bg-background p-6">
@@ -214,11 +162,6 @@ const Page = async ({ searchParams }: PageProps) => {
       return parentPath === selectedFolderPath;
     }) ?? [];
   const dashboardAssets = assets ?? [];
-  const folderBreadcrumbSegments = getFolderBreadcrumbSegments({
-    folderPath: selectedFolderPath,
-    workspaceId: activeWorkspace?.workspaceId,
-  });
-  const isRootFolder = selectedFolderPath === fileBrowserRootPath;
   const cdnReadyAssetCount = dashboardAssets.filter(
     (asset) => asset.cdnEnabled
   ).length;
@@ -257,50 +200,15 @@ const Page = async ({ searchParams }: PageProps) => {
         </header>
 
         {activeWorkspace ? (
-          <>
-            <section className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                {isRootFolder ? (
-                  <div />
-                ) : (
-                  <Breadcrumb>
-                    <BreadcrumbList>
-                      {folderBreadcrumbSegments.map((segment, index) => {
-                        const isCurrent =
-                          index === folderBreadcrumbSegments.length - 1;
-
-                        return (
-                          <Fragment key={segment.href}>
-                            {index > 0 ? <BreadcrumbSeparator /> : null}
-                            <BreadcrumbItem>
-                              {isCurrent ? (
-                                <BreadcrumbPage>{segment.name}</BreadcrumbPage>
-                              ) : (
-                                <BreadcrumbLink asChild>
-                                  <Link href={segment.href as Route}>
-                                    {segment.name}
-                                  </Link>
-                                </BreadcrumbLink>
-                              )}
-                            </BreadcrumbItem>
-                          </Fragment>
-                        );
-                      })}
-                    </BreadcrumbList>
-                  </Breadcrumb>
-                )}
-              </div>
-            </section>
-            <FileManager
-              activityEvents={activityEvents ?? []}
-              allFolders={folders ?? []}
-              assets={dashboardAssets}
-              selectedAssetId={selectedAssetId}
-              selectedFolderPath={selectedFolderPath}
-              visibleFolders={visibleFolders}
-              workspaceId={activeWorkspace.workspaceId}
-            />
-          </>
+          <FileManager
+            activityEvents={activityEvents ?? []}
+            allFolders={folders ?? []}
+            assets={dashboardAssets}
+            selectedAssetId={selectedAssetId}
+            selectedFolderPath={selectedFolderPath}
+            visibleFolders={visibleFolders}
+            workspaceId={activeWorkspace.workspaceId}
+          />
         ) : (
           <WorkspaceOnboarding />
         )}
