@@ -216,14 +216,14 @@ const getAssetRowClassName = ({
   selectedForBulk: boolean;
 }) => {
   if (selectedForBulk) {
-    return "cursor-pointer border-l-2 border-l-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.22)] hover:bg-primary/20";
+    return "h-12 cursor-pointer border-l-2 border-l-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.22)] hover:bg-primary/20";
   }
 
   if (selected) {
-    return "cursor-pointer border-l-2 border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)] hover:bg-primary/15";
+    return "h-12 cursor-pointer border-l-2 border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)] hover:bg-primary/15";
   }
 
-  return "cursor-pointer border-l-2 border-l-transparent hover:bg-muted/40";
+  return "h-12 cursor-pointer border-l-2 border-l-transparent hover:bg-muted/40";
 };
 
 export const FolderTableRowClient = ({
@@ -372,12 +372,12 @@ export const FolderTableRowClient = ({
             <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
               <FolderIcon className="size-4" />
             </span>
-            <span className="truncate font-medium">{folderName}</span>
+            <span className="truncate font-medium text-sm">{folderName}</span>
           </div>
         </TableCell>
-        <TableCell className="text-muted-foreground">Folder</TableCell>
-        <TableCell className="text-muted-foreground">-</TableCell>
-        <TableCell>-</TableCell>
+        <TableCell className="text-muted-foreground text-xs">Folder</TableCell>
+        <TableCell className="text-muted-foreground text-xs">-</TableCell>
+        <TableCell className="text-xs">-</TableCell>
         <TableCell
           className="text-right"
           onClick={(event) => event.stopPropagation()}
@@ -593,14 +593,16 @@ export const AssetTableRowClient = ({
         role="link"
         tabIndex={0}
       >
-        <TableCell>
+        <TableCell className="py-2">
           <div className="flex min-w-0 items-center gap-2 text-left text-primary">
             <span
               className={`flex size-7 shrink-0 items-center justify-center rounded-md ${assetVisual.tileClassName}`}
             >
               <AssetTypeIcon className="size-4" />
             </span>
-            <span className="min-w-0 truncate font-medium">{filename}</span>
+            <span className="min-w-0 truncate font-medium text-sm">
+              {filename}
+            </span>
           </div>
         </TableCell>
         <TableCell className="max-w-40 truncate text-muted-foreground">
@@ -612,7 +614,7 @@ export const AssetTableRowClient = ({
         <TableCell>
           <Badge variant={cdnVariant}>{cdnLabel}</Badge>
         </TableCell>
-        <TableCell>{sizeLabel}</TableCell>
+        <TableCell className="text-xs">{sizeLabel}</TableCell>
         <TableCell
           className="text-right"
           onClick={(event) => event.stopPropagation()}

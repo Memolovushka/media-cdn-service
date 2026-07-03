@@ -19,7 +19,6 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { Fragment } from "react";
 import { AccountActions } from "@/components/account-actions";
-import { AssetUploadDialog } from "@/components/asset-upload-dialog";
 import { FileManager } from "@/components/file-manager";
 import { StorageUsageSummary } from "@/components/storage-usage-summary";
 import { TooltipHint } from "@/components/tooltip-hint";
@@ -224,14 +223,12 @@ const Page = async ({ searchParams }: PageProps) => {
   ).length;
 
   return (
-    <main className="min-h-svh bg-background">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b pb-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="font-semibold text-2xl tracking-normal">
-              Media CDN
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+    <main className="min-h-svh bg-muted/20">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-3 border-b bg-background/70 pb-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <h1 className="font-semibold text-lg tracking-normal">Media CDN</h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
               {activeWorkspace ? (
                 <WorkspaceMenu
                   activeWorkspaceId={activeWorkspace.workspaceId}
@@ -252,12 +249,7 @@ const Page = async ({ searchParams }: PageProps) => {
               ) : null}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <AssetUploadDialog
-              disabled={!activeWorkspace}
-              folderPath={selectedFolderPath}
-              workspaceId={activeWorkspace?.workspaceId}
-            />
+          <div className="flex shrink-0 flex-wrap gap-2">
             <AccountActions email={session.user.email} />
           </div>
         </header>

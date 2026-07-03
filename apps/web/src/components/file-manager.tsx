@@ -616,7 +616,7 @@ const getFolderBreadcrumbs = (folderPath: string) => {
 };
 
 const AssetDetailsPanelSkeleton = () => (
-  <section className="flex flex-col gap-4 rounded-lg border p-4">
+  <section className="flex flex-col gap-4 rounded-lg border bg-background p-4">
     <Skeleton className="h-64 w-full rounded-md" />
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1 space-y-2">
@@ -661,7 +661,7 @@ const AssetPreviewSurface = ({
 
   return (
     <div
-      className={`flex min-h-64 items-center justify-center overflow-hidden rounded-lg border bg-muted/20 ${className ?? ""}`}
+      className={`flex aspect-[4/3] min-h-56 items-center justify-center overflow-hidden rounded-lg border bg-muted/20 ${className ?? ""}`}
     >
       <object
         aria-label={`Preview of ${asset.filename}`}
@@ -682,7 +682,7 @@ const WorkspaceActivityPanel = ({
 }: {
   events: DashboardActivityEvent[];
 }) => (
-  <section className="flex flex-col gap-3 rounded-lg border p-4">
+  <section className="flex flex-col gap-3 rounded-lg border bg-background p-4">
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
         <div className="flex items-center gap-2 font-semibold text-sm">
@@ -832,7 +832,7 @@ const AssetDetailsPanel = ({
 
   if (!asset) {
     return (
-      <section className="rounded-lg border p-4">
+      <section className="rounded-lg border bg-background p-4">
         <div className="flex h-44 items-center justify-center text-center text-muted-foreground text-sm">
           Select a file to manage preview, download, and CDN settings.
         </div>
@@ -880,14 +880,14 @@ const AssetDetailsPanel = ({
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border p-4">
+    <section className="flex flex-col gap-4 rounded-lg border bg-background p-4">
       <AssetPreviewSurface
         asset={asset}
         isReady={isReady}
         previewUrl={previewUrl}
       />
 
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b pb-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1">
             <TooltipHint content="Rename this file">
@@ -992,7 +992,7 @@ const FolderGridCard = ({
 }) => (
   <button
     aria-pressed={selected || selectedForBulk}
-    className={`group flex min-h-36 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+    className={`group flex h-48 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
     data-selectable-id={selectableId}
     draggable
     onClick={(event) => {
@@ -1039,7 +1039,7 @@ const FolderGridCard = ({
     }}
     type="button"
   >
-    <div className="flex flex-1 items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
+    <div className="flex aspect-[4/3] w-full items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
       <FolderIcon className="size-11 transition group-hover:text-amber-800" />
     </div>
     <div className="mt-3 w-full min-w-0">
@@ -1090,7 +1090,7 @@ const AssetGridCard = ({
   return (
     <button
       aria-pressed={selected || selectedForBulk}
-      className={`group flex min-h-48 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+      className={`group flex h-56 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
       data-selectable-id={selectableId}
       draggable
       onClick={(event) => {
@@ -1135,7 +1135,9 @@ const AssetGridCard = ({
       </div>
       <div className="mt-3 flex w-full min-w-0 flex-1 flex-col gap-2">
         <div className="w-full min-w-0">
-          <div className="truncate font-medium text-sm">{asset.filename}</div>
+          <div className="truncate font-medium text-sm leading-5">
+            {asset.filename}
+          </div>
           <div className="truncate text-muted-foreground text-xs">
             {assetVisual.label} - {sizeLabel}
           </div>
@@ -2259,7 +2261,7 @@ export const FileManager = ({
     : null;
 
   return (
-    <div className="relative grid gap-4 lg:grid-cols-[minmax(420px,1fr)_minmax(360px,520px)]">
+    <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
       <Input
         accept={acceptedUploadMimeTypes}
         className="sr-only"
@@ -2589,7 +2591,7 @@ export const FileManager = ({
         </div>
       ) : null}
       <div
-        className="relative flex min-h-96 select-none flex-col overflow-x-auto rounded-lg border"
+        className="relative flex min-h-[640px] select-none flex-col overflow-x-auto rounded-lg border bg-background shadow-sm"
         onPointerCancel={finishSelectionDrag}
         onPointerDown={handleSelectionPointerDown}
         onPointerMove={handleSelectionPointerMove}
@@ -2602,10 +2604,15 @@ export const FileManager = ({
             style={selectionBoxStyle}
           />
         ) : null}
-        <div className="flex flex-col gap-2 border-b px-3 py-2">
+        <div className="flex min-h-12 flex-col gap-2 border-b bg-muted/20 px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              <div className="font-medium text-sm">Files</div>
+              <div className="flex items-center gap-2">
+                <div className="font-medium text-sm">Files</div>
+                <span className="text-muted-foreground text-xs">
+                  {filteredItems.length} shown
+                </span>
+              </div>
               <div className="mt-1 flex min-w-0 items-center gap-1 text-muted-foreground text-xs">
                 <nav
                   aria-label="Current folder path"
@@ -2650,14 +2657,32 @@ export const FileManager = ({
                 </TooltipHint>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-1">
+            <div className="flex min-h-10 flex-wrap items-center gap-1 rounded-md border bg-background p-1 shadow-xs">
+              <TooltipHint content="Upload files to this folder">
+                <Button
+                  aria-label="Upload files"
+                  onClick={openUploadPicker}
+                  size="sm"
+                  type="button"
+                >
+                  <CloudUploadIcon />
+                  Upload
+                </Button>
+              </TooltipHint>
+              <FolderCreateDialog
+                onOpenChange={setIsCreateFolderOpen}
+                open={isCreateFolderOpen}
+                parentPath={selectedFolderPath}
+                tooltip="Create new folder in the current location"
+                workspaceId={workspaceId}
+              />
               {isSearchOpen || searchQuery ? (
                 <div className="relative">
                   <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     aria-label="Search files and folders"
                     autoFocus
-                    className="h-7 w-36 pr-7 pl-7 text-xs"
+                    className="h-8 w-40 pr-7 pl-7 text-xs"
                     onChange={(event) => setSearchQuery(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Escape") {
@@ -2691,9 +2716,9 @@ export const FileManager = ({
                       <Button
                         aria-label="Search files and folders"
                         onClick={() => setIsSearchOpen(true)}
-                        size="icon"
+                        size="icon-sm"
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                       >
                         <SearchIcon />
                       </Button>
@@ -2702,13 +2727,6 @@ export const FileManager = ({
                   </Tooltip>
                 </TooltipProvider>
               )}
-              <FolderCreateDialog
-                onOpenChange={setIsCreateFolderOpen}
-                open={isCreateFolderOpen}
-                parentPath={selectedFolderPath}
-                tooltip="Create new folder in the current location"
-                workspaceId={workspaceId}
-              />
               <div className="flex rounded-md border bg-background p-0.5">
                 <TooltipHint content="List view">
                   <Button
@@ -2739,9 +2757,9 @@ export const FileManager = ({
                 <Button
                   aria-label="Open command palette"
                   onClick={() => setIsCommandOpen(true)}
-                  size="icon"
+                  size="icon-sm"
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                 >
                   <CommandIcon />
                 </Button>
@@ -2752,8 +2770,9 @@ export const FileManager = ({
                     <Button
                       aria-pressed={selectMode}
                       onClick={toggleSelectMode}
+                      size="sm"
                       type="button"
-                      variant={selectMode ? "secondary" : "outline"}
+                      variant={selectMode ? "secondary" : "ghost"}
                     >
                       {selectMode ? <XIcon /> : <MousePointerClickIcon />}
                       {selectMode ? "Done" : "Select"}
@@ -3036,8 +3055,8 @@ export const FileManager = ({
           type="button"
         />
       </div>
-      <div className="flex flex-col gap-3">
-        <div className="flex w-fit rounded-md border bg-background p-0.5">
+      <aside className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
+        <div className="flex w-fit rounded-md border bg-background p-0.5 shadow-xs">
           <TooltipHint content="Show selected file details">
             <Button
               aria-pressed={rightPanelView === "details"}
@@ -3072,7 +3091,7 @@ export const FileManager = ({
         ) : (
           <WorkspaceActivityPanel events={activityEvents} />
         )}
-      </div>
+      </aside>
       <AssetUploadTray {...uploadQueue} />
       {selectMode ? (
         <SelectionActionBar
