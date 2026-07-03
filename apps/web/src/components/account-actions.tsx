@@ -9,6 +9,13 @@ import {
   PopoverTrigger,
 } from "@workspace/ui/components/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -16,13 +23,22 @@ import {
 } from "@workspace/ui/components/tooltip";
 import {
   CheckIcon,
+  CommandIcon,
   KeyRoundIcon,
   LogOutIcon,
   SettingsIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { authClient } from "@/auth/client";
+import {
+  type CommandPaletteShortcut,
+  commandPaletteShortcutOptions,
+  getCommandPaletteShortcutLabel,
+  readCommandPaletteShortcut,
+  requestCommandPaletteOpen,
+  updateCommandPaletteShortcut,
+} from "@/components/command-palette-shortcuts";
 import { TooltipHint } from "@/components/tooltip-hint";
 
 interface AccountActionsProps {
@@ -53,9 +69,25 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [commandPaletteShortcut, setCommandPaletteShortcut] =
+    useState<CommandPaletteShortcut>("mod+k");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setCommandPaletteShortcut(readCommandPaletteShortcut());
+  }, []);
+
+  const changeCommandPaletteShortcut = (shortcut: CommandPaletteShortcut) => {
+    setCommandPaletteShortcut(shortcut);
+    updateCommandPaletteShortcut(shortcut);
+  };
+
+  const openCommandPalette = () => {
+    setOpen(false);
+    window.setTimeout(requestCommandPaletteOpen, 0);
+  };
 
   const changePassword = () => {
     setError(null);
@@ -124,6 +156,52 @@ export const AccountActions = ({ email }: AccountActionsProps) => {
           </div>
 
           <div className="space-y-3">
+            <div className="rounded-md border bg-muted/20 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-xs">Command palette</div>
+                  <div className="text-muted-foreground text-xs">
+                    Bind:{" "}
+                    {getCommandPaletteShortcutLabel(commandPaletteShortcut)}
+                  </div>
+                </div>
+                <TooltipHint content="Open command palette">
+                  <Button
+                    aria-label="Open command palette"
+                    onClick={openCommandPalette}
+                    size="icon-sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <CommandIcon />
+                  </Button>
+                </TooltipHint>
+              </div>
+              <Label className="mb-1.5 block" htmlFor="command-palette-bind">
+                Keyboard bind
+              </Label>
+              <Select
+                onValueChange={(value) =>
+                  changeCommandPaletteShortcut(value as CommandPaletteShortcut)
+                }
+                value={commandPaletteShortcut}
+              >
+                <SelectTrigger
+                  aria-label="Command palette keyboard bind"
+                  className="w-full"
+                  id="command-palette-bind"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {commandPaletteShortcutOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor={currentPasswordId}>Current password</Label>
               <TooltipHint content="Your current account password">

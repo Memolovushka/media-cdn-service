@@ -47,7 +47,6 @@ import {
 import {
   ClipboardIcon,
   CloudUploadIcon,
-  CommandIcon,
   DownloadIcon,
   EyeIcon,
   FileAudioIcon,
@@ -87,6 +86,14 @@ import {
   AssetUploadTray,
   useAssetUploadQueue,
 } from "@/components/asset-upload-queue";
+import {
+  type CommandPaletteShortcut,
+  commandPaletteOpenEventName,
+  commandPaletteShortcutChangedEventName,
+  commandPaletteShortcutStorageKey,
+  isCommandPaletteShortcutEvent,
+  readCommandPaletteShortcut,
+} from "@/components/command-palette-shortcuts";
 import {
   AssetTableRowClient,
   FolderTableRowClient,
@@ -1448,6 +1455,8 @@ export const FileManager = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [commandPaletteShortcut, setCommandPaletteShortcut] =
+    useState<CommandPaletteShortcut>("mod+k");
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
   const [renameRequestKey, setRenameRequestKey] = useState(0);
@@ -2314,6 +2323,39 @@ export const FileManager = ({
   }, [closeGridContextMenu, gridContextMenu]);
 
   useEffect(() => {
+    setCommandPaletteShortcut(readCommandPaletteShortcut());
+
+    const openCommandPalette = () => setIsCommandOpen(true);
+    const handleShortcutChanged = () => {
+      setCommandPaletteShortcut(readCommandPaletteShortcut());
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === commandPaletteShortcutStorageKey) {
+        setCommandPaletteShortcut(readCommandPaletteShortcut());
+      }
+    };
+
+    window.addEventListener(commandPaletteOpenEventName, openCommandPalette);
+    window.addEventListener(
+      commandPaletteShortcutChangedEventName,
+      handleShortcutChanged
+    );
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener(
+        commandPaletteOpenEventName,
+        openCommandPalette
+      );
+      window.removeEventListener(
+        commandPaletteShortcutChangedEventName,
+        handleShortcutChanged
+      );
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
@@ -2321,7 +2363,7 @@ export const FileManager = ({
 
       const key = event.key.toLowerCase();
 
-      if ((event.metaKey || event.ctrlKey) && key === "k") {
+      if (isCommandPaletteShortcutEvent(event, commandPaletteShortcut)) {
         event.preventDefault();
         setIsCommandOpen((open) => !open);
         return;
@@ -2379,6 +2421,7 @@ export const FileManager = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     clearSelection,
+    commandPaletteShortcut,
     isSearchOpen,
     openCreateFolder,
     openSearch,
@@ -2927,17 +2970,6 @@ export const FileManager = ({
                   </Button>
                 </TooltipHint>
               </div>
-              <TooltipHint content="Open command palette">
-                <Button
-                  aria-label="Open command palette"
-                  onClick={() => setIsCommandOpen(true)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <CommandIcon />
-                </Button>
-              </TooltipHint>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
