@@ -120,7 +120,7 @@ export const FolderCreateDialog = ({
           <Tooltip>
             <DialogTrigger asChild>
               <TooltipTrigger asChild>
-                <Button disabled={disabled} variant="outline">
+                <Button disabled={disabled} size="sm" variant="outline">
                   <FolderPlusIcon />
                   New folder
                 </Button>
@@ -131,7 +131,7 @@ export const FolderCreateDialog = ({
         </TooltipProvider>
       ) : (
         <DialogTrigger asChild>
-          <Button disabled={disabled} variant="outline">
+          <Button disabled={disabled} size="sm" variant="outline">
             <FolderPlusIcon />
             New folder
           </Button>

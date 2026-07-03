@@ -2840,7 +2840,7 @@ export const FileManager = ({
                 </TooltipHint>
               </div>
             </div>
-            <div className="flex min-h-10 flex-wrap items-center gap-1 rounded-md border bg-background p-1 shadow-xs">
+            <div className="flex min-h-8 flex-wrap items-center gap-1.5">
               <TooltipHint content="Upload files to this folder">
                 <Button
                   aria-label="Upload files"
