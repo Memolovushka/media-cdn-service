@@ -1678,18 +1678,6 @@ export const FileManager = ({
     );
     setLastSelectedItemId(itemId);
   };
-  const toggleSelectMode = () => {
-    setSelectMode((currentMode) => {
-      const nextMode = !currentMode;
-
-      if (!nextMode) {
-        setSelectedItemIds(new Set());
-        setLastSelectedItemId(null);
-      }
-
-      return nextMode;
-    });
-  };
   const clearSelection = useCallback(() => {
     if (!selectedItemIds.size) {
       return;
@@ -2517,16 +2505,6 @@ export const FileManager = ({
                 Search files
                 <CommandShortcut>/</CommandShortcut>
               </CommandItem>
-              <CommandItem
-                onSelect={() =>
-                  runCommand(() => {
-                    setSelectMode(true);
-                  })
-                }
-              >
-                <MousePointerClickIcon />
-                Select items
-              </CommandItem>
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading="Selected file">
@@ -2561,18 +2539,6 @@ export const FileManager = ({
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading="Selection">
-              <CommandItem
-                disabled={!filteredItems.length}
-                onSelect={() =>
-                  runCommand(() => {
-                    setSelectMode(true);
-                    toggleAllVisibleAssets(true);
-                  })
-                }
-              >
-                <MousePointerClickIcon />
-                Select all visible
-              </CommandItem>
               <CommandItem
                 disabled={!publishableSelectedAssets.length}
                 onSelect={() => runCommand(publishSelectedAssets)}
@@ -2970,25 +2936,6 @@ export const FileManager = ({
                   </Button>
                 </TooltipHint>
               </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      aria-pressed={selectMode}
-                      onClick={toggleSelectMode}
-                      size="sm"
-                      type="button"
-                      variant={selectMode ? "secondary" : "ghost"}
-                    >
-                      {selectMode ? <XIcon /> : <MousePointerClickIcon />}
-                      {selectMode ? "Done" : "Select"}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {selectMode ? "Exit selection mode" : "Select files"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
             </div>
           </div>
         </div>
