@@ -943,16 +943,16 @@ const AssetDetailsPanel = ({
         previewUrl={previewUrl}
       />
 
-      <div className="flex items-start justify-between gap-2 border-b pb-3">
-        <div className="min-w-0 flex-1">
+      <div className="border-b pb-3">
+        <div className="min-w-0">
           <div className="mb-1 font-medium text-[0.6875rem] text-muted-foreground">
             Filename
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <TooltipHint content="Rename this file">
               <Input
                 aria-label="Filename"
-                className="h-7 min-w-0 font-medium text-[0.8125rem]"
+                className="h-7 min-w-0 flex-1 font-medium text-[0.8125rem]"
                 disabled={isPending}
                 onBlur={saveFilename}
                 onChange={(event) => setFilename(event.target.value)}
@@ -973,28 +973,28 @@ const AssetDetailsPanel = ({
                 value={filename}
               />
             </TooltipHint>
+            {downloadUrl ? (
+              <TooltipHint content="Download private file">
+                <Button asChild size="icon" variant="outline">
+                  <a href={downloadUrl}>
+                    <DownloadIcon />
+                    <span className="sr-only">Download</span>
+                  </a>
+                </Button>
+              </TooltipHint>
+            ) : (
+              <TooltipHint content="Download is available after upload finishes">
+                <Button disabled size="icon" variant="outline">
+                  <DownloadIcon />
+                  <span className="sr-only">Download</span>
+                </Button>
+              </TooltipHint>
+            )}
           </div>
           {error ? (
             <div className="mt-1 text-destructive text-xs">{error}</div>
           ) : null}
         </div>
-        {downloadUrl ? (
-          <TooltipHint content="Download private file">
-            <Button asChild size="icon-sm" variant="outline">
-              <a href={downloadUrl}>
-                <DownloadIcon />
-                <span className="sr-only">Download</span>
-              </a>
-            </Button>
-          </TooltipHint>
-        ) : (
-          <TooltipHint content="Download is available after upload finishes">
-            <Button disabled size="icon-sm" variant="outline">
-              <DownloadIcon />
-              <span className="sr-only">Download</span>
-            </Button>
-          </TooltipHint>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-1.5 border-b pb-3">
