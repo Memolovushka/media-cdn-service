@@ -1,4 +1,14 @@
-import { and, asc, desc, eq, inArray, isNull, like, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  like,
+  ne,
+  sql,
+} from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
   assetFolders,
@@ -319,7 +329,12 @@ export const listWorkspaceActivity = async ({
     .from(auditEvents)
     .leftJoin(users, eq(users.id, auditEvents.actorUserId))
     .leftJoin(assets, eq(assets.id, auditEvents.assetId))
-    .where(eq(auditEvents.workspaceId, workspaceId))
+    .where(
+      and(
+        eq(auditEvents.workspaceId, workspaceId),
+        ne(auditEvents.eventType, "asset.previewed")
+      )
+    )
     .orderBy(desc(auditEvents.createdAt))
     .limit(maxActivityEvents);
 

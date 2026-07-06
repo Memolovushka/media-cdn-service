@@ -14,6 +14,7 @@ import { Button } from "@workspace/ui/components/button";
 import { toast } from "@workspace/ui/components/sonner";
 import { TableCell, TableRow } from "@workspace/ui/components/table";
 import {
+  CheckIcon,
   ClipboardIcon,
   DownloadIcon,
   EyeIcon,
@@ -47,6 +48,7 @@ interface MenuPosition {
 }
 
 const contextMenuOpeningEventName = "media-cdn-context-menu-opening";
+const copiedResetDelayMs = 1600;
 
 const getAssetTypeVisual = (mimeType: string) => {
   if (mimeType === "image/svg+xml") {
@@ -403,7 +405,7 @@ export const FolderTableRowClient = ({
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <div className="flex justify-end gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <div className="flex justify-end gap-1">
             <TooltipHint content={`Open folder ${folderName}`}>
               <Button
                 aria-label={`Open ${folderName}`}
@@ -551,7 +553,9 @@ export const AssetTableRowClient = ({
   const AssetTypeIcon = assetVisual.Icon;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedPublicUrl, setCopiedPublicUrl] = useState(false);
   const [isPending, startTransition] = useTransition();
+
   const openAsset = () => {
     onOpen?.();
     router.push(href as Route);
@@ -563,7 +567,10 @@ export const AssetTableRowClient = ({
 
     navigator.clipboard
       .writeText(publicUrl)
-      .then(() => toast.success("Public URL copied"))
+      .then(() => {
+        setCopiedPublicUrl(true);
+        window.setTimeout(() => setCopiedPublicUrl(false), copiedResetDelayMs);
+      })
       .catch(() => toast.error("Copy failed"));
   };
   const toggleBulkSelection = (shiftKey: boolean, forceSelect = false) => {
@@ -657,7 +664,7 @@ export const AssetTableRowClient = ({
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <div className="flex justify-end gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <div className="flex justify-end gap-1">
             <TooltipHint content={`Preview ${filename}`}>
               <Button
                 aria-label={`Preview ${filename}`}
@@ -673,7 +680,13 @@ export const AssetTableRowClient = ({
                 <EyeIcon />
               </Button>
             </TooltipHint>
-            <TooltipHint content={`Copy public URL for ${filename}`}>
+            <TooltipHint
+              content={
+                copiedPublicUrl
+                  ? "Public URL copied"
+                  : `Copy public URL for ${filename}`
+              }
+            >
               <Button
                 aria-label={`Copy public URL for ${filename}`}
                 disabled={!publicUrl}
@@ -681,7 +694,11 @@ export const AssetTableRowClient = ({
                 size="icon-sm"
                 variant="ghost"
               >
-                <ClipboardIcon />
+                {copiedPublicUrl ? (
+                  <CheckIcon className="text-primary" />
+                ) : (
+                  <ClipboardIcon />
+                )}
               </Button>
             </TooltipHint>
             <TooltipHint content={`Delete file ${filename}`}>

@@ -1,14 +1,6 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu";
 import { LaptopIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -21,56 +13,83 @@ const themeOptions: Array<{
   label: string;
   value: ThemeMode;
 }> = [
-  { icon: SunIcon, label: "White", value: "light" },
-  { icon: MoonIcon, label: "Black", value: "dark" },
+  { icon: SunIcon, label: "Light", value: "light" },
+  { icon: MoonIcon, label: "Dark", value: "dark" },
   { icon: LaptopIcon, label: "System", value: "system" },
 ];
 
 const getThemeIcon = (theme?: string) =>
   themeOptions.find((option) => option.value === theme)?.icon ?? LaptopIcon;
 
+const getNextTheme = (theme?: string): ThemeMode => {
+  const currentTheme = themeOptions.findIndex(
+    (option) => option.value === theme
+  );
+  const nextTheme = themeOptions.at((currentTheme + 1) % themeOptions.length);
+
+  return nextTheme?.value ?? "system";
+};
+
+const getThemeLabel = (theme?: string) =>
+  themeOptions.find((option) => option.value === theme)?.label ?? "System";
+
+const isEditableKeyboardTarget = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  Boolean(
+    target.closest(
+      "input, textarea, select, [contenteditable='true'], [role='textbox']"
+    )
+  );
+
 export const ThemeToggle = () => {
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const ThemeIcon = getThemeIcon(theme);
+  const currentThemeLabel = getThemeLabel(theme);
+  const nextTheme = getNextTheme(theme);
+  const nextThemeLabel = getThemeLabel(nextTheme);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  return (
-    <DropdownMenu>
-      <TooltipHint content="Change site theme">
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-label="Change site theme"
-            disabled={!mounted}
-            size="icon"
-            type="button"
-            variant="outline"
-          >
-            <ThemeIcon />
-          </Button>
-        </DropdownMenuTrigger>
-      </TooltipHint>
-      <DropdownMenuContent align="end" className="w-36">
-        <DropdownMenuLabel>Theme</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          onValueChange={(value) => setTheme(value as ThemeMode)}
-          value={(theme as ThemeMode | undefined) ?? "system"}
-        >
-          {themeOptions.map((option) => {
-            const OptionIcon = option.icon;
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        isEditableKeyboardTarget(event.target) ||
+        event.key.toLowerCase() !== "d"
+      ) {
+        return;
+      }
 
-            return (
-              <DropdownMenuRadioItem key={option.value} value={option.value}>
-                <OptionIcon />
-                {option.label}
-              </DropdownMenuRadioItem>
-            );
-          })}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      event.preventDefault();
+      setTheme(getNextTheme(theme));
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setTheme, theme]);
+
+  const cycleTheme = () => setTheme(nextTheme);
+
+  return (
+    <TooltipHint
+      content={`Theme: ${currentThemeLabel}. Click or press D for ${nextThemeLabel}.`}
+    >
+      <Button
+        aria-label={`Theme: ${currentThemeLabel}. Switch to ${nextThemeLabel}.`}
+        disabled={!mounted}
+        onClick={cycleTheme}
+        size="icon"
+        type="button"
+        variant="outline"
+      >
+        <ThemeIcon />
+      </Button>
+    </TooltipHint>
   );
 };

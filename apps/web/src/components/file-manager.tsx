@@ -45,6 +45,7 @@ import {
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip";
 import {
+  CheckIcon,
   ClipboardIcon,
   CloudUploadIcon,
   DownloadIcon,
@@ -159,8 +160,28 @@ const defaultTableColumnCount = 5;
 const acceptedUploadMimeTypes =
   "image/*,video/*,audio/*,application/pdf,text/plain";
 const copiedResetDelayMs = 1600;
+const maxUploadMegabytes = 250;
 const contextMenuOpeningEventName = "media-cdn-context-menu-opening";
 const selectionDragStartThreshold = 6;
+const mobilePanelMaxWidthPx = 1023;
+
+const useIsMobilePanelViewport = () => {
+  const [isMobilePanelViewport, setIsMobilePanelViewport] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      `(max-width: ${mobilePanelMaxWidthPx}px)`
+    );
+    const syncViewport = () => setIsMobilePanelViewport(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
+
+  return isMobilePanelViewport;
+};
 
 interface AssetPatchResponse {
   asset?: Partial<DashboardAsset>;
@@ -527,6 +548,13 @@ const getGridCardClassName = ({
   return "border-border bg-background";
 };
 
+const getGridCdnBadgeClassName = (
+  variant: ComponentProps<typeof Badge>["variant"]
+) =>
+  variant === "outline"
+    ? "absolute top-2 right-2 max-w-[calc(100%-1rem)] truncate border-border bg-background/90 text-foreground shadow-sm ring-1 ring-border/80 backdrop-blur-sm"
+    : "absolute top-2 right-2 max-w-[calc(100%-1rem)] truncate shadow-sm ring-1 ring-primary/30";
+
 const getSelectionBoxStyle = (
   dragState: SelectionDragState,
   container: HTMLDivElement | null
@@ -573,13 +601,35 @@ const hasSelectionDragMoved = (dragState: SelectionDragState) =>
   Math.abs(dragState.currentClientY - dragState.startClientY) >=
     selectionDragStartThreshold;
 
+const setOptionalNavigationParams = ({
+  panel,
+  params,
+  view,
+}: {
+  panel?: RightPanelView;
+  params: URLSearchParams;
+  view?: ViewMode;
+}) => {
+  if (view === "grid") {
+    params.set("view", view);
+  }
+
+  if (panel === "activity") {
+    params.set("panel", panel);
+  }
+};
+
 const assetHref = ({
   assetId,
   folderPath,
+  panel,
+  view,
   workspaceId,
 }: {
   assetId: string;
   folderPath: string;
+  panel?: RightPanelView;
+  view?: ViewMode;
   workspaceId: string;
 }) => {
   const params = new URLSearchParams();
@@ -591,15 +641,20 @@ const assetHref = ({
   }
 
   params.set("asset", assetId);
+  setOptionalNavigationParams({ panel, params, view });
 
   return `/?${params.toString()}`;
 };
 
 const folderHref = ({
   folderPath,
+  panel,
+  view,
   workspaceId,
 }: {
   folderPath: string;
+  panel?: RightPanelView;
+  view?: ViewMode;
   workspaceId: string;
 }) => {
   const params = new URLSearchParams();
@@ -609,6 +664,8 @@ const folderHref = ({
   if (folderPath !== rootFolderPath) {
     params.set("folder", folderPath);
   }
+
+  setOptionalNavigationParams({ panel, params, view });
 
   return `/?${params.toString()}`;
 };
@@ -660,6 +717,7 @@ const AssetPreviewSurface = ({
   previewUrl: null | string;
 }) => {
   const previewLabel = getAssetPreviewLabel(asset.mimeType);
+  const isImagePreview = isImageMimeType(asset.mimeType);
 
   if (!(isReady && previewUrl)) {
     const AssetIcon = getAssetTypeIcon(asset.mimeType);
@@ -670,6 +728,25 @@ const AssetPreviewSurface = ({
       >
         <AssetIcon className="size-8" />
         Preview is available after upload finishes.
+      </div>
+    );
+  }
+
+  if (isImagePreview) {
+    return (
+      <div
+        className={`flex max-h-[420px] w-full items-center justify-center overflow-hidden rounded-lg border bg-muted/20 ${className ?? ""}`}
+      >
+        <object
+          aria-label={`Preview of ${asset.filename}`}
+          className="block h-auto max-h-[420px] w-full object-contain"
+          data={previewUrl}
+          type={asset.mimeType}
+        >
+          <div className="flex min-h-48 items-center justify-center p-4 text-center text-muted-foreground text-xs">
+            {previewLabel} is not available for this file.
+          </div>
+        </object>
       </div>
     );
   }
@@ -809,13 +886,19 @@ const FileManagerEmptyState = ({
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <TooltipHint content="Upload files to this folder">
-          <Button onClick={onUploadFiles} type="button">
+          <Button
+            className="min-w-28"
+            onClick={onUploadFiles}
+            size="sm"
+            type="button"
+          >
             <CloudUploadIcon />
             Upload
           </Button>
         </TooltipHint>
         <TooltipHint content="Create a folder here">
           <Button
+            className="min-w-28"
             onClick={onCreateFolder}
             size="sm"
             type="button"
@@ -826,17 +909,10 @@ const FileManagerEmptyState = ({
           </Button>
         </TooltipHint>
       </div>
-      <div className="grid w-full max-w-sm grid-cols-3 gap-2 pt-1 text-[0.6875rem] text-muted-foreground">
-        <div className="rounded-md bg-background/70 px-2 py-1.5 ring-1 ring-border/70">
-          Images
-        </div>
-        <div className="rounded-md bg-background/70 px-2 py-1.5 ring-1 ring-border/70">
-          Video
-        </div>
-        <div className="rounded-md bg-background/70 px-2 py-1.5 ring-1 ring-border/70">
-          Audio/PDF
-        </div>
-      </div>
+      <p className="max-w-md text-muted-foreground text-xs">
+        Supports images, video, audio, PDF, and text files up to{" "}
+        {maxUploadMegabytes} MB each.
+      </p>
     </div>
   );
 };
@@ -1127,7 +1203,7 @@ const FolderGridCard = ({
   return (
     <button
       aria-pressed={selected || selectedForBulk}
-      className={`group flex h-48 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${
+      className={`group flex aspect-square min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${
         isDragTarget
           ? "border-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24)]"
           : getGridCardClassName({ selected, selectedForBulk })
@@ -1186,14 +1262,16 @@ const FolderGridCard = ({
       }}
       type="button"
     >
-      <div className="relative flex aspect-[4/3] w-full items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center rounded-md bg-amber-500/10 text-amber-700">
         <FolderIcon className="size-11 transition group-hover:scale-105 group-hover:text-amber-800" />
         <span className="absolute top-2 right-2 rounded-md bg-background/85 px-1.5 py-0.5 font-medium text-[0.6875rem] text-muted-foreground shadow-xs ring-1 ring-border/70">
           Folder
         </span>
       </div>
       <div className="mt-3 w-full min-w-0">
-        <div className="truncate font-medium text-sm">{folder.name}</div>
+        <div className="truncate font-medium text-[0.8125rem] leading-5">
+          {folder.name}
+        </div>
         <div className="truncate text-muted-foreground text-xs">
           Workspace folder
         </div>
@@ -1243,7 +1321,7 @@ const AssetGridCard = ({
   return (
     <button
       aria-pressed={selected || selectedForBulk}
-      className={`group flex h-56 min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
+      className={`group flex aspect-square min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/50 hover:bg-muted/40 ${getGridCardClassName({ selected, selectedForBulk })}`}
       data-selectable-id={selectableId}
       draggable
       onClick={(event) => {
@@ -1269,12 +1347,12 @@ const AssetGridCard = ({
       type="button"
     >
       <div
-        className={`relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-md ${
+        className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-md ${
           showImagePreview ? "bg-muted/30" : assetVisual.tileClassName
         }`}
       >
         <Badge
-          className="absolute top-2 right-2 max-w-[calc(100%-1rem)] truncate shadow-xs ring-1 ring-border/70"
+          className={getGridCdnBadgeClassName(cdnVariant)}
           variant={cdnVariant}
         >
           {cdnLabel}
@@ -1425,6 +1503,8 @@ export const FileManager = ({
   allFolders,
   activityEvents,
   assets,
+  initialRightPanelView,
+  initialViewMode,
   selectedAssetId,
   selectedFolderPath,
   visibleFolders,
@@ -1433,6 +1513,8 @@ export const FileManager = ({
   activityEvents: DashboardActivityEvent[];
   allFolders: DashboardFolder[];
   assets: DashboardAsset[];
+  initialRightPanelView: RightPanelView;
+  initialViewMode: ViewMode;
   selectedAssetId?: string;
   selectedFolderPath: string;
   visibleFolders: DashboardFolder[];
@@ -1455,14 +1537,17 @@ export const FileManager = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const isMobilePanelViewport = useIsMobilePanelViewport();
   const [commandPaletteShortcut, setCommandPaletteShortcut] =
     useState<CommandPaletteShortcut>("mod+k");
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
+  const [copiedFolderPath, setCopiedFolderPath] = useState(false);
   const [renameRequestKey, setRenameRequestKey] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [rightPanelView, setRightPanelView] =
-    useState<RightPanelView>("details");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+  const [rightPanelView, setRightPanelView] = useState<RightPanelView>(
+    initialRightPanelView
+  );
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
   const [selectionDrag, setSelectionDrag] = useState<SelectionDragState | null>(
     null
@@ -1504,6 +1589,20 @@ export const FileManager = ({
       return nextActiveAssetId ? getAssetItemId(nextActiveAssetId) : null;
     });
   }, [assets, selectedAssetId]);
+
+  useEffect(() => {
+    setViewMode(initialViewMode);
+  }, [initialViewMode]);
+
+  useEffect(() => {
+    setRightPanelView(initialRightPanelView);
+  }, [initialRightPanelView]);
+
+  useEffect(() => {
+    if (!isMobilePanelViewport) {
+      setIsMobilePanelOpen(false);
+    }
+  }, [isMobilePanelViewport]);
 
   const selectedAsset = useMemo(
     () =>
@@ -1721,7 +1820,6 @@ export const FileManager = ({
       .writeText(selectedAssetPublicUrl)
       .then(() => {
         showCommandFeedback("Public URL copied");
-        toast.success("Public URL copied");
       })
       .catch(() => {
         showCommandFeedback("Copy failed");
@@ -1735,14 +1833,53 @@ export const FileManager = ({
   const navigateToFolder = (folderPath: string) => {
     setActiveFolderPath(folderPath);
     setLastSelectedItemId(getFolderItemId(folderPath));
-    router.push(folderHref({ folderPath, workspaceId }) as Route);
+    router.push(
+      folderHref({
+        folderPath,
+        panel: rightPanelView,
+        view: viewMode,
+        workspaceId,
+      }) as Route
+    );
+  };
+  const persistUrlPreferences = ({
+    panel = rightPanelView,
+    view = viewMode,
+  }: {
+    panel?: RightPanelView;
+    view?: ViewMode;
+  }) => {
+    const url = new URL(window.location.href);
+
+    if (view === "grid") {
+      url.searchParams.set("view", view);
+    } else {
+      url.searchParams.delete("view");
+    }
+
+    if (panel === "activity") {
+      url.searchParams.set("panel", panel);
+    } else {
+      url.searchParams.delete("panel");
+    }
+
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  };
+  const changeViewMode = (nextViewMode: ViewMode) => {
+    setViewMode(nextViewMode);
+    persistUrlPreferences({ view: nextViewMode });
+  };
+  const changeRightPanelView = (nextRightPanelView: RightPanelView) => {
+    setRightPanelView(nextRightPanelView);
+    persistUrlPreferences({ panel: nextRightPanelView });
   };
   const copyCurrentFolderPath = () => {
     navigator.clipboard
       .writeText(selectedFolderPath)
       .then(() => {
+        setCopiedFolderPath(true);
         showCommandFeedback("Folder path copied");
-        toast.success("Folder path copied");
+        window.setTimeout(() => setCopiedFolderPath(false), copiedResetDelayMs);
       })
       .catch(() => {
         showCommandFeedback("Copy failed");
@@ -1798,7 +1935,6 @@ export const FileManager = ({
       .writeText(publicUrl)
       .then(() => {
         showCommandFeedback("Public URL copied");
-        toast.success("Public URL copied");
       })
       .catch(() => {
         showCommandFeedback("Copy failed");
@@ -2573,6 +2709,8 @@ export const FileManager = ({
                     assetHref({
                       assetId: contextMenuAsset.id,
                       folderPath: selectedFolderPath,
+                      panel: rightPanelView,
+                      view: viewMode,
                       workspaceId,
                     }) as Route
                   );
@@ -2671,12 +2809,12 @@ export const FileManager = ({
               onSelect={() =>
                 runGridContextAction(() => {
                   router.push(
-                    `/?${new URLSearchParams({
-                      ...(contextMenuFolder.path === "asset"
-                        ? {}
-                        : { folder: contextMenuFolder.path }),
-                      workspace: workspaceId,
-                    }).toString()}` as Route
+                    folderHref({
+                      folderPath: contextMenuFolder.path,
+                      panel: rightPanelView,
+                      view: viewMode,
+                      workspaceId,
+                    }) as Route
                   );
                 })
               }
@@ -2826,7 +2964,11 @@ export const FileManager = ({
                     );
                   })}
                 </nav>
-                <TooltipHint content="Copy folder path">
+                <TooltipHint
+                  content={
+                    copiedFolderPath ? "Folder path copied" : "Copy folder path"
+                  }
+                >
                   <Button
                     aria-label="Copy current folder path"
                     className="size-6 shrink-0"
@@ -2835,7 +2977,11 @@ export const FileManager = ({
                     type="button"
                     variant="ghost"
                   >
-                    <ClipboardIcon />
+                    {copiedFolderPath ? (
+                      <CheckIcon className="text-primary" />
+                    ) : (
+                      <ClipboardIcon />
+                    )}
                   </Button>
                 </TooltipHint>
               </div>
@@ -2915,7 +3061,7 @@ export const FileManager = ({
                   <Button
                     aria-label="Show files as a list"
                     aria-pressed={viewMode === "list"}
-                    onClick={() => setViewMode("list")}
+                    onClick={() => changeViewMode("list")}
                     size="icon-xs"
                     type="button"
                     variant={viewMode === "list" ? "secondary" : "ghost"}
@@ -2927,7 +3073,7 @@ export const FileManager = ({
                   <Button
                     aria-label="Show files as a grid"
                     aria-pressed={viewMode === "grid"}
-                    onClick={() => setViewMode("grid")}
+                    onClick={() => changeViewMode("grid")}
                     size="icon-xs"
                     type="button"
                     variant={viewMode === "grid" ? "secondary" : "ghost"}
@@ -2947,9 +3093,7 @@ export const FileManager = ({
                 <TableHead>Kind</TableHead>
                 <TableHead>CDN</TableHead>
                 <TableHead>Size</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2957,12 +3101,12 @@ export const FileManager = ({
                 <>
                   {filteredFolders.map((folder) => (
                     <FolderTableRowClient
-                      folderHref={`/?${new URLSearchParams({
-                        ...(folder.path === "asset"
-                          ? {}
-                          : { folder: folder.path }),
-                        workspace: workspaceId,
-                      }).toString()}`}
+                      folderHref={folderHref({
+                        folderPath: folder.path,
+                        panel: rightPanelView,
+                        view: viewMode,
+                        workspaceId,
+                      })}
                       folderName={folder.name}
                       folderPath={folder.path}
                       key={folder.id}
@@ -3023,6 +3167,8 @@ export const FileManager = ({
                         href={assetHref({
                           assetId: asset.id,
                           folderPath: selectedFolderPath,
+                          panel: rightPanelView,
+                          view: viewMode,
                           workspaceId,
                         })}
                         key={asset.id}
@@ -3042,8 +3188,8 @@ export const FileManager = ({
                         onOpen={() => {
                           setActiveAssetId(asset.id);
                           setLastSelectedItemId(getAssetItemId(asset.id));
-                          setRightPanelView("details");
-                          setIsMobilePanelOpen(true);
+                          changeRightPanelView("details");
+                          setIsMobilePanelOpen(isMobilePanelViewport);
                           setIsRefreshingSelection(true);
                         }}
                         onPublish={() => publishAssetsToCdn([asset])}
@@ -3123,12 +3269,12 @@ export const FileManager = ({
                       setActiveFolderPath(folderPath);
                       setLastSelectedItemId(getFolderItemId(folderPath));
                       router.push(
-                        `/?${new URLSearchParams({
-                          ...(folderPath === "asset"
-                            ? {}
-                            : { folder: folderPath }),
-                          workspace: workspaceId,
-                        }).toString()}`
+                        folderHref({
+                          folderPath,
+                          panel: rightPanelView,
+                          view: viewMode,
+                          workspaceId,
+                        }) as Route
                       );
                     }}
                     onOpenContextMenu={openFolderContextMenu}
@@ -3164,13 +3310,15 @@ export const FileManager = ({
                       onOpen={() => {
                         setActiveAssetId(asset.id);
                         setLastSelectedItemId(getAssetItemId(asset.id));
-                        setRightPanelView("details");
-                        setIsMobilePanelOpen(true);
+                        changeRightPanelView("details");
+                        setIsMobilePanelOpen(isMobilePanelViewport);
                         setIsRefreshingSelection(true);
                         router.push(
                           assetHref({
                             assetId: asset.id,
                             folderPath: selectedFolderPath,
+                            panel: rightPanelView,
+                            view: viewMode,
                             workspaceId,
                           }) as Route
                         );
@@ -3212,13 +3360,13 @@ export const FileManager = ({
           type="button"
         />
       </div>
-      {selectMode ? null : (
+      {selectMode || !isMobilePanelViewport ? null : (
         <div className="fixed inset-x-3 bottom-3 z-40 flex gap-2 rounded-lg border bg-background/95 p-1 shadow-lg backdrop-blur-sm lg:hidden">
           <Sheet onOpenChange={setIsMobilePanelOpen} open={isMobilePanelOpen}>
             <Button
               className="flex-1"
               onClick={() => {
-                setRightPanelView("details");
+                changeRightPanelView("details");
                 setIsMobilePanelOpen(true);
               }}
               size="sm"
@@ -3230,7 +3378,7 @@ export const FileManager = ({
             <Button
               className="flex-1"
               onClick={() => {
-                setRightPanelView("activity");
+                changeRightPanelView("activity");
                 setIsMobilePanelOpen(true);
               }}
               size="sm"
@@ -3259,7 +3407,7 @@ export const FileManager = ({
                   activityEvents={activityEvents}
                   isRefreshingSelection={isRefreshingSelection}
                   onAssetUpdated={handleAssetUpdated}
-                  onViewChange={setRightPanelView}
+                  onViewChange={changeRightPanelView}
                   renameRequestKey={renameRequestKey}
                   rightPanelView={rightPanelView}
                   selectedAsset={selectedAsset}
@@ -3274,7 +3422,7 @@ export const FileManager = ({
           activityEvents={activityEvents}
           isRefreshingSelection={isRefreshingSelection}
           onAssetUpdated={handleAssetUpdated}
-          onViewChange={setRightPanelView}
+          onViewChange={changeRightPanelView}
           renameRequestKey={renameRequestKey}
           rightPanelView={rightPanelView}
           selectedAsset={selectedAsset}

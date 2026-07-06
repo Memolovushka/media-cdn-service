@@ -41,6 +41,12 @@ const getFileBrowserFolderPath = (folderPath?: string) =>
     ? folderPath
     : fileBrowserRootPath;
 
+const getInitialViewMode = (view?: string) =>
+  view === "grid" ? "grid" : "list";
+
+const getInitialRightPanelView = (panel?: string) =>
+  panel === "activity" ? "activity" : "details";
+
 const SetupRequired = ({ message }: { message: string }) => (
   <main className="flex min-h-svh items-center justify-center bg-background p-6">
     <Card className="w-full max-w-lg">
@@ -64,6 +70,8 @@ interface PageProps {
   searchParams?: Promise<{
     asset?: string;
     folder?: string;
+    panel?: string;
+    view?: string;
     workspace?: string;
   }>;
 }
@@ -183,7 +191,7 @@ const Page = async ({ searchParams }: PageProps) => {
   return (
     <main className="min-h-svh bg-muted/20">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-3 border-b bg-background/70 pb-4 md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-3 pb-2 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <h1 className="font-semibold text-lg tracking-normal">
               {activeWorkspace ? (
@@ -209,11 +217,11 @@ const Page = async ({ searchParams }: PageProps) => {
               ) : null}
               {activeWorkspace ? (
                 <>
-                  <span>{dashboardAssets.length} files</span>
-                  <span>{cdnReadyAssetCount} CDN-ready</span>
                   {storageUsage ? (
                     <StorageUsageSummary usage={storageUsage} />
                   ) : null}
+                  <span>{dashboardAssets.length} files</span>
+                  <span>{cdnReadyAssetCount} CDN-ready</span>
                 </>
               ) : null}
             </div>
@@ -245,6 +253,8 @@ const Page = async ({ searchParams }: PageProps) => {
             activityEvents={activityEvents ?? []}
             allFolders={folders ?? []}
             assets={dashboardAssets}
+            initialRightPanelView={getInitialRightPanelView(params?.panel)}
+            initialViewMode={getInitialViewMode(params?.view)}
             selectedAssetId={selectedAssetId}
             selectedFolderPath={selectedFolderPath}
             visibleFolders={visibleFolders}
