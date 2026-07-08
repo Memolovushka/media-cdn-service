@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { userBilling, workspaces } from "@/db/schema";
+import { userBilling } from "@/db/schema";
 
 const bytesPerKilobyte = 1024;
 const kilobytesPerMegabyte = 1024;
@@ -171,12 +171,4 @@ export const setUserBillingPlan = async ({
         workspaceLimit: limits.workspaceLimit,
       },
     });
-
-  await db
-    .update(workspaces)
-    .set({
-      storageQuotaBytes: limits.storageQuotaBytes,
-      updatedAt: now,
-    })
-    .where(eq(workspaces.ownerId, userId));
 };

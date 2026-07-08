@@ -2,14 +2,14 @@
 
 ## Current model
 
-Billing is user-level. Workspace limits and storage quotas are applied from the
-user plan, not from a workspace subscription.
+Billing is user-level. Workspace count limits and one shared account storage
+quota are applied from the user plan, not from a workspace subscription.
 
 Code-backed limits:
 
-- Free: 1 workspace, 1 GB storage.
-- Pro: 5 workspaces, 25 GB storage.
-- Team: 20 workspaces, 100 GB storage.
+- Free: 1 workspace, 1 GB shared account storage.
+- Pro: 5 workspaces, 25 GB shared account storage total.
+- Team: 20 workspaces, 100 GB shared account storage total.
 
 Money prices live in Polar products. The app only stores product IDs and applies
 the matching plan limits after Polar webhook events.
@@ -80,7 +80,8 @@ After deploy, re-check `/api/setup/status`.
    are configured.
 3. Polar sends subscription events to `/api/auth/polar/webhooks`.
 4. Webhook updates `user_billing`.
-5. `getBillingPlan()` applies workspace and storage limits.
+5. `getBillingPlan()` applies the workspace count limit and shared account
+   storage limit.
 
 Without `POLAR_WEBHOOK_SECRET`, checkout may open, but paid plans will not sync
 back into the app reliably.

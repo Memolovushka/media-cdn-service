@@ -69,11 +69,11 @@ export const StorageUsageSummary = ({
     <TooltipHint
       content={`${formatBytes(usage.privateBytes)} private, ${formatBytes(
         usage.publicBytes
-      )} public CDN copies, ${formatBytes(usage.quotaBytes)} quota`}
+      )} public CDN copies, ${formatBytes(usage.quotaBytes)} account quota`}
     >
       <span className="inline-flex min-w-36 flex-col gap-1 align-middle">
         <span>
-          Storage: {formatBytes(usage.totalBytes)} used /{" "}
+          Account storage: {formatBytes(usage.totalBytes)} used /{" "}
           {formatBytes(freeBytesRemaining)} left
           {meterTone === "default" ? null : ` (${roundedUsagePercent}%)`}
         </span>

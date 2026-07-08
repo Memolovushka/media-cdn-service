@@ -75,7 +75,6 @@ export const createWorkspaceForUser = async ({
     name: workspaceName,
     slug,
     ownerId: user.id,
-    storageQuotaBytes: billing.storageQuotaBytes,
   });
 
   await db.insert(workspaceMembers).values({

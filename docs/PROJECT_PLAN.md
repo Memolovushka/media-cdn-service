@@ -116,7 +116,7 @@ HTTP API:
 - Account settings started: dashboard settings panel, sign out action, and email/password change form are in place.
 - 2026-06-29 feedback-driven UX pass completed: full-page drag-and-drop upload, upload into any visible folder by dropping onto it, asset drag-move targets, compact header storage usage, inline photo preview in the detail panel, and removal of the redundant preview eye action are deployed.
 - 2026-06-29 work note: today's work followed live product feedback and visual cleanup rather than the planned next-order backlog.
-- 2026-07-01 quota enforcement added: workspaces now have a default 1 GB storage quota, upload intent blocks files that would exceed quota, and the dashboard storage indicator uses the workspace quota.
+- 2026-07-01 quota enforcement added: upload intent blocks files that would exceed storage quota, and the dashboard storage indicator shows used/free remaining.
 - 2026-07-01 UI/UX recommendations execution started: the file manager now has List/Grid view switching, media thumbnail cards, and a preview-first asset details panel.
 - 2026-07-01 UI/UX recommendations continued: selection mode now uses a floating batch action bar for Select all, Publish, Move, and Clear without resizing the file list.
 - 2026-07-01 UI/UX recommendations continued: file selection now supports an OS-style drag selection rectangle across visible files and folders.
@@ -139,6 +139,7 @@ HTTP API:
 - 2026-07-08 next UI/UX plan continued: asset inspector now shows version history and supports Replace as a new immutable asset version while preserving old public CDN URLs.
 - 2026-07-08 next UI/UX plan continued: CDN controls now show a publish checklist and public asset health check for URL availability, content type, and immutable cache policy.
 - 2026-07-08 billing activation audit: production has Better Auth and Google secrets but no `POLAR_*` secrets yet; setup status now reports granular Polar readiness and `docs/BILLING_SETUP.md` documents the activation commands and webhook URL.
+- 2026-07-08 billing quota correction: plan storage is now one shared user/account quota across all owned workspaces, so Pro is 25 GB total across 5 workspaces and Team is 100 GB total across 20 workspaces.
 
 ### Phase 1: Foundation
 
@@ -259,7 +260,7 @@ Acceptance criteria:
 Security и reliability задачи лучше вводить после UI happy path, но до публичного использования сервиса.
 
 - [x] Добавить read-only workspace storage usage calculation из D1 metadata для dashboard.
-- [x] Добавить workspace quota fields или отдельную `workspace_usage` модель для quota enforcement.
+- [x] Добавить user/account-level shared storage quota enforcement across all owned workspaces.
 - [x] Ограничить upload intent по quota до записи `assets`.
 - [ ] Добавить per-user/per-workspace rate limits для upload intent и content upload.
 - [ ] Реализовать API token hashing, prefix display и scoped permissions.
@@ -391,7 +392,8 @@ Current known state:
 - Delivery mode: direct R2 custom domain или Worker-controlled `/cdn/*`.
 - Upload mode: app-mediated upload или signed direct-to-R2 upload.
 - Включать ли image/video transformations в MVP или оставить v1 как storage + delivery.
-- Billing/quota model: per-user, per-workspace или внешний subscription provider.
+- Billing/quota model is user-level with Polar products and shared account
+  storage across owned workspaces.
 
 ## Reference Docs
 

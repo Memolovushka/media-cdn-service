@@ -91,17 +91,17 @@ const planDescriptions = {
 const planHighlights = {
   free: [
     "1 workspace",
-    "1 GB storage",
+    "1 GB shared account storage",
     "Uploads, previews, folders, and CDN publishing basics",
   ],
   pro: [
     "5 workspaces",
-    "25 GB storage",
+    "25 GB shared across all workspaces",
     "Version history, replace flow, CDN health checks, and public links",
   ],
   team: [
     "20 workspaces",
-    "100 GB storage",
+    "100 GB shared across all workspaces",
     "More production space for teams, clients, and parallel media projects",
   ],
 } satisfies Record<BillingPlanName, string[]>;
@@ -327,8 +327,7 @@ export const AccountActions = ({
                 <div className="text-muted-foreground text-xs">
                   {billing.workspaceCount} of {billing.workspaceLimit}{" "}
                   workspaces used ·{" "}
-                  {formatStorageQuota(billing.storageQuotaBytes)} included
-                  storage
+                  {formatStorageQuota(billing.storageQuotaBytes)} shared storage
                 </div>
               </div>
               <Button
@@ -362,7 +361,8 @@ export const AccountActions = ({
                         <div className="font-medium text-sm">{plan.label}</div>
                         <div className="text-muted-foreground text-xs">
                           {formatStorageQuota(plan.storageQuotaBytes)} ·{" "}
-                          {plan.workspaceLimit} workspaces
+                          {plan.workspaceLimit} workspaces · shared account
+                          storage
                         </div>
                       </div>
                       {isCurrent ? (

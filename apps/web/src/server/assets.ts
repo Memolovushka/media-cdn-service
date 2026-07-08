@@ -19,6 +19,7 @@ import {
   workspaceMembers,
   workspaces,
 } from "@/db/schema";
+import { getBillingPlan } from "@/server/billing";
 
 const bytesPerKilobyte = 1024;
 const kilobytesPerMegabyte = 1024;
@@ -106,7 +107,7 @@ export class WorkspaceQuotaExceededError extends Error {
     quotaBytes: number;
     usedBytes: number;
   }) {
-    super("Workspace storage quota exceeded");
+    super("Account storage quota exceeded");
     this.name = "WorkspaceQuotaExceededError";
     this.requestedBytes = requestedBytes;
     this.quotaBytes = quotaBytes;
@@ -252,9 +253,12 @@ export const getWorkspaceStorageUsage = async ({
   }
 
   const workspace = await db.query.workspaces.findFirst({
-    columns: { storageQuotaBytes: true },
+    columns: { ownerId: true },
     where: eq(workspaces.id, workspaceId),
   });
+  const billing = workspace
+    ? await getBillingPlan({ db, userId: workspace.ownerId })
+    : null;
   const objectSize = sql<number>`coalesce(${assetVersions.sizeBytes}, ${assets.sizeBytes}, 0)`;
   const [usage] = await db
     .select({
@@ -264,10 +268,11 @@ export const getWorkspaceStorageUsage = async ({
       readyVersionCount: sql<number>`count(${assetVersions.id})`,
     })
     .from(assets)
+    .innerJoin(workspaces, eq(workspaces.id, assets.workspaceId))
     .innerJoin(assetVersions, eq(assetVersions.assetId, assets.id))
     .where(
       and(
-        eq(assets.workspaceId, workspaceId),
+        eq(workspaces.ownerId, workspace?.ownerId ?? ""),
         isNull(assets.deletedAt),
         eq(assetVersions.uploadStatus, "ready")
       )
@@ -280,8 +285,7 @@ export const getWorkspaceStorageUsage = async ({
     cdnCopyCount: Number(usage?.cdnCopyCount ?? 0),
     privateBytes,
     publicBytes,
-    quotaBytes:
-      workspace?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes,
+    quotaBytes: billing?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes,
     readyVersionCount: Number(usage?.readyVersionCount ?? 0),
     totalBytes: privateBytes + publicBytes,
   };
@@ -349,19 +353,20 @@ export const listWorkspaceActivity = async ({
   }));
 };
 
-const getWorkspaceReservedStorageBytes = async ({
+const getAccountReservedStorageBytes = async ({
   db,
-  workspaceId,
+  ownerId,
 }: {
   db: Db;
-  workspaceId: string;
+  ownerId: string;
 }) => {
   const [usage] = await db
     .select({
       totalBytes: sql<number>`coalesce(sum(${assets.sizeBytes}), 0)`,
     })
     .from(assets)
-    .where(and(eq(assets.workspaceId, workspaceId), isNull(assets.deletedAt)));
+    .innerJoin(workspaces, eq(workspaces.id, assets.workspaceId))
+    .where(and(eq(workspaces.ownerId, ownerId), isNull(assets.deletedAt)));
 
   return Number(usage?.totalBytes ?? 0);
 };
@@ -753,14 +758,17 @@ export const createUploadIntent = async ({
   }
 
   const workspace = await db.query.workspaces.findFirst({
-    columns: { storageQuotaBytes: true },
+    columns: { ownerId: true },
     where: eq(workspaces.id, input.workspaceId),
   });
+  const billing = workspace
+    ? await getBillingPlan({ db, userId: workspace.ownerId })
+    : null;
   const quotaBytes =
-    workspace?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes;
-  const usedBytes = await getWorkspaceReservedStorageBytes({
+    billing?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes;
+  const usedBytes = await getAccountReservedStorageBytes({
     db,
-    workspaceId: input.workspaceId,
+    ownerId: workspace?.ownerId ?? user.id,
   });
 
   if (usedBytes + input.sizeBytes > quotaBytes) {
@@ -850,16 +858,18 @@ export const createReplacementVersionIntent = async ({
     throw new Error("Replacement file must keep the same MIME type");
   }
 
+  const workspace = await db.query.workspaces.findFirst({
+    columns: { ownerId: true },
+    where: eq(workspaces.id, asset.workspaceId),
+  });
+  const billing = workspace
+    ? await getBillingPlan({ db, userId: workspace.ownerId })
+    : null;
   const quotaBytes =
-    (
-      await db.query.workspaces.findFirst({
-        columns: { storageQuotaBytes: true },
-        where: eq(workspaces.id, asset.workspaceId),
-      })
-    )?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes;
-  const usedBytes = await getWorkspaceReservedStorageBytes({
+    billing?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes;
+  const usedBytes = await getAccountReservedStorageBytes({
     db,
-    workspaceId: asset.workspaceId,
+    ownerId: workspace?.ownerId ?? user.id,
   });
 
   if (usedBytes + input.sizeBytes > quotaBytes) {
