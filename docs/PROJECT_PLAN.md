@@ -322,7 +322,7 @@ Test plan:
 
 Current known state:
 
-- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `f0ab978`.
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `db6f87d`.
 - `GET /api/setup/status` returns `ok=true`.
 - Confirmed production bindings:
   - `bindings.DB=true`
@@ -335,7 +335,7 @@ Current known state:
   - email signup returns `200`;
   - `POST /api/workspaces` returns `201`;
   - dashboard render after workspace creation returns `200`.
-- Confirmed latest production setup check after commit `f0ab978`:
+- Confirmed latest production setup check after commit `db6f87d`:
   - `ok=true`;
   - `bindings.DB=true`;
   - `bindings.MEDIA_BUCKET=true`;
