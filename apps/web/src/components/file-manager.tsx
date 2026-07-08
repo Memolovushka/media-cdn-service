@@ -164,6 +164,7 @@ const maxUploadMegabytes = 250;
 const contextMenuOpeningEventName = "media-cdn-context-menu-opening";
 const selectionDragStartThreshold = 6;
 const mobilePanelMaxWidthPx = 1023;
+const firstRunGuideStoragePrefix = "media-cdn:first-run-guide-dismissed";
 
 const useIsMobilePanelViewport = () => {
   const [isMobilePanelViewport, setIsMobilePanelViewport] = useState(false);
@@ -917,6 +918,195 @@ const FileManagerEmptyState = ({
   );
 };
 
+type FirstRunGuideStepStatus = "complete" | "current" | "pending";
+
+interface FirstRunGuideStep {
+  description: string;
+  label: string;
+  status: FirstRunGuideStepStatus;
+}
+
+const getPublishGuideStatus = ({
+  hasPublishedAsset,
+  hasUploadedAsset,
+}: {
+  hasPublishedAsset: boolean;
+  hasUploadedAsset: boolean;
+}): FirstRunGuideStepStatus => {
+  if (!hasUploadedAsset) {
+    return "pending";
+  }
+
+  return hasPublishedAsset ? "complete" : "current";
+};
+
+const getCopyGuideStatus = ({
+  copiedPublicUrl,
+  hasPublishedAsset,
+}: {
+  copiedPublicUrl: boolean;
+  hasPublishedAsset: boolean;
+}): FirstRunGuideStepStatus => {
+  if (copiedPublicUrl) {
+    return "complete";
+  }
+
+  return hasPublishedAsset ? "current" : "pending";
+};
+
+const getFirstRunStepClassName = (status: FirstRunGuideStepStatus) => {
+  if (status === "complete") {
+    return "border-primary/30 bg-primary/10 text-foreground";
+  }
+
+  if (status === "current") {
+    return "border-border bg-muted/50 text-foreground";
+  }
+
+  return "border-border bg-background text-muted-foreground";
+};
+
+const getFirstRunMarkerClassName = (status: FirstRunGuideStepStatus) =>
+  status === "complete"
+    ? "border-primary bg-primary text-primary-foreground"
+    : "border-border bg-background";
+
+const FirstRunGuide = ({
+  canCopyPublicUrl,
+  canPublishAsset,
+  copiedPublicUrl,
+  dismissed,
+  hasUploadedAsset,
+  onCopyPublicUrl,
+  onDismiss,
+  onPublishAsset,
+  onUploadFiles,
+}: {
+  canCopyPublicUrl: boolean;
+  canPublishAsset: boolean;
+  copiedPublicUrl: boolean;
+  dismissed: boolean;
+  hasUploadedAsset: boolean;
+  onCopyPublicUrl: () => void;
+  onDismiss: () => void;
+  onPublishAsset: () => void;
+  onUploadFiles: () => void;
+}) => {
+  const hasPublishedAsset = canCopyPublicUrl;
+  const showUploadAction = !hasUploadedAsset;
+  const showPublishAction = hasUploadedAsset && !hasPublishedAsset;
+  const steps: FirstRunGuideStep[] = [
+    {
+      description: "Workspace is ready",
+      label: "Workspace",
+      status: "complete",
+    },
+    {
+      description: hasUploadedAsset
+        ? "First file is in the manager"
+        : "Add a media file",
+      label: "Upload",
+      status: hasUploadedAsset ? "complete" : "current",
+    },
+    {
+      description: hasPublishedAsset
+        ? "Public CDN URL exists"
+        : "Publish one ready file",
+      label: "Publish",
+      status: getPublishGuideStatus({ hasPublishedAsset, hasUploadedAsset }),
+    },
+    {
+      description: copiedPublicUrl ? "URL copied" : "Copy the public URL",
+      label: "Copy",
+      status: getCopyGuideStatus({ copiedPublicUrl, hasPublishedAsset }),
+    },
+  ];
+  const currentStep = steps.find((step) => step.status === "current");
+
+  if (dismissed) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-lg border bg-background p-3 shadow-xs">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <div className="font-medium text-sm">First CDN path</div>
+          <div className="mt-1 text-muted-foreground text-xs">
+            {currentStep?.description ?? "Upload, publish, and copy are ready."}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {showUploadAction ? (
+            <TooltipHint content="Upload the first file to this workspace">
+              <Button onClick={onUploadFiles} size="sm" type="button">
+                <CloudUploadIcon />
+                Upload
+              </Button>
+            </TooltipHint>
+          ) : null}
+          {showPublishAction ? (
+            <TooltipHint content="Publish the first ready file to the CDN">
+              <Button
+                disabled={!canPublishAsset}
+                onClick={onPublishAsset}
+                size="sm"
+                type="button"
+              >
+                <Globe2Icon />
+                Publish
+              </Button>
+            </TooltipHint>
+          ) : null}
+          {hasPublishedAsset ? (
+            <TooltipHint content="Copy the first public CDN URL">
+              <Button onClick={onCopyPublicUrl} size="sm" type="button">
+                <ClipboardIcon />
+                {copiedPublicUrl ? "Copied" : "Copy URL"}
+              </Button>
+            </TooltipHint>
+          ) : null}
+          <TooltipHint content="Hide first-run guide">
+            <Button
+              aria-label="Hide first-run guide"
+              onClick={onDismiss}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <XIcon />
+            </Button>
+          </TooltipHint>
+        </div>
+      </div>
+      <ol className="mt-3 grid gap-2 sm:grid-cols-4">
+        {steps.map((step) => (
+          <li
+            className={`flex min-h-12 items-center gap-2 rounded-md border px-2 py-2 text-xs ${getFirstRunStepClassName(step.status)}`}
+            key={step.label}
+          >
+            <span
+              className={`flex size-5 shrink-0 items-center justify-center rounded-full border ${getFirstRunMarkerClassName(step.status)}`}
+            >
+              {step.status === "complete" ? (
+                <CheckIcon className="size-3" />
+              ) : (
+                <span className="size-1.5 rounded-full bg-current" />
+              )}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-medium">{step.label}</span>
+              <span className="block truncate text-muted-foreground">
+                {step.description}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+};
+
 const AssetDetailsPanel = ({
   asset,
   isRefreshing,
@@ -1563,6 +1753,8 @@ export const FileManager = ({
   );
   const [bulkMoveTarget, setBulkMoveTarget] = useState(rootFolderPath);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [firstRunGuideDismissed, setFirstRunGuideDismissed] = useState(false);
+  const [firstRunGuideCopiedUrl, setFirstRunGuideCopiedUrl] = useState(false);
   const [isBulkPending, startBulkTransition] = useTransition();
   const uploadQueue = useAssetUploadQueue({
     existingAssets: optimisticAssets,
@@ -1604,6 +1796,14 @@ export const FileManager = ({
     }
   }, [isMobilePanelViewport]);
 
+  useEffect(() => {
+    const storageKey = `${firstRunGuideStoragePrefix}:${workspaceId}`;
+    setFirstRunGuideDismissed(
+      window.localStorage.getItem(storageKey) === "true"
+    );
+    setFirstRunGuideCopiedUrl(false);
+  }, [workspaceId]);
+
   const selectedAsset = useMemo(
     () =>
       optimisticAssets.find((asset) => asset.id === activeAssetId) ??
@@ -1619,6 +1819,19 @@ export const FileManager = ({
   const selectedAssetPublished = selectedAsset
     ? isAssetPublished(selectedAsset)
     : false;
+  const firstReadyUnpublishedAsset = useMemo(
+    () =>
+      optimisticAssets.find(
+        (asset) => isAssetReady(asset) && !isAssetPublished(asset)
+      ) ?? null,
+    [optimisticAssets]
+  );
+  const firstPublishedAsset = useMemo(
+    () => optimisticAssets.find((asset) => isAssetPublished(asset)) ?? null,
+    [optimisticAssets]
+  );
+  const firstPublishedAssetPublicUrl =
+    firstPublishedAsset?.versions.at(0)?.publicUrl ?? null;
   const filteredFolders = useMemo(() => {
     if (!searchQuery.trim()) {
       return visibleFolders;
@@ -1820,6 +2033,7 @@ export const FileManager = ({
       .writeText(selectedAssetPublicUrl)
       .then(() => {
         showCommandFeedback("Public URL copied");
+        setFirstRunGuideCopiedUrl(true);
       })
       .catch(() => {
         showCommandFeedback("Copy failed");
@@ -1935,6 +2149,7 @@ export const FileManager = ({
       .writeText(publicUrl)
       .then(() => {
         showCommandFeedback("Public URL copied");
+        setFirstRunGuideCopiedUrl(true);
       })
       .catch(() => {
         showCommandFeedback("Copy failed");
@@ -2123,6 +2338,25 @@ export const FileManager = ({
     }
 
     publishAssetsToCdn([selectedAsset]);
+  };
+  const publishFirstReadyAsset = () => {
+    if (!firstReadyUnpublishedAsset) {
+      return;
+    }
+
+    setActiveAssetId(firstReadyUnpublishedAsset.id);
+    setIsRefreshingSelection(false);
+    publishAssetsToCdn([firstReadyUnpublishedAsset]);
+  };
+  const copyFirstPublishedAssetUrl = () => {
+    copyAssetPublicUrl(firstPublishedAssetPublicUrl);
+  };
+  const dismissFirstRunGuide = () => {
+    setFirstRunGuideDismissed(true);
+    window.localStorage.setItem(
+      `${firstRunGuideStoragePrefix}:${workspaceId}`,
+      "true"
+    );
   };
   const isFolderInsideFolder = (path: string, parentPath: string) =>
     path === parentPath || path.startsWith(`${parentPath}/`);
@@ -2856,259 +3090,398 @@ export const FileManager = ({
           </div>
         </div>
       ) : null}
-      {moveTargets.length ? (
-        <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap gap-2 rounded-t-lg border-primary/40 border-x border-t bg-background/95 p-2 shadow-sm">
-          {moveTargets.map((folder) => (
-            <button
-              aria-disabled={Boolean(folder.disabledReason)}
-              className={`rounded-md border px-2 py-1 text-left text-xs ${
-                folder.disabledReason
-                  ? "cursor-not-allowed border-dashed bg-muted/30 text-muted-foreground/70"
-                  : "bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
-              }`}
-              key={folder.path}
-              onDragOver={(event) => {
-                event.preventDefault();
-                event.dataTransfer.dropEffect = folder.disabledReason
-                  ? "none"
-                  : "move";
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (folder.disabledReason) {
-                  setMoveError(folder.disabledReason);
-                  setDraggedItemId(null);
-                  return;
-                }
-
-                if (draggedItemId) {
-                  moveDraggedItems(draggedItemId, folder.path).catch(
-                    (moveErrorValue: unknown) => {
-                      setMoveError(
-                        moveErrorValue instanceof Error
-                          ? moveErrorValue.message
-                          : "Move failed"
-                      );
-                    }
-                  );
-                }
-                setDraggedItemId(null);
-              }}
-              type="button"
-            >
-              <span className="block font-medium">{folder.name}</span>
-              {folder.disabledReason ? (
-                <span className="block max-w-44 truncate">
-                  {folder.disabledReason}
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {moveError ? (
-        <div className="absolute -top-8 left-0 text-destructive text-xs">
-          {moveError}
-        </div>
-      ) : null}
-      <div
-        className="relative flex min-h-[640px] select-none flex-col overflow-x-auto rounded-lg border bg-background shadow-sm"
-        onPointerCancel={finishSelectionDrag}
-        onPointerDown={handleSelectionPointerDown}
-        onPointerMove={handleSelectionPointerMove}
-        onPointerUp={finishSelectionDrag}
-        ref={fileAreaRef}
-      >
-        {selectionBoxStyle ? (
-          <div
-            className="pointer-events-none absolute z-20 rounded-sm border border-primary bg-primary/10"
-            style={selectionBoxStyle}
-          />
-        ) : null}
-        <div className="flex min-h-12 flex-col gap-2 border-b bg-muted/20 px-3 py-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="font-medium text-sm">Files</div>
-                <span className="text-muted-foreground text-xs">
-                  {filteredItems.length} shown
-                </span>
-              </div>
-              <div className="mt-1 flex min-w-0 items-center gap-1 text-muted-foreground text-xs">
-                <nav
-                  aria-label="Current folder path"
-                  className="flex min-w-0 items-center gap-1 overflow-x-auto"
-                >
-                  {folderBreadcrumbs.map((breadcrumb, index) => {
-                    const isLast = index === folderBreadcrumbs.length - 1;
-
-                    return (
-                      <div
-                        className="flex min-w-0 items-center gap-1"
-                        key={breadcrumb.path}
-                      >
-                        {index ? <span>/</span> : null}
-                        <button
-                          aria-current={isLast ? "page" : undefined}
-                          className={`max-w-36 truncate rounded-sm px-1 py-0.5 text-left outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
-                            isLast
-                              ? "font-medium text-foreground"
-                              : "text-muted-foreground"
-                          }`}
-                          onClick={() => navigateToFolder(breadcrumb.path)}
-                          type="button"
-                        >
-                          {breadcrumb.label}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </nav>
-                <TooltipHint
-                  content={
-                    copiedFolderPath ? "Folder path copied" : "Copy folder path"
+      <div className="flex min-w-0 flex-col gap-3">
+        <FirstRunGuide
+          canCopyPublicUrl={Boolean(firstPublishedAssetPublicUrl)}
+          canPublishAsset={Boolean(firstReadyUnpublishedAsset)}
+          copiedPublicUrl={firstRunGuideCopiedUrl}
+          dismissed={firstRunGuideDismissed}
+          hasUploadedAsset={Boolean(optimisticAssets.length)}
+          onCopyPublicUrl={copyFirstPublishedAssetUrl}
+          onDismiss={dismissFirstRunGuide}
+          onPublishAsset={publishFirstReadyAsset}
+          onUploadFiles={openUploadPicker}
+        />
+        {moveTargets.length ? (
+          <div className="absolute inset-x-0 top-0 z-10 flex flex-wrap gap-2 rounded-t-lg border-primary/40 border-x border-t bg-background/95 p-2 shadow-sm">
+            {moveTargets.map((folder) => (
+              <button
+                aria-disabled={Boolean(folder.disabledReason)}
+                className={`rounded-md border px-2 py-1 text-left text-xs ${
+                  folder.disabledReason
+                    ? "cursor-not-allowed border-dashed bg-muted/30 text-muted-foreground/70"
+                    : "bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+                key={folder.path}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = folder.disabledReason
+                    ? "none"
+                    : "move";
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (folder.disabledReason) {
+                    setMoveError(folder.disabledReason);
+                    setDraggedItemId(null);
+                    return;
                   }
-                >
-                  <Button
-                    aria-label="Copy current folder path"
-                    className="size-6 shrink-0"
-                    onClick={copyCurrentFolderPath}
-                    size="icon-xs"
-                    type="button"
-                    variant="ghost"
-                  >
-                    {copiedFolderPath ? (
-                      <CheckIcon className="text-primary" />
-                    ) : (
-                      <ClipboardIcon />
-                    )}
-                  </Button>
-                </TooltipHint>
-              </div>
-            </div>
-            <div className="flex min-h-8 flex-wrap items-center gap-1.5">
-              <TooltipHint content="Upload files to this folder">
-                <Button
-                  aria-label="Upload files"
-                  onClick={openUploadPicker}
-                  size="sm"
-                  type="button"
-                >
-                  <CloudUploadIcon />
-                  Upload
-                </Button>
-              </TooltipHint>
-              <FolderCreateDialog
-                onOpenChange={setIsCreateFolderOpen}
-                open={isCreateFolderOpen}
-                parentPath={selectedFolderPath}
-                tooltip="Create new folder in the current location"
-                workspaceId={workspaceId}
-              />
-              {isSearchOpen || searchQuery ? (
-                <div className="relative">
-                  <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    aria-label="Search files and folders"
-                    autoFocus
-                    className="h-8 w-40 pr-7 pl-7 text-xs"
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setSearchQuery("");
-                        setIsSearchOpen(false);
+
+                  if (draggedItemId) {
+                    moveDraggedItems(draggedItemId, folder.path).catch(
+                      (moveErrorValue: unknown) => {
+                        setMoveError(
+                          moveErrorValue instanceof Error
+                            ? moveErrorValue.message
+                            : "Move failed"
+                        );
                       }
-                    }}
-                    placeholder="Search"
-                    value={searchQuery}
-                  />
-                  <TooltipHint content="Clear search">
+                    );
+                  }
+                  setDraggedItemId(null);
+                }}
+                type="button"
+              >
+                <span className="block font-medium">{folder.name}</span>
+                {folder.disabledReason ? (
+                  <span className="block max-w-44 truncate">
+                    {folder.disabledReason}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {moveError ? (
+          <div className="absolute -top-8 left-0 text-destructive text-xs">
+            {moveError}
+          </div>
+        ) : null}
+        <div
+          className="relative flex min-h-[640px] select-none flex-col overflow-x-auto rounded-lg border bg-background shadow-sm"
+          onPointerCancel={finishSelectionDrag}
+          onPointerDown={handleSelectionPointerDown}
+          onPointerMove={handleSelectionPointerMove}
+          onPointerUp={finishSelectionDrag}
+          ref={fileAreaRef}
+        >
+          {selectionBoxStyle ? (
+            <div
+              className="pointer-events-none absolute z-20 rounded-sm border border-primary bg-primary/10"
+              style={selectionBoxStyle}
+            />
+          ) : null}
+          <div className="flex min-h-12 flex-col gap-2 border-b bg-muted/20 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="font-medium text-sm">Files</div>
+                  <span className="text-muted-foreground text-xs">
+                    {filteredItems.length} shown
+                  </span>
+                </div>
+                <div className="mt-1 flex min-w-0 items-center gap-1 text-muted-foreground text-xs">
+                  <nav
+                    aria-label="Current folder path"
+                    className="flex min-w-0 items-center gap-1 overflow-x-auto"
+                  >
+                    {folderBreadcrumbs.map((breadcrumb, index) => {
+                      const isLast = index === folderBreadcrumbs.length - 1;
+
+                      return (
+                        <div
+                          className="flex min-w-0 items-center gap-1"
+                          key={breadcrumb.path}
+                        >
+                          {index ? <span>/</span> : null}
+                          <button
+                            aria-current={isLast ? "page" : undefined}
+                            className={`max-w-36 truncate rounded-sm px-1 py-0.5 text-left outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                              isLast
+                                ? "font-medium text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                            onClick={() => navigateToFolder(breadcrumb.path)}
+                            type="button"
+                          >
+                            {breadcrumb.label}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </nav>
+                  <TooltipHint
+                    content={
+                      copiedFolderPath
+                        ? "Folder path copied"
+                        : "Copy folder path"
+                    }
+                  >
                     <Button
-                      aria-label="Close search"
-                      className="absolute top-1 right-1 size-5"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setIsSearchOpen(false);
-                      }}
+                      aria-label="Copy current folder path"
+                      className="size-6 shrink-0"
+                      onClick={copyCurrentFolderPath}
                       size="icon-xs"
                       type="button"
                       variant="ghost"
                     >
-                      <XIcon />
+                      {copiedFolderPath ? (
+                        <CheckIcon className="text-primary" />
+                      ) : (
+                        <ClipboardIcon />
+                      )}
                     </Button>
                   </TooltipHint>
                 </div>
-              ) : (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+              </div>
+              <div className="flex min-h-8 flex-wrap items-center gap-1.5">
+                <TooltipHint content="Upload files to this folder">
+                  <Button
+                    aria-label="Upload files"
+                    onClick={openUploadPicker}
+                    size="sm"
+                    type="button"
+                  >
+                    <CloudUploadIcon />
+                    Upload
+                  </Button>
+                </TooltipHint>
+                <FolderCreateDialog
+                  onOpenChange={setIsCreateFolderOpen}
+                  open={isCreateFolderOpen}
+                  parentPath={selectedFolderPath}
+                  tooltip="Create new folder in the current location"
+                  workspaceId={workspaceId}
+                />
+                {isSearchOpen || searchQuery ? (
+                  <div className="relative">
+                    <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      aria-label="Search files and folders"
+                      autoFocus
+                      className="h-8 w-40 pr-7 pl-7 text-xs"
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          setSearchQuery("");
+                          setIsSearchOpen(false);
+                        }
+                      }}
+                      placeholder="Search"
+                      value={searchQuery}
+                    />
+                    <TooltipHint content="Clear search">
                       <Button
-                        aria-label="Search files and folders"
-                        onClick={() => setIsSearchOpen(true)}
-                        size="icon-sm"
+                        aria-label="Close search"
+                        className="absolute top-1 right-1 size-5"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setIsSearchOpen(false);
+                        }}
+                        size="icon-xs"
                         type="button"
                         variant="ghost"
                       >
-                        <SearchIcon />
+                        <XIcon />
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Search files and folders</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              <div className="flex rounded-md border bg-background p-0.5">
-                <TooltipHint content="List view">
-                  <Button
-                    aria-label="Show files as a list"
-                    aria-pressed={viewMode === "list"}
-                    onClick={() => changeViewMode("list")}
-                    size="icon-xs"
-                    type="button"
-                    variant={viewMode === "list" ? "secondary" : "ghost"}
-                  >
-                    <ListIcon />
-                  </Button>
-                </TooltipHint>
-                <TooltipHint content="Grid view">
-                  <Button
-                    aria-label="Show files as a grid"
-                    aria-pressed={viewMode === "grid"}
-                    onClick={() => changeViewMode("grid")}
-                    size="icon-xs"
-                    type="button"
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  >
-                    <LayoutGridIcon />
-                  </Button>
-                </TooltipHint>
+                    </TooltipHint>
+                  </div>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          aria-label="Search files and folders"
+                          onClick={() => setIsSearchOpen(true)}
+                          size="icon-sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <SearchIcon />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Search files and folders</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <div className="flex rounded-md border bg-background p-0.5">
+                  <TooltipHint content="List view">
+                    <Button
+                      aria-label="Show files as a list"
+                      aria-pressed={viewMode === "list"}
+                      onClick={() => changeViewMode("list")}
+                      size="icon-xs"
+                      type="button"
+                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                    >
+                      <ListIcon />
+                    </Button>
+                  </TooltipHint>
+                  <TooltipHint content="Grid view">
+                    <Button
+                      aria-label="Show files as a grid"
+                      aria-pressed={viewMode === "grid"}
+                      onClick={() => changeViewMode("grid")}
+                      size="icon-xs"
+                      type="button"
+                      variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    >
+                      <LayoutGridIcon />
+                    </Button>
+                  </TooltipHint>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        {viewMode === "list" ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Kind</TableHead>
-                <TableHead>CDN</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          {viewMode === "list" ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>CDN</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {hasFileManagerItems ? (
+                  <>
+                    {filteredFolders.map((folder) => (
+                      <FolderTableRowClient
+                        folderHref={folderHref({
+                          folderPath: folder.path,
+                          panel: rightPanelView,
+                          view: viewMode,
+                          workspaceId,
+                        })}
+                        folderName={folder.name}
+                        folderPath={folder.path}
+                        key={folder.id}
+                        onAssetDrop={(folderPath) => {
+                          if (!draggedItemId) {
+                            return;
+                          }
+
+                          moveDraggedItems(draggedItemId, folderPath).catch(
+                            (moveErrorValue: unknown) => {
+                              setMoveError(
+                                moveErrorValue instanceof Error
+                                  ? moveErrorValue.message
+                                  : "Move failed"
+                              );
+                            }
+                          );
+                          setDraggedItemId(null);
+                        }}
+                        onBulkSelect={(folderPath, shiftKey, shouldSelect) =>
+                          handleBulkSelect(
+                            getFolderItemId(folderPath),
+                            shiftKey,
+                            shouldSelect
+                          )
+                        }
+                        onDragEnd={() => setDraggedItemId(null)}
+                        onDragStart={(folderPath) =>
+                          setDraggedItemId(getFolderItemId(folderPath))
+                        }
+                        onFileDrop={(folderPath, files) =>
+                          uploadDroppedFiles(files, folderPath)
+                        }
+                        onOpen={(folderPath) => {
+                          setActiveFolderPath(folderPath);
+                          setLastSelectedItemId(getFolderItemId(folderPath));
+                        }}
+                        selectableId={getFolderItemId(folder.path)}
+                        selected={activeFolderPath === folder.path}
+                        selectedForBulk={selectedItemIds.has(
+                          getFolderItemId(folder.path)
+                        )}
+                        selectMode={selectMode}
+                        workspaceId={workspaceId}
+                      />
+                    ))}
+                    {filteredAssets.map((asset) => {
+                      const { downloadUrl, previewUrl } = getAssetUrls(asset);
+                      const cdnState = getAssetCdnState(asset);
+
+                      return (
+                        <AssetTableRowClient
+                          assetId={asset.id}
+                          cdnLabel={cdnState.label}
+                          cdnVariant={cdnState.variant}
+                          downloadUrl={downloadUrl}
+                          filename={asset.filename}
+                          href={assetHref({
+                            assetId: asset.id,
+                            folderPath: selectedFolderPath,
+                            panel: rightPanelView,
+                            view: viewMode,
+                            workspaceId,
+                          })}
+                          key={asset.id}
+                          mimeType={asset.mimeType}
+                          onBulkSelect={(assetId, shiftKey, shouldSelect) =>
+                            handleBulkSelect(
+                              getAssetItemId(assetId),
+                              shiftKey,
+                              shouldSelect
+                            )
+                          }
+                          onDeleted={handleDeleted}
+                          onDragEnd={() => setDraggedItemId(null)}
+                          onDragStart={(assetId) =>
+                            setDraggedItemId(getAssetItemId(assetId))
+                          }
+                          onOpen={() => {
+                            setActiveAssetId(asset.id);
+                            setLastSelectedItemId(getAssetItemId(asset.id));
+                            changeRightPanelView("details");
+                            setIsMobilePanelOpen(isMobilePanelViewport);
+                            setIsRefreshingSelection(true);
+                          }}
+                          onPublish={() => publishAssetsToCdn([asset])}
+                          onRename={() => requestRenameAsset(asset.id)}
+                          previewUrl={previewUrl}
+                          publicUrl={asset.versions.at(0)?.publicUrl ?? null}
+                          publishDisabled={
+                            !isAssetReady(asset) || isAssetPublished(asset)
+                          }
+                          selectableId={getAssetItemId(asset.id)}
+                          selected={selectedAsset?.id === asset.id}
+                          selectedForBulk={selectedItemIds.has(
+                            getAssetItemId(asset.id)
+                          )}
+                          selectMode={selectMode}
+                          sizeLabel={formatBytes(asset.sizeBytes)}
+                        />
+                      );
+                    })}
+                  </>
+                ) : (
+                  <TableRow>
+                    <TableCell className="h-40" colSpan={tableColumnCount}>
+                      <FileManagerEmptyState
+                        onClearSearch={() => {
+                          setSearchQuery("");
+                          setIsSearchOpen(false);
+                        }}
+                        onCreateFolder={openCreateFolder}
+                        onUploadFiles={openUploadPicker}
+                        searchQuery={searchQuery}
+                      />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {hasFileManagerItems ? (
                 <>
                   {filteredFolders.map((folder) => (
-                    <FolderTableRowClient
-                      folderHref={folderHref({
-                        folderPath: folder.path,
-                        panel: rightPanelView,
-                        view: viewMode,
-                        workspaceId,
-                      })}
-                      folderName={folder.name}
-                      folderPath={folder.path}
+                    <FolderGridCard
+                      folder={folder}
                       key={folder.id}
                       onAssetDrop={(folderPath) => {
                         if (!draggedItemId) {
@@ -3143,36 +3516,34 @@ export const FileManager = ({
                       onOpen={(folderPath) => {
                         setActiveFolderPath(folderPath);
                         setLastSelectedItemId(getFolderItemId(folderPath));
+                        router.push(
+                          folderHref({
+                            folderPath,
+                            panel: rightPanelView,
+                            view: viewMode,
+                            workspaceId,
+                          }) as Route
+                        );
                       }}
+                      onOpenContextMenu={openFolderContextMenu}
                       selectableId={getFolderItemId(folder.path)}
                       selected={activeFolderPath === folder.path}
                       selectedForBulk={selectedItemIds.has(
                         getFolderItemId(folder.path)
                       )}
                       selectMode={selectMode}
-                      workspaceId={workspaceId}
                     />
                   ))}
                   {filteredAssets.map((asset) => {
-                    const { downloadUrl, previewUrl } = getAssetUrls(asset);
+                    const { previewUrl } = getAssetUrls(asset);
                     const cdnState = getAssetCdnState(asset);
 
                     return (
-                      <AssetTableRowClient
-                        assetId={asset.id}
+                      <AssetGridCard
+                        asset={asset}
                         cdnLabel={cdnState.label}
                         cdnVariant={cdnState.variant}
-                        downloadUrl={downloadUrl}
-                        filename={asset.filename}
-                        href={assetHref({
-                          assetId: asset.id,
-                          folderPath: selectedFolderPath,
-                          panel: rightPanelView,
-                          view: viewMode,
-                          workspaceId,
-                        })}
                         key={asset.id}
-                        mimeType={asset.mimeType}
                         onBulkSelect={(assetId, shiftKey, shouldSelect) =>
                           handleBulkSelect(
                             getAssetItemId(assetId),
@@ -3180,7 +3551,6 @@ export const FileManager = ({
                             shouldSelect
                           )
                         }
-                        onDeleted={handleDeleted}
                         onDragEnd={() => setDraggedItemId(null)}
                         onDragStart={(assetId) =>
                           setDraggedItemId(getAssetItemId(assetId))
@@ -3191,14 +3561,18 @@ export const FileManager = ({
                           changeRightPanelView("details");
                           setIsMobilePanelOpen(isMobilePanelViewport);
                           setIsRefreshingSelection(true);
+                          router.push(
+                            assetHref({
+                              assetId: asset.id,
+                              folderPath: selectedFolderPath,
+                              panel: rightPanelView,
+                              view: viewMode,
+                              workspaceId,
+                            }) as Route
+                          );
                         }}
-                        onPublish={() => publishAssetsToCdn([asset])}
-                        onRename={() => requestRenameAsset(asset.id)}
+                        onOpenContextMenu={openAssetContextMenu}
                         previewUrl={previewUrl}
-                        publicUrl={asset.versions.at(0)?.publicUrl ?? null}
-                        publishDisabled={
-                          !isAssetReady(asset) || isAssetPublished(asset)
-                        }
                         selectableId={getAssetItemId(asset.id)}
                         selected={selectedAsset?.id === asset.id}
                         selectedForBulk={selectedItemIds.has(
@@ -3211,154 +3585,29 @@ export const FileManager = ({
                   })}
                 </>
               ) : (
-                <TableRow>
-                  <TableCell className="h-40" colSpan={tableColumnCount}>
-                    <FileManagerEmptyState
-                      onClearSearch={() => {
-                        setSearchQuery("");
-                        setIsSearchOpen(false);
-                      }}
-                      onCreateFolder={openCreateFolder}
-                      onUploadFiles={openUploadPicker}
-                      searchQuery={searchQuery}
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {hasFileManagerItems ? (
-              <>
-                {filteredFolders.map((folder) => (
-                  <FolderGridCard
-                    folder={folder}
-                    key={folder.id}
-                    onAssetDrop={(folderPath) => {
-                      if (!draggedItemId) {
-                        return;
-                      }
-
-                      moveDraggedItems(draggedItemId, folderPath).catch(
-                        (moveErrorValue: unknown) => {
-                          setMoveError(
-                            moveErrorValue instanceof Error
-                              ? moveErrorValue.message
-                              : "Move failed"
-                          );
-                        }
-                      );
-                      setDraggedItemId(null);
+                <div className="col-span-full">
+                  <FileManagerEmptyState
+                    onClearSearch={() => {
+                      setSearchQuery("");
+                      setIsSearchOpen(false);
                     }}
-                    onBulkSelect={(folderPath, shiftKey, shouldSelect) =>
-                      handleBulkSelect(
-                        getFolderItemId(folderPath),
-                        shiftKey,
-                        shouldSelect
-                      )
-                    }
-                    onDragEnd={() => setDraggedItemId(null)}
-                    onDragStart={(folderPath) =>
-                      setDraggedItemId(getFolderItemId(folderPath))
-                    }
-                    onFileDrop={(folderPath, files) =>
-                      uploadDroppedFiles(files, folderPath)
-                    }
-                    onOpen={(folderPath) => {
-                      setActiveFolderPath(folderPath);
-                      setLastSelectedItemId(getFolderItemId(folderPath));
-                      router.push(
-                        folderHref({
-                          folderPath,
-                          panel: rightPanelView,
-                          view: viewMode,
-                          workspaceId,
-                        }) as Route
-                      );
-                    }}
-                    onOpenContextMenu={openFolderContextMenu}
-                    selectableId={getFolderItemId(folder.path)}
-                    selected={activeFolderPath === folder.path}
-                    selectedForBulk={selectedItemIds.has(
-                      getFolderItemId(folder.path)
-                    )}
-                    selectMode={selectMode}
+                    onCreateFolder={openCreateFolder}
+                    onUploadFiles={openUploadPicker}
+                    searchQuery={searchQuery}
                   />
-                ))}
-                {filteredAssets.map((asset) => {
-                  const { previewUrl } = getAssetUrls(asset);
-                  const cdnState = getAssetCdnState(asset);
-
-                  return (
-                    <AssetGridCard
-                      asset={asset}
-                      cdnLabel={cdnState.label}
-                      cdnVariant={cdnState.variant}
-                      key={asset.id}
-                      onBulkSelect={(assetId, shiftKey, shouldSelect) =>
-                        handleBulkSelect(
-                          getAssetItemId(assetId),
-                          shiftKey,
-                          shouldSelect
-                        )
-                      }
-                      onDragEnd={() => setDraggedItemId(null)}
-                      onDragStart={(assetId) =>
-                        setDraggedItemId(getAssetItemId(assetId))
-                      }
-                      onOpen={() => {
-                        setActiveAssetId(asset.id);
-                        setLastSelectedItemId(getAssetItemId(asset.id));
-                        changeRightPanelView("details");
-                        setIsMobilePanelOpen(isMobilePanelViewport);
-                        setIsRefreshingSelection(true);
-                        router.push(
-                          assetHref({
-                            assetId: asset.id,
-                            folderPath: selectedFolderPath,
-                            panel: rightPanelView,
-                            view: viewMode,
-                            workspaceId,
-                          }) as Route
-                        );
-                      }}
-                      onOpenContextMenu={openAssetContextMenu}
-                      previewUrl={previewUrl}
-                      selectableId={getAssetItemId(asset.id)}
-                      selected={selectedAsset?.id === asset.id}
-                      selectedForBulk={selectedItemIds.has(
-                        getAssetItemId(asset.id)
-                      )}
-                      selectMode={selectMode}
-                      sizeLabel={formatBytes(asset.sizeBytes)}
-                    />
-                  );
-                })}
-              </>
-            ) : (
-              <div className="col-span-full">
-                <FileManagerEmptyState
-                  onClearSearch={() => {
-                    setSearchQuery("");
-                    setIsSearchOpen(false);
-                  }}
-                  onCreateFolder={openCreateFolder}
-                  onUploadFiles={openUploadPicker}
-                  searchQuery={searchQuery}
-                />
-              </div>
-            )}
-          </div>
-        )}
-        <button
-          aria-label="Clear selected items"
-          className="min-h-12 flex-1 cursor-default bg-transparent"
-          data-selection-drag-handle
-          onClick={clearSelection}
-          tabIndex={-1}
-          type="button"
-        />
+                </div>
+              )}
+            </div>
+          )}
+          <button
+            aria-label="Clear selected items"
+            className="min-h-12 flex-1 cursor-default bg-transparent"
+            data-selection-drag-handle
+            onClick={clearSelection}
+            tabIndex={-1}
+            type="button"
+          />
+        </div>
       </div>
       {selectMode || !isMobilePanelViewport ? null : (
         <div className="fixed inset-x-3 bottom-3 z-40 flex gap-2 rounded-lg border bg-background/95 p-1 shadow-lg backdrop-blur-sm lg:hidden">

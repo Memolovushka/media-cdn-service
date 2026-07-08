@@ -135,6 +135,7 @@ HTTP API:
 - 2026-07-03 UI/UX recommendations continued: mobile/tablet file manager now keeps the desktop inspector out of the narrow layout and opens Details/Activity in a bottom sheet.
 - 2026-07-03 dashboard polish: the header now includes a persisted White/Black/System theme switcher powered by the existing next-themes provider.
 - 2026-07-03 design polish completed: final spacing, typography, and visual-noise pass removed the duplicated page breadcrumb, tightened inspector/activity/empty states, reduced repeated grid metadata, and updated the design plan from Mostly done to Done.
+- 2026-07-08 next UI/UX plan continued: file manager now has a guided first-run path for new workspaces, walking through Workspace, Upload, Publish, and Copy URL with live CTA actions and per-workspace dismiss state.
 
 ### Phase 1: Foundation
 
@@ -310,10 +311,11 @@ Test plan:
 ## Ближайший порядок работ
 
 1. Permission and state-transition tests.
-2. Continue UI/UX recommendations: mobile/tablet adaptation and unified file/status visual semantics.
-3. Account settings polish: email change, profile name update, active sessions.
-4. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
-5. Audit log UI.
+2. Continue next UI/UX plan: version history and replace file flow.
+3. CDN publish checklist and public asset health checks.
+4. API token wizard and integration snippets.
+5. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
+6. Audit log UI.
 
 ## Production Auth/Setup Status
 

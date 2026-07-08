@@ -5,11 +5,13 @@
 ## Статус выполнения
 
 - 2026-07-03: начат приоритет 1. Добавлены upload drop assistant и pre-upload review перед постановкой файлов в очередь: папка назначения, лимит 250 MB, приватность по умолчанию, общий размер, ошибки типа/размера и предупреждение о совпадающих именах.
+- 2026-07-08: продолжен приоритет 1. Добавлен guided first-run guide внутри file manager: Workspace, Upload, Publish, Copy URL; guide вызывает существующие Upload/Publish/Copy действия, отражает реальные состояния файлов/CDN и запоминает dismiss для workspace.
 
 ## 20 пунктов
 
 1. **Guided first-run onboarding**
    Первый вход должен вести пользователя по короткому пути: создать workspace, загрузить первый файл, опубликовать в CDN, скопировать URL. Без отдельной landing-страницы внутри продукта.
+   **Done:** после создания workspace file manager показывает компактный first-run guide с шагами Workspace, Upload, Publish и Copy URL; CTA используют реальные действия продукта и состояние обновляется после upload/CDN publish/copy.
 
 2. **Demo workspace для пустого аккаунта**
    Добавить опциональный demo-набор ассетов: image, SVG, video, PDF. Это позволит сразу увидеть list/grid, preview, CDN URL и snippets без ручной загрузки.
