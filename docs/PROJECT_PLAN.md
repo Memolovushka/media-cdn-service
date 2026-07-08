@@ -321,7 +321,7 @@ Test plan:
 
 Current known state:
 
-- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `f930884`.
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `f0ab978`.
 - `GET /api/setup/status` returns `ok=true`.
 - Confirmed production bindings:
   - `bindings.DB=true`
@@ -334,11 +334,12 @@ Current known state:
   - email signup returns `200`;
   - `POST /api/workspaces` returns `201`;
   - dashboard render after workspace creation returns `200`.
-- Confirmed latest production setup check after commit `f930884`:
+- Confirmed latest production setup check after commit `f0ab978`:
   - `ok=true`;
   - `bindings.DB=true`;
   - `bindings.MEDIA_BUCKET=true`;
   - `bindings.GOOGLE=true`;
+  - `bindings.POLAR=false`;
   - `database.ready=true`;
   - `database.missingTables=[]`.
 - Confirmed feedback-driven production deploys on 2026-06-29:
