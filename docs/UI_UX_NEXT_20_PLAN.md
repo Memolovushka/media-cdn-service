@@ -7,6 +7,7 @@
 - 2026-07-03: начат приоритет 1. Добавлены upload drop assistant и pre-upload review перед постановкой файлов в очередь: папка назначения, лимит 250 MB, приватность по умолчанию, общий размер, ошибки типа/размера и предупреждение о совпадающих именах.
 - 2026-07-08: продолжен приоритет 1. Добавлен guided first-run guide внутри file manager: Workspace, Upload, Publish, Copy URL; guide вызывает существующие Upload/Publish/Copy действия, отражает реальные состояния файлов/CDN и запоминает dismiss для workspace.
 - 2026-07-08: выполнен приоритет 2. Inspector получил историю версий и явный Replace flow: новая загрузка создает следующий immutable `asset_versions.version`, текущая ready-версия остается стабильной до complete, старые public URL не меняются, а новый CDN URL создается отдельным Publish.
+- 2026-07-08: выполнен приоритет 3. CDN controls получили publish checklist и authenticated public asset health check: URL/object availability, content-type match и immutable cache-control.
 
 ## 20 пунктов
 
@@ -36,9 +37,11 @@
 
 8. **CDN publish checklist**
    Перед публикацией показывать компактную проверку: ready version, MIME allowed, SVG safety, cache policy, public URL path. Это снизит риск случайной публичной выдачи.
+   **Done:** CDN panel показывает checklist по ready version, MIME policy, SVG safety, cache policy и workspace-scoped path; Publish disabled для заблокированных MIME states.
 
 9. **Public asset health**
    Для опубликованного файла показывать last checked статус: URL доступен, content-type корректный, cache-control выставлен. Кнопка refresh check рядом.
+   **Done:** опубликованный asset имеет Public asset health block с refresh action через authenticated API; проверяется public object availability, content-type и immutable cache-control.
 
 10. **Copy menu для интеграций**
    Вместо одного copy URL добавить меню: Public URL, HTML img/video, Next.js Image, CSS background, Markdown, JSON metadata.

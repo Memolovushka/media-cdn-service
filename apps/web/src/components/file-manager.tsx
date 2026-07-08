@@ -1490,7 +1490,9 @@ const AssetDetailsPanel = ({
 
       <AssetCdnControls
         assetId={asset.id}
+        cacheControl={latestVersion?.cacheControl}
         cdnEnabled={asset.cdnEnabled}
+        mimeType={asset.mimeType}
         publicUrl={latestVersion?.publicUrl}
         ready={isReady}
         workspaceId={asset.workspaceId}

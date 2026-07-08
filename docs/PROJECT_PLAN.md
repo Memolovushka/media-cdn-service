@@ -137,6 +137,7 @@ HTTP API:
 - 2026-07-03 design polish completed: final spacing, typography, and visual-noise pass removed the duplicated page breadcrumb, tightened inspector/activity/empty states, reduced repeated grid metadata, and updated the design plan from Mostly done to Done.
 - 2026-07-08 next UI/UX plan continued: file manager now has a guided first-run path for new workspaces, walking through Workspace, Upload, Publish, and Copy URL with live CTA actions and per-workspace dismiss state.
 - 2026-07-08 next UI/UX plan continued: asset inspector now shows version history and supports Replace as a new immutable asset version while preserving old public CDN URLs.
+- 2026-07-08 next UI/UX plan continued: CDN controls now show a publish checklist and public asset health check for URL availability, content type, and immutable cache policy.
 
 ### Phase 1: Foundation
 
@@ -312,9 +313,9 @@ Test plan:
 ## Ближайший порядок работ
 
 1. Permission and state-transition tests.
-2. Continue next UI/UX plan: CDN publish checklist and public asset health checks.
-3. API token wizard and integration snippets.
-4. Activity filters and permission-aware states.
+2. Continue next UI/UX plan: API token wizard and integration snippets.
+3. Activity filters and permission-aware states.
+4. Quota forecasting and large upload resilience.
 5. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
 6. Audit log UI.
 

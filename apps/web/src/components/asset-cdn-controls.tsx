@@ -8,7 +8,9 @@ import {
   ChevronDownIcon,
   ClipboardIcon,
   Globe2Icon,
+  RefreshCwIcon,
   UnlinkIcon,
+  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -16,7 +18,9 @@ import { TooltipHint } from "@/components/tooltip-hint";
 
 interface AssetCdnControlsProps {
   assetId: string;
+  cacheControl?: null | string;
   cdnEnabled: boolean;
+  mimeType: string;
   publicUrl?: null | string;
   ready: boolean;
   workspaceId: string;
@@ -40,18 +44,32 @@ interface AssetPatchResponse {
 type CdnLifecycleState = "blocked" | "private" | "public" | "publishing";
 type CopiedTarget = "html" | "next" | "url" | null;
 
+interface CdnHealthResult {
+  cacheControl: null | string;
+  cacheControlOk: boolean;
+  checkedAt: string;
+  contentType: null | string;
+  contentTypeOk: boolean;
+  ok: boolean;
+  publicUrl: null | string;
+  urlOk: boolean;
+  versionId: string;
+}
+
 const getCdnLifecycleState = ({
   enabled,
   isPending,
+  publishable,
   publicUrl,
   ready,
 }: {
   enabled: boolean;
   isPending: boolean;
+  publishable: boolean;
   publicUrl: null | string;
   ready: boolean;
 }): CdnLifecycleState => {
-  if (!ready) {
+  if (!(ready && publishable)) {
     return "blocked";
   }
 
@@ -95,6 +113,67 @@ const getLifecycleDescription = (state: CdnLifecycleState) => {
       return "Only authenticated workspace members can access this file.";
   }
 };
+
+const publicAssetCacheControl = "public, max-age=31536000, immutable";
+
+const canPublishMimeType = (mimeType: string) => mimeType !== "image/svg+xml";
+
+const getPublicUrlPath = (publicUrl: string) => {
+  try {
+    return new URL(publicUrl).pathname;
+  } catch {
+    return "";
+  }
+};
+
+const getChecklistItems = ({
+  cacheControl,
+  currentPublicUrl,
+  mimeType,
+  publishable,
+  ready,
+  workspaceId,
+}: {
+  cacheControl: null | string;
+  currentPublicUrl: null | string;
+  mimeType: string;
+  publishable: boolean;
+  ready: boolean;
+  workspaceId: string;
+}) => [
+  {
+    checked: ready,
+    label: "Ready version",
+    value: ready ? "Ready" : "Upload pending",
+  },
+  {
+    checked: publishable,
+    label: "MIME policy",
+    value: publishable ? mimeType : "SVG blocked until safety policy",
+  },
+  {
+    checked: publishable,
+    label: "SVG safety",
+    value:
+      mimeType === "image/svg+xml" ? "Needs sanitize/CSP policy" : "Not SVG",
+  },
+  {
+    checked: cacheControl === publicAssetCacheControl || !currentPublicUrl,
+    label: "Cache policy",
+    value: currentPublicUrl
+      ? cacheControl || "Missing cache metadata"
+      : publicAssetCacheControl,
+  },
+  {
+    checked:
+      !currentPublicUrl ||
+      getPublicUrlPath(currentPublicUrl).startsWith(`/cdn/${workspaceId}/`),
+    label: "Workspace path",
+    value: currentPublicUrl
+      ? getPublicUrlPath(currentPublicUrl)
+      : "Pending URL",
+  },
+];
 
 const getLifecycleVariant = (state: CdnLifecycleState) => {
   if (state === "public") {
@@ -142,9 +221,162 @@ const CopyableCodeBlock = ({
   </div>
 );
 
+const PublishChecklist = ({
+  items,
+}: {
+  items: ReturnType<typeof getChecklistItems>;
+}) => (
+  <div className="mt-3 grid gap-1.5">
+    {items.map((item) => (
+      <div
+        className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-xs"
+        key={item.label}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {item.checked ? (
+            <CheckIcon className="size-3.5 shrink-0 text-primary" />
+          ) : (
+            <XIcon className="size-3.5 shrink-0 text-destructive" />
+          )}
+          <span className="truncate font-medium">{item.label}</span>
+        </span>
+        <span className="truncate text-muted-foreground">{item.value}</span>
+      </div>
+    ))}
+  </div>
+);
+
+const EmbedSnippets = ({
+  copiedTarget,
+  htmlSnippet,
+  nextImageConfig,
+  onCopy,
+  onToggle,
+  showSnippets,
+}: {
+  copiedTarget: CopiedTarget;
+  htmlSnippet: null | string;
+  nextImageConfig: null | string;
+  onCopy: (target: Exclude<CopiedTarget, null>, value: string) => void;
+  onToggle: () => void;
+  showSnippets: boolean;
+}) => (
+  <>
+    <Button
+      aria-expanded={showSnippets}
+      className="w-fit"
+      onClick={onToggle}
+      size="sm"
+      type="button"
+      variant="ghost"
+    >
+      <ChevronDownIcon
+        className={showSnippets ? "rotate-180 transition" : "transition"}
+      />
+      Embed snippets
+    </Button>
+
+    {showSnippets ? (
+      <div className="flex flex-col gap-3 border-t pt-2">
+        {nextImageConfig ? (
+          <CopyableCodeBlock
+            copied={copiedTarget === "next"}
+            label="Next.js snippet"
+            onCopy={() => onCopy("next", nextImageConfig)}
+            value={nextImageConfig}
+          />
+        ) : null}
+
+        {htmlSnippet ? (
+          <CopyableCodeBlock
+            copied={copiedTarget === "html"}
+            label="HTML snippet"
+            onCopy={() => onCopy("html", htmlSnippet)}
+            value={htmlSnippet}
+          />
+        ) : null}
+      </div>
+    ) : null}
+  </>
+);
+
+const PublicAssetHealth = ({
+  error,
+  health,
+  isChecking,
+  onRefresh,
+}: {
+  error: null | string;
+  health: CdnHealthResult | null;
+  isChecking: boolean;
+  onRefresh: () => void;
+}) => {
+  const checkedAt = health
+    ? new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date(health.checkedAt))
+    : null;
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-medium text-xs">Public asset health</div>
+          <div className="mt-1 text-muted-foreground text-xs">
+            {checkedAt
+              ? `Last checked ${checkedAt}`
+              : "Check URL, content type, and cache headers."}
+          </div>
+        </div>
+        <TooltipHint content="Refresh public asset health">
+          <Button
+            disabled={isChecking}
+            onClick={onRefresh}
+            size="icon-xs"
+            type="button"
+            variant="ghost"
+          >
+            <RefreshCwIcon className={isChecking ? "animate-spin" : ""} />
+            <span className="sr-only">Refresh health</span>
+          </Button>
+        </TooltipHint>
+      </div>
+      {health ? (
+        <div className="mt-2 grid gap-1 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">URL</span>
+            <span>{health.urlOk ? "Available" : "Unavailable"}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">Content-Type</span>
+            <span className="truncate">
+              {health.contentTypeOk ? health.contentType : "Mismatch"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">Cache-Control</span>
+            <span className="truncate">
+              {health.cacheControlOk
+                ? "Immutable"
+                : (health.cacheControl ?? "Missing")}
+            </span>
+          </div>
+        </div>
+      ) : null}
+      {error ? (
+        <div className="mt-2 text-destructive text-xs">{error}</div>
+      ) : null}
+    </div>
+  );
+};
+
 export const AssetCdnControls = ({
   assetId,
+  cacheControl,
   cdnEnabled,
+  mimeType,
   publicUrl,
   ready,
   workspaceId,
@@ -154,8 +386,12 @@ export const AssetCdnControls = ({
   const [currentPublicUrl, setCurrentPublicUrl] = useState(publicUrl ?? null);
   const [copiedTarget, setCopiedTarget] = useState<CopiedTarget>(null);
   const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState<CdnHealthResult | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
   const [showSnippets, setShowSnippets] = useState(false);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const publishable = canPublishMimeType(mimeType);
   const nextImageConfig = useMemo(() => {
     if (!currentPublicUrl) {
       return null;
@@ -184,9 +420,22 @@ export const AssetCdnControls = ({
   const lifecycleState = getCdnLifecycleState({
     enabled,
     isPending,
+    publishable,
     publicUrl: currentPublicUrl,
     ready,
   });
+  const checklistItems = useMemo(
+    () =>
+      getChecklistItems({
+        cacheControl: cacheControl ?? null,
+        currentPublicUrl,
+        mimeType,
+        publishable,
+        ready,
+        workspaceId,
+      }),
+    [cacheControl, currentPublicUrl, mimeType, publishable, ready, workspaceId]
+  );
 
   const patchAsset = ({
     body,
@@ -245,6 +494,29 @@ export const AssetCdnControls = ({
     setCopiedTarget(target);
     window.setTimeout(() => setCopiedTarget(null), copiedResetDelayMs);
   };
+  const refreshHealth = async () => {
+    if (!currentPublicUrl) {
+      return;
+    }
+
+    setHealthError(null);
+    setIsCheckingHealth(true);
+
+    try {
+      const response = await fetch(`/api/assets/${assetId}/cdn-health`);
+
+      if (!response.ok) {
+        setHealthError(await getErrorMessage(response));
+        return;
+      }
+
+      setHealth((await response.json()) as CdnHealthResult);
+    } catch {
+      setHealthError("Health check failed");
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -285,7 +557,7 @@ export const AssetCdnControls = ({
             ) : (
               <TooltipHint content="Publish this ready file to the public CDN">
                 <Button
-                  disabled={isPending || !ready}
+                  disabled={isPending || !(ready && publishable)}
                   onClick={() => {
                     patchAsset({
                       body: { cdnEnabled: true },
@@ -301,6 +573,8 @@ export const AssetCdnControls = ({
               </TooltipHint>
             )}
           </div>
+
+          <PublishChecklist items={checklistItems} />
         </div>
 
         {currentPublicUrl ? (
@@ -312,43 +586,21 @@ export const AssetCdnControls = ({
               value={currentPublicUrl}
             />
 
-            <Button
-              aria-expanded={showSnippets}
-              className="w-fit"
-              onClick={() => setShowSnippets((visible) => !visible)}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              <ChevronDownIcon
-                className={
-                  showSnippets ? "rotate-180 transition" : "transition"
-                }
-              />
-              Embed snippets
-            </Button>
+            <EmbedSnippets
+              copiedTarget={copiedTarget}
+              htmlSnippet={htmlSnippet}
+              nextImageConfig={nextImageConfig}
+              onCopy={copyValue}
+              onToggle={() => setShowSnippets((visible) => !visible)}
+              showSnippets={showSnippets}
+            />
 
-            {showSnippets ? (
-              <div className="flex flex-col gap-3 border-t pt-2">
-                {nextImageConfig ? (
-                  <CopyableCodeBlock
-                    copied={copiedTarget === "next"}
-                    label="Next.js snippet"
-                    onCopy={() => copyValue("next", nextImageConfig)}
-                    value={nextImageConfig}
-                  />
-                ) : null}
-
-                {htmlSnippet ? (
-                  <CopyableCodeBlock
-                    copied={copiedTarget === "html"}
-                    label="HTML snippet"
-                    onCopy={() => copyValue("html", htmlSnippet)}
-                    value={htmlSnippet}
-                  />
-                ) : null}
-              </div>
-            ) : null}
+            <PublicAssetHealth
+              error={healthError}
+              health={health}
+              isChecking={isCheckingHealth}
+              onRefresh={refreshHealth}
+            />
           </div>
         ) : (
           <p className="text-muted-foreground text-xs">
