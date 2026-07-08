@@ -69,6 +69,7 @@ const getAccountBilling = ({
     plan: userBilling.plan,
     planLabel: billingPlans[userBilling.plan].label,
     status: userBilling.billingStatus,
+    storageQuotaBytes: userBilling.storageQuotaBytes,
     webhookConfigured: Boolean(polarWebhookSecret),
     workspaceCount: memberships.length,
     workspaceLimit: userBilling.workspaceLimit,
@@ -265,6 +266,12 @@ const Page = async ({ searchParams }: PageProps) => {
                 userBilling,
               })}
               email={session.user.email}
+              plans={Object.values(billingPlans).map((plan) => ({
+                label: plan.label,
+                plan: plan.plan,
+                storageQuotaBytes: plan.storageQuotaBytes,
+                workspaceLimit: plan.workspaceLimit,
+              }))}
               products={billingProducts.map((product) => ({
                 label: billingPlans[product.plan].label,
                 slug: product.slug,

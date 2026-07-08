@@ -1,6 +1,14 @@
 "use client";
 
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import {
@@ -27,6 +35,7 @@ import {
   KeyRoundIcon,
   LogOutIcon,
   SettingsIcon,
+  ShieldCheckIcon,
   SparklesIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -42,17 +51,26 @@ import {
 } from "@/components/command-palette-shortcuts";
 import { TooltipHint } from "@/components/tooltip-hint";
 
+type BillingPlanName = "free" | "pro" | "team";
+
 interface AccountActionsProps {
   billing: {
     checkoutConfigured: boolean;
-    plan: string;
+    plan: BillingPlanName;
     planLabel: string;
     status: string;
+    storageQuotaBytes: number;
     webhookConfigured: boolean;
     workspaceCount: number;
     workspaceLimit: number;
   };
   email?: null | string;
+  plans: Array<{
+    label: string;
+    plan: BillingPlanName;
+    storageQuotaBytes: number;
+    workspaceLimit: number;
+  }>;
   products: Array<{
     label: string;
     slug: string;
@@ -60,6 +78,33 @@ interface AccountActionsProps {
 }
 
 const minPasswordLength = 8;
+const bytesPerKilobyte = 1024;
+const kilobytesPerMegabyte = 1024;
+const megabytesPerGigabyte = 1024;
+const bytesPerGigabyte =
+  bytesPerKilobyte * kilobytesPerMegabyte * megabytesPerGigabyte;
+const planDescriptions = {
+  free: "For trying the file manager and publishing flow with one workspace.",
+  pro: "For solo operators who need more room, more workspaces, and a real production CDN workflow.",
+  team: "For growing projects that need wider workspace capacity and room for more production assets.",
+} satisfies Record<BillingPlanName, string>;
+const planHighlights = {
+  free: [
+    "1 workspace",
+    "1 GB storage",
+    "Uploads, previews, folders, and CDN publishing basics",
+  ],
+  pro: [
+    "5 workspaces",
+    "25 GB storage",
+    "Version history, replace flow, CDN health checks, and public links",
+  ],
+  team: [
+    "20 workspaces",
+    "100 GB storage",
+    "More production space for teams, clients, and parallel media projects",
+  ],
+} satisfies Record<BillingPlanName, string[]>;
 
 const getAuthErrorMessage = (error: unknown) => {
   if (
@@ -90,6 +135,34 @@ const getBillingErrorMessage = async (response: Response) => {
   }
 };
 
+const formatStorageQuota = (bytes: number) => {
+  const gigabytes = bytes / bytesPerGigabyte;
+
+  return `${Number.isInteger(gigabytes) ? gigabytes : gigabytes.toFixed(1)} GB`;
+};
+
+const getPlanButtonLabel = ({
+  action,
+  isCurrent,
+  label,
+  plan,
+}: {
+  action: null | string;
+  isCurrent: boolean;
+  label: string;
+  plan: string;
+}) => {
+  if (action === plan) {
+    return "Opening...";
+  }
+
+  if (isCurrent) {
+    return "Current plan";
+  }
+
+  return `Upgrade to ${label}`;
+};
+
 const openBillingUrl = async (path: string, body?: Record<string, unknown>) => {
   const response = await fetch(`/api/auth${path}`, {
     body: body ? JSON.stringify(body) : undefined,
@@ -114,6 +187,7 @@ const openBillingUrl = async (path: string, body?: Record<string, unknown>) => {
 export const AccountActions = ({
   billing,
   email,
+  plans,
   products,
 }: AccountActionsProps) => {
   const router = useRouter();
@@ -131,6 +205,7 @@ export const AccountActions = ({
   const [isPending, startTransition] = useTransition();
   const [billingAction, setBillingAction] = useState<string | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
 
   useEffect(() => {
     setCommandPaletteShortcut(readCommandPaletteShortcut());
@@ -144,6 +219,11 @@ export const AccountActions = ({
   const openCommandPalette = () => {
     setOpen(false);
     window.setTimeout(requestCommandPaletteOpen, 0);
+  };
+
+  const openBillingDialog = () => {
+    setBillingDialogOpen(true);
+    setBillingError(null);
   };
 
   const changePassword = () => {
@@ -224,6 +304,126 @@ export const AccountActions = ({
 
   return (
     <div className="flex gap-2">
+      <Dialog onOpenChange={setBillingDialogOpen} open={billingDialogOpen}>
+        <DialogContent className="max-h-[min(720px,calc(100svh-2rem))] overflow-y-auto p-0 sm:max-w-3xl">
+          <div className="border-b px-5 py-4">
+            <DialogHeader>
+              <DialogTitle>Billing</DialogTitle>
+              <DialogDescription>
+                Your current plan and the upgrade options for more workspace and
+                CDN capacity.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="space-y-5 px-5 pb-5">
+            <div className="grid gap-3 rounded-md border bg-muted/20 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div className="min-w-0">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-sm">
+                    Current plan: {billing.planLabel}
+                  </span>
+                  <Badge variant="outline">{billing.status}</Badge>
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  {billing.workspaceCount} of {billing.workspaceLimit}{" "}
+                  workspaces used ·{" "}
+                  {formatStorageQuota(billing.storageQuotaBytes)} included
+                  storage
+                </div>
+              </div>
+              <Button
+                disabled={isPending}
+                onClick={openBillingPortal}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {billingAction === "portal" ? "Opening..." : "Manage billing"}
+              </Button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              {plans.map((plan) => {
+                const product = products.find(
+                  (candidate) => candidate.slug === plan.plan
+                );
+                const isCurrent = billing.plan === plan.plan;
+                const canCheckout = Boolean(
+                  billing.checkoutConfigured && product && !isCurrent
+                );
+
+                return (
+                  <div
+                    className="flex min-h-[18rem] flex-col rounded-md border bg-background p-4"
+                    key={plan.plan}
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm">{plan.label}</div>
+                        <div className="text-muted-foreground text-xs">
+                          {formatStorageQuota(plan.storageQuotaBytes)} ·{" "}
+                          {plan.workspaceLimit} workspaces
+                        </div>
+                      </div>
+                      {isCurrent ? (
+                        <Badge variant="secondary">Current</Badge>
+                      ) : null}
+                    </div>
+                    <p className="mb-4 text-muted-foreground text-xs">
+                      {planDescriptions[plan.plan] ?? planDescriptions.free}
+                    </p>
+                    <ul className="mb-4 grid gap-2 text-xs">
+                      {(planHighlights[plan.plan] ?? []).map((highlight) => (
+                        <li className="flex gap-2" key={highlight}>
+                          <CheckIcon className="mt-0.5 size-3 shrink-0 text-primary" />
+                          <span>{highlight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-auto grid gap-2">
+                      <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                        <ShieldCheckIcon className="size-3 shrink-0" />
+                        Price is confirmed in Polar before payment
+                      </div>
+                      {plan.plan === "free" ? (
+                        <Button
+                          disabled
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          Included
+                        </Button>
+                      ) : (
+                        <Button
+                          disabled={isPending || !canCheckout}
+                          onClick={() => startCheckout(plan.plan)}
+                          size="sm"
+                          type="button"
+                          variant={isCurrent ? "secondary" : "default"}
+                        >
+                          {getPlanButtonLabel({
+                            action: billingAction,
+                            isCurrent,
+                            label: plan.label,
+                            plan: plan.plan,
+                          })}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {billingError ? (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-xs">
+                {billingError}
+              </p>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
       <Popover onOpenChange={setOpen} open={open}>
         <TooltipProvider>
           <Tooltip>
@@ -263,26 +463,15 @@ export const AccountActions = ({
               </div>
               {billing.checkoutConfigured ? (
                 <div className="grid gap-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    {products.map((product) => (
-                      <Button
-                        disabled={isPending}
-                        key={product.slug}
-                        onClick={() => startCheckout(product.slug)}
-                        size="sm"
-                        type="button"
-                        variant={
-                          billing.plan === product.slug
-                            ? "secondary"
-                            : "outline"
-                        }
-                      >
-                        {billingAction === product.slug
-                          ? "Opening..."
-                          : product.label}
-                      </Button>
-                    ))}
-                  </div>
+                  <Button
+                    disabled={isPending}
+                    onClick={openBillingDialog}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    View plans
+                  </Button>
                   <Button
                     disabled={isPending}
                     onClick={openBillingPortal}
