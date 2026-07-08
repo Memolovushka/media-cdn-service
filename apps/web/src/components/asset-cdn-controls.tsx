@@ -10,7 +10,6 @@ import {
   Globe2Icon,
   RefreshCwIcon,
   UnlinkIcon,
-  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -126,55 +125,6 @@ const getPublicUrlPath = (publicUrl: string) => {
   }
 };
 
-const getChecklistItems = ({
-  cacheControl,
-  currentPublicUrl,
-  mimeType,
-  publishable,
-  ready,
-  workspaceId,
-}: {
-  cacheControl: null | string;
-  currentPublicUrl: null | string;
-  mimeType: string;
-  publishable: boolean;
-  ready: boolean;
-  workspaceId: string;
-}) => [
-  {
-    checked: ready,
-    label: "Ready version",
-    value: ready ? "Ready" : "Upload pending",
-  },
-  {
-    checked: publishable,
-    label: "MIME policy",
-    value: publishable ? mimeType : "SVG blocked until safety policy",
-  },
-  {
-    checked: publishable,
-    label: "SVG safety",
-    value:
-      mimeType === "image/svg+xml" ? "Needs sanitize/CSP policy" : "Not SVG",
-  },
-  {
-    checked: cacheControl === publicAssetCacheControl || !currentPublicUrl,
-    label: "Cache policy",
-    value: currentPublicUrl
-      ? cacheControl || "Missing cache metadata"
-      : publicAssetCacheControl,
-  },
-  {
-    checked:
-      !currentPublicUrl ||
-      getPublicUrlPath(currentPublicUrl).startsWith(`/cdn/${workspaceId}/`),
-    label: "Workspace path",
-    value: currentPublicUrl
-      ? getPublicUrlPath(currentPublicUrl)
-      : "Pending URL",
-  },
-];
-
 const getLifecycleVariant = (state: CdnLifecycleState) => {
   if (state === "public") {
     return "default" as const;
@@ -218,31 +168,6 @@ const CopyableCodeBlock = ({
         <code className="whitespace-pre-wrap break-all">{value}</code>
       </button>
     </TooltipHint>
-  </div>
-);
-
-const PublishChecklist = ({
-  items,
-}: {
-  items: ReturnType<typeof getChecklistItems>;
-}) => (
-  <div className="mt-3 grid gap-1.5">
-    {items.map((item) => (
-      <div
-        className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-xs"
-        key={item.label}
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          {item.checked ? (
-            <CheckIcon className="size-3.5 shrink-0 text-primary" />
-          ) : (
-            <XIcon className="size-3.5 shrink-0 text-destructive" />
-          )}
-          <span className="truncate font-medium">{item.label}</span>
-        </span>
-        <span className="truncate text-muted-foreground">{item.value}</span>
-      </div>
-    ))}
   </div>
 );
 
@@ -372,6 +297,120 @@ const PublicAssetHealth = ({
   );
 };
 
+const PublishedCdnDetails = ({
+  copiedTarget,
+  currentPublicUrl,
+  hasExpectedCachePolicy,
+  hasExpectedPublicPath,
+  health,
+  healthError,
+  htmlSnippet,
+  isCheckingHealth,
+  mimeType,
+  nextImageConfig,
+  onCopy,
+  onRefreshHealth,
+  onToggleAdvanced,
+  onToggleSnippets,
+  showAdvanced,
+  showSnippets,
+}: {
+  copiedTarget: CopiedTarget;
+  currentPublicUrl: string;
+  hasExpectedCachePolicy: boolean;
+  hasExpectedPublicPath: boolean;
+  health: CdnHealthResult | null;
+  healthError: null | string;
+  htmlSnippet: null | string;
+  isCheckingHealth: boolean;
+  mimeType: string;
+  nextImageConfig: null | string;
+  onCopy: (target: Exclude<CopiedTarget, null>, value: string) => void;
+  onRefreshHealth: () => void;
+  onToggleAdvanced: () => void;
+  onToggleSnippets: () => void;
+  showAdvanced: boolean;
+  showSnippets: boolean;
+}) => (
+  <div className="flex max-w-96 flex-col gap-2">
+    <div className="rounded-md border bg-muted/20 p-2">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="font-medium text-xs">Public URL</span>
+        <TooltipHint content="Copy public URL">
+          <Button
+            onClick={() => onCopy("url", currentPublicUrl)}
+            size="icon-xs"
+            type="button"
+            variant="ghost"
+          >
+            {copiedTarget === "url" ? (
+              <CheckIcon className="text-primary" />
+            ) : (
+              <ClipboardIcon />
+            )}
+            <span className="sr-only">Copy public URL</span>
+          </Button>
+        </TooltipHint>
+      </div>
+      <button
+        className="block w-full truncate text-left font-mono text-muted-foreground text-xs hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        onClick={() => onCopy("url", currentPublicUrl)}
+        type="button"
+      >
+        {currentPublicUrl}
+      </button>
+    </div>
+
+    <EmbedSnippets
+      copiedTarget={copiedTarget}
+      htmlSnippet={htmlSnippet}
+      nextImageConfig={nextImageConfig}
+      onCopy={onCopy}
+      onToggle={onToggleSnippets}
+      showSnippets={showSnippets}
+    />
+
+    <Button
+      aria-expanded={showAdvanced}
+      className="w-fit"
+      onClick={onToggleAdvanced}
+      size="sm"
+      type="button"
+      variant="ghost"
+    >
+      <ChevronDownIcon
+        className={showAdvanced ? "rotate-180 transition" : "transition"}
+      />
+      Delivery details
+    </Button>
+
+    {showAdvanced ? (
+      <div className="grid gap-2">
+        <PublicAssetHealth
+          error={healthError}
+          health={health}
+          isChecking={isCheckingHealth}
+          onRefresh={onRefreshHealth}
+        />
+        <div className="grid gap-1 rounded-md border bg-muted/20 p-2 text-xs">
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Content type</span>
+            <span className="truncate">{mimeType}</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Cache policy</span>
+            <span>{hasExpectedCachePolicy ? "Immutable" : "Check"}</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Workspace path</span>
+            <span>{hasExpectedPublicPath ? "Matched" : "Check"}</span>
+          </div>
+        </div>
+      </div>
+    ) : null}
+  </div>
+);
+
 export const AssetCdnControls = ({
   assetId,
   cacheControl,
@@ -389,6 +428,7 @@ export const AssetCdnControls = ({
   const [health, setHealth] = useState<CdnHealthResult | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [showSnippets, setShowSnippets] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [isPending, startTransition] = useTransition();
   const publishable = canPublishMimeType(mimeType);
@@ -424,18 +464,11 @@ export const AssetCdnControls = ({
     publicUrl: currentPublicUrl,
     ready,
   });
-  const checklistItems = useMemo(
-    () =>
-      getChecklistItems({
-        cacheControl: cacheControl ?? null,
-        currentPublicUrl,
-        mimeType,
-        publishable,
-        ready,
-        workspaceId,
-      }),
-    [cacheControl, currentPublicUrl, mimeType, publishable, ready, workspaceId]
-  );
+  const publicPath = currentPublicUrl ? getPublicUrlPath(currentPublicUrl) : "";
+  const hasExpectedPublicPath =
+    !currentPublicUrl || publicPath.startsWith(`/cdn/${workspaceId}/`);
+  const hasExpectedCachePolicy =
+    !currentPublicUrl || cacheControl === publicAssetCacheControl;
 
   const patchAsset = ({
     body,
@@ -573,41 +606,33 @@ export const AssetCdnControls = ({
               </TooltipHint>
             )}
           </div>
-
-          <PublishChecklist items={checklistItems} />
         </div>
 
         {currentPublicUrl ? (
-          <div className="flex max-w-96 flex-col gap-2">
-            <CopyableCodeBlock
-              copied={copiedTarget === "url"}
-              label="Public CDN URL"
-              onCopy={() => copyValue("url", currentPublicUrl)}
-              value={currentPublicUrl}
-            />
-
-            <EmbedSnippets
-              copiedTarget={copiedTarget}
-              htmlSnippet={htmlSnippet}
-              nextImageConfig={nextImageConfig}
-              onCopy={copyValue}
-              onToggle={() => setShowSnippets((visible) => !visible)}
-              showSnippets={showSnippets}
-            />
-
-            <PublicAssetHealth
-              error={healthError}
-              health={health}
-              isChecking={isCheckingHealth}
-              onRefresh={refreshHealth}
-            />
-          </div>
+          <PublishedCdnDetails
+            copiedTarget={copiedTarget}
+            currentPublicUrl={currentPublicUrl}
+            hasExpectedCachePolicy={hasExpectedCachePolicy}
+            hasExpectedPublicPath={hasExpectedPublicPath}
+            health={health}
+            healthError={healthError}
+            htmlSnippet={htmlSnippet}
+            isCheckingHealth={isCheckingHealth}
+            mimeType={mimeType}
+            nextImageConfig={nextImageConfig}
+            onCopy={copyValue}
+            onRefreshHealth={refreshHealth}
+            onToggleAdvanced={() => setShowAdvanced((visible) => !visible)}
+            onToggleSnippets={() => setShowSnippets((visible) => !visible)}
+            showAdvanced={showAdvanced}
+            showSnippets={showSnippets}
+          />
         ) : (
-          <p className="text-muted-foreground text-xs">
-            {ready
-              ? "Publish to get a public URL and embed snippets."
-              : "Upload must finish before CDN publishing."}
-          </p>
+          <div className="rounded-md border bg-muted/20 px-3 py-2 text-muted-foreground text-xs">
+            {ready && publishable
+              ? "Publish when this file should be reachable by public URL."
+              : "This file is not ready for public delivery yet."}
+          </div>
         )}
 
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
