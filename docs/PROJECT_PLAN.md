@@ -326,7 +326,7 @@ Test plan:
 
 Current known state:
 
-- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `672325c`.
+- GitHub Actions deploy workflow is active on `main` and successfully deployed commit `c4aae18`.
 - `GET /api/setup/status` returns `ok=true`.
 - Confirmed production bindings:
   - `bindings.DB=true`
@@ -346,12 +346,17 @@ Current known state:
   - email signup returns `200`;
   - `POST /api/workspaces` returns `201`;
   - dashboard render after workspace creation returns `200`.
-- Confirmed latest production setup check after commit `672325c`:
+- Confirmed latest production setup check after commit `c4aae18`:
   - `ok=true`;
   - `bindings.DB=true`;
   - `bindings.MEDIA_BUCKET=true`;
   - `bindings.GOOGLE=true`;
   - `bindings.POLAR=false`;
+  - `billing.polarAccessToken=false`;
+  - `billing.polarProducts=false`;
+  - `billing.polarCheckout=false`;
+  - `billing.polarWebhook=false`;
+  - `billing.ready=false`;
   - `database.ready=true`;
   - `database.missingTables=[]`.
 - Confirmed feedback-driven production deploys on 2026-06-29:
