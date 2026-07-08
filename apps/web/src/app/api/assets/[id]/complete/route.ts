@@ -84,6 +84,12 @@ export const POST = async (request: Request, context: RouteContext) => {
   return Response.json({
     assetId: record.asset.id,
     versionId: record.version.id,
+    version: {
+      ...record.version,
+      readyAt,
+      sizeBytes: object.size,
+      uploadStatus: "ready",
+    },
     status: "ready",
   });
 };

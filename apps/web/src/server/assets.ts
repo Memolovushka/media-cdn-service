@@ -61,6 +61,11 @@ export interface UploadIntentInput {
   workspaceId: string;
 }
 
+export interface ReplaceVersionIntentInput {
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface WorkspaceFolderItem {
   createdAt: Date;
   createdByUserId: string | null;
@@ -816,6 +821,98 @@ export const createUploadIntent = async ({
   };
 };
 
+export const createReplacementVersionIntent = async ({
+  assetId,
+  db,
+  input,
+  user,
+}: {
+  assetId: string;
+  db: Db;
+  input: ReplaceVersionIntentInput;
+  user: AuthUser;
+}) => {
+  if (!(input.sizeBytes > 0 && input.sizeBytes <= maxUploadBytes)) {
+    throw new Error("File size is outside the allowed range");
+  }
+
+  const asset = await getWritableAsset({
+    db,
+    assetId,
+    userId: user.id,
+  });
+
+  if (!asset) {
+    return null;
+  }
+
+  if (input.mimeType !== asset.mimeType) {
+    throw new Error("Replacement file must keep the same MIME type");
+  }
+
+  const quotaBytes =
+    (
+      await db.query.workspaces.findFirst({
+        columns: { storageQuotaBytes: true },
+        where: eq(workspaces.id, asset.workspaceId),
+      })
+    )?.storageQuotaBytes ?? defaultWorkspaceStorageQuotaBytes;
+  const usedBytes = await getWorkspaceReservedStorageBytes({
+    db,
+    workspaceId: asset.workspaceId,
+  });
+
+  if (usedBytes + input.sizeBytes > quotaBytes) {
+    throw new WorkspaceQuotaExceededError({
+      requestedBytes: input.sizeBytes,
+      quotaBytes,
+      usedBytes,
+    });
+  }
+
+  const latestVersion = await db.query.assetVersions.findFirst({
+    where: eq(assetVersions.assetId, asset.id),
+    orderBy: [desc(assetVersions.version)],
+  });
+  const nextVersion = (latestVersion?.version ?? 0) + 1;
+  const versionId = crypto.randomUUID();
+  const r2Key = makePrivateR2Key({
+    workspaceId: asset.workspaceId,
+    assetId: asset.id,
+    version: nextVersion,
+    filename: asset.filename,
+  });
+
+  await db.insert(assetVersions).values({
+    id: versionId,
+    assetId: asset.id,
+    version: nextVersion,
+    r2Key,
+    sizeBytes: input.sizeBytes,
+    uploadStatus: "pending",
+  });
+
+  await db.insert(auditEvents).values({
+    id: crypto.randomUUID(),
+    workspaceId: asset.workspaceId,
+    actorUserId: user.id,
+    assetId: asset.id,
+    eventType: "asset.version_replace_created",
+    metadataJson: JSON.stringify({
+      filename: asset.filename,
+      version: nextVersion,
+      versionId,
+    }),
+  });
+
+  return {
+    assetId: asset.id,
+    versionId,
+    filename: asset.filename,
+    r2Key,
+  };
+};
+
 export const getWritableAssetVersion = async ({
   db,
   assetId,
@@ -976,18 +1073,16 @@ export const listWorkspaceAssets = async ({
       )
     )
     .orderBy(desc(assetVersions.version));
-  const latestVersions = new Map<string, (typeof versionRows)[number]>();
+  const versionsByAssetId = new Map<string, (typeof versionRows)[number][]>();
 
   for (const version of versionRows) {
-    if (!latestVersions.has(version.assetId)) {
-      latestVersions.set(version.assetId, version);
-    }
+    const versions = versionsByAssetId.get(version.assetId) ?? [];
+    versions.push(version);
+    versionsByAssetId.set(version.assetId, versions);
   }
 
   return assetRows.map((asset) => ({
     ...asset,
-    versions: latestVersions.has(asset.id)
-      ? [latestVersions.get(asset.id) as (typeof versionRows)[number]]
-      : [],
+    versions: versionsByAssetId.get(asset.id) ?? [],
   }));
 };

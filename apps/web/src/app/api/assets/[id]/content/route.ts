@@ -43,7 +43,7 @@ export const PUT = async (request: Request, context: RouteContext) => {
 
   const bytes = await request.arrayBuffer();
 
-  if (bytes.byteLength !== record.asset.sizeBytes) {
+  if (bytes.byteLength !== record.version.sizeBytes) {
     return jsonError(
       "Uploaded size does not match intent",
       HTTP_STATUS.badRequest

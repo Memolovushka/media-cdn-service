@@ -6,6 +6,7 @@
 
 - 2026-07-03: начат приоритет 1. Добавлены upload drop assistant и pre-upload review перед постановкой файлов в очередь: папка назначения, лимит 250 MB, приватность по умолчанию, общий размер, ошибки типа/размера и предупреждение о совпадающих именах.
 - 2026-07-08: продолжен приоритет 1. Добавлен guided first-run guide внутри file manager: Workspace, Upload, Publish, Copy URL; guide вызывает существующие Upload/Publish/Copy действия, отражает реальные состояния файлов/CDN и запоминает dismiss для workspace.
+- 2026-07-08: выполнен приоритет 2. Inspector получил историю версий и явный Replace flow: новая загрузка создает следующий immutable `asset_versions.version`, текущая ready-версия остается стабильной до complete, старые public URL не меняются, а новый CDN URL создается отдельным Publish.
 
 ## 20 пунктов
 
@@ -27,9 +28,11 @@
 
 6. **Version history panel**
    В inspector добавить вкладку Versions: текущая версия, старые версии, размер, дата, public/private статус, copy URL для опубликованных версий.
+   **Done:** inspector показывает список версий с current/public badges, размером, статусом, временем ready/created, download для ready versions и copy URL для опубликованных старых версий.
 
 7. **Replace file flow**
    Добавить явное действие Replace: загрузить новые байты как новую immutable version, показать новый CDN URL и предупредить, что старый URL не меняется.
+   **Done:** Replace создает новый pending version для существующего asset, загружает bytes через тот же content/complete pipeline, переводит новую версию в current после ready и явно предупреждает, что существующие public URLs не меняются; новый CDN URL создается повторным Publish.
 
 8. **CDN publish checklist**
    Перед публикацией показывать компактную проверку: ready version, MIME allowed, SVG safety, cache policy, public URL path. Это снизит риск случайной публичной выдачи.

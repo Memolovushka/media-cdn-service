@@ -82,6 +82,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AssetCdnControls } from "@/components/asset-cdn-controls";
+import { replaceAssetVersion } from "@/components/asset-upload-client";
 import {
   AssetUploadReviewDialog,
   AssetUploadTray,
@@ -103,13 +104,19 @@ import { FolderCreateDialog } from "@/components/folder-create-dialog";
 import { TooltipHint } from "@/components/tooltip-hint";
 
 interface DashboardAssetVersion {
+  cacheControl: null | string;
+  createdAt: Date | string;
   id: string;
   publicUrl: null | string;
+  readyAt: Date | string | null;
+  sizeBytes: null | number;
   uploadStatus: string;
+  version: number;
 }
 
 export interface DashboardAsset {
   cdnEnabled: boolean;
+  currentVersionId: null | string;
   filename: string;
   folderPath: string;
   id: string;
@@ -255,9 +262,17 @@ const isEditableKeyboardTarget = (target: EventTarget | null) =>
     )
   );
 
+const getCurrentAssetVersion = (asset: DashboardAsset) =>
+  asset.versions.find((version) => version.id === asset.currentVersionId) ??
+  asset.versions.at(0) ??
+  null;
+
+const getCurrentAssetPublicUrl = (asset: DashboardAsset) =>
+  getCurrentAssetVersion(asset)?.publicUrl ?? null;
+
 const getAssetCdnState = (asset: DashboardAsset) => {
-  const latestVersion = asset.versions.at(0) ?? null;
-  const isPublished = asset.cdnEnabled && Boolean(latestVersion?.publicUrl);
+  const currentVersion = getCurrentAssetVersion(asset);
+  const isPublished = asset.cdnEnabled && Boolean(currentVersion?.publicUrl);
 
   return {
     label: isPublished ? "CDN published" : "Not published",
@@ -266,10 +281,10 @@ const getAssetCdnState = (asset: DashboardAsset) => {
 };
 
 const isAssetReady = (asset: DashboardAsset) =>
-  asset.versions.at(0)?.uploadStatus === "ready";
+  getCurrentAssetVersion(asset)?.uploadStatus === "ready";
 
 const isAssetPublished = (asset: DashboardAsset) =>
-  asset.cdnEnabled && Boolean(asset.versions.at(0)?.publicUrl);
+  asset.cdnEnabled && Boolean(getCurrentAssetPublicUrl(asset));
 
 const matchesSearch = (value: string, query: string) =>
   value.toLowerCase().includes(query.trim().toLowerCase());
@@ -406,8 +421,22 @@ const formatActivityTime = (createdAt: Date | string) =>
     month: "short",
   }).format(new Date(createdAt));
 
+const formatVersionTime = (createdAt: Date | string | null) => {
+  if (!createdAt) {
+    return "Not ready";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(createdAt));
+};
+
 const getAssetUrls = (asset: DashboardAsset) => {
-  const latestVersion = asset.versions.at(0) ?? null;
+  const latestVersion = getCurrentAssetVersion(asset);
   const isReady = latestVersion?.uploadStatus === "ready";
 
   return {
@@ -1107,6 +1136,95 @@ const FirstRunGuide = ({
   );
 };
 
+const AssetVersionHistory = ({
+  asset,
+  onCopyPublicUrl,
+}: {
+  asset: DashboardAsset;
+  onCopyPublicUrl: (publicUrl: string) => void;
+}) => (
+  <section className="flex flex-col gap-2 border-b pb-3">
+    <div className="flex items-center justify-between gap-2">
+      <div>
+        <div className="font-medium text-[0.6875rem] text-muted-foreground">
+          Versions
+        </div>
+        <div className="text-muted-foreground text-xs">
+          New bytes create a new immutable URL. Old public URLs stay available.
+        </div>
+      </div>
+      <Badge variant="outline">{asset.versions.length}</Badge>
+    </div>
+    <ol className="max-h-56 overflow-y-auto rounded-md border">
+      {asset.versions.map((version) => {
+        const isCurrent = version.id === asset.currentVersionId;
+        const downloadUrl =
+          version.uploadStatus === "ready"
+            ? `/api/assets/${asset.id}/download?versionId=${version.id}`
+            : null;
+
+        return (
+          <li
+            className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b px-2 py-2 last:border-b-0"
+            key={version.id}
+          >
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="font-medium text-xs">v{version.version}</span>
+                {isCurrent ? (
+                  <Badge className="h-5 px-1.5 text-[0.625rem]">Current</Badge>
+                ) : null}
+                {version.publicUrl ? (
+                  <Badge
+                    className="h-5 px-1.5 text-[0.625rem]"
+                    variant="secondary"
+                  >
+                    Public
+                  </Badge>
+                ) : null}
+              </div>
+              <div className="mt-1 truncate text-muted-foreground text-xs">
+                {formatBytes(version.sizeBytes ?? asset.sizeBytes)} |{" "}
+                {version.uploadStatus} |{" "}
+                {formatVersionTime(version.readyAt ?? version.createdAt)}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {version.publicUrl ? (
+                <TooltipHint
+                  content={`Copy public URL for v${version.version}`}
+                >
+                  <Button
+                    aria-label={`Copy public URL for version ${version.version}`}
+                    onClick={() => onCopyPublicUrl(version.publicUrl as string)}
+                    size="icon-xs"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ClipboardIcon />
+                  </Button>
+                </TooltipHint>
+              ) : null}
+              {downloadUrl ? (
+                <TooltipHint content={`Download v${version.version}`}>
+                  <Button asChild size="icon-xs" variant="ghost">
+                    <a href={downloadUrl}>
+                      <DownloadIcon />
+                      <span className="sr-only">
+                        Download version {version.version}
+                      </span>
+                    </a>
+                  </Button>
+                </TooltipHint>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  </section>
+);
+
 const AssetDetailsPanel = ({
   asset,
   isRefreshing,
@@ -1120,13 +1238,20 @@ const AssetDetailsPanel = ({
 }) => {
   const router = useRouter();
   const filenameInputRef = useRef<HTMLInputElement | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const [filename, setFilename] = useState(asset?.filename ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [replaceError, setReplaceError] = useState<string | null>(null);
+  const [replaceProgress, setReplaceProgress] = useState<number | null>(null);
+  const [isReplacing, setIsReplacing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setFilename(asset?.filename ?? "");
     setError(null);
+    setReplaceError(null);
+    setReplaceProgress(null);
+    setIsReplacing(false);
   }, [asset?.filename]);
 
   useEffect(() => {
@@ -1192,9 +1317,58 @@ const AssetDetailsPanel = ({
       router.refresh();
     });
   };
+  const copyVersionPublicUrl = (publicUrl: string) => {
+    navigator.clipboard
+      .writeText(publicUrl)
+      .then(() => toast.success("Version URL copied"))
+      .catch(() => toast.error("Copy failed"));
+  };
+  const replaceCurrentVersion = async (file: File | undefined) => {
+    if (!(asset && file)) {
+      return;
+    }
+
+    setReplaceError(null);
+    setReplaceProgress(0);
+    setIsReplacing(true);
+
+    try {
+      await replaceAssetVersion({
+        assetId: asset.id,
+        expectedMimeType: asset.mimeType,
+        file,
+        onProgress: setReplaceProgress,
+      });
+      toast.success("New version is ready", {
+        description: "Publish again to create a new CDN URL.",
+      });
+      router.refresh();
+    } catch (replaceErrorValue) {
+      setReplaceError(
+        replaceErrorValue instanceof Error
+          ? replaceErrorValue.message
+          : "Replace failed"
+      );
+      setReplaceProgress(null);
+    } finally {
+      setIsReplacing(false);
+    }
+  };
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border bg-background p-3 shadow-sm">
+      <Input
+        accept={asset.mimeType}
+        className="sr-only"
+        disabled={isReplacing}
+        onChange={(event) => {
+          replaceCurrentVersion(event.target.files?.[0]).catch(() => undefined);
+          event.target.value = "";
+        }}
+        ref={replaceInputRef}
+        tabIndex={-1}
+        type="file"
+      />
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="font-medium text-sm">Inspector</div>
@@ -1263,6 +1437,43 @@ const AssetDetailsPanel = ({
         </div>
       </div>
 
+      <div className="flex flex-col gap-2 border-b pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-medium text-[0.6875rem] text-muted-foreground">
+              Replace file
+            </div>
+            <div className="mt-1 text-muted-foreground text-xs">
+              Upload new bytes as a new immutable version. Existing public URLs
+              do not change.
+            </div>
+          </div>
+          <TooltipHint content={`Replace with another ${asset.mimeType} file`}>
+            <Button
+              disabled={isReplacing}
+              onClick={() => replaceInputRef.current?.click()}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <CloudUploadIcon />
+              {isReplacing ? "Replacing..." : "Replace"}
+            </Button>
+          </TooltipHint>
+        </div>
+        {replaceProgress === null ? null : (
+          <div className="h-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{ width: `${replaceProgress}%` }}
+            />
+          </div>
+        )}
+        {replaceError ? (
+          <div className="text-destructive text-xs">{replaceError}</div>
+        ) : null}
+      </div>
+
       <div className="grid grid-cols-2 gap-1.5 border-b pb-3">
         {metadataItems.map((item) => (
           <div
@@ -1283,6 +1494,11 @@ const AssetDetailsPanel = ({
         publicUrl={latestVersion?.publicUrl}
         ready={isReady}
         workspaceId={asset.workspaceId}
+      />
+
+      <AssetVersionHistory
+        asset={asset}
+        onCopyPublicUrl={copyVersionPublicUrl}
       />
     </section>
   );
@@ -1811,8 +2027,9 @@ export const FileManager = ({
       null,
     [activeAssetId, optimisticAssets]
   );
-  const selectedAssetPublicUrl =
-    selectedAsset?.versions.at(0)?.publicUrl ?? null;
+  const selectedAssetPublicUrl = selectedAsset
+    ? getCurrentAssetPublicUrl(selectedAsset)
+    : null;
   const selectedAssetReady = selectedAsset
     ? isAssetReady(selectedAsset)
     : false;
@@ -1830,8 +2047,9 @@ export const FileManager = ({
     () => optimisticAssets.find((asset) => isAssetPublished(asset)) ?? null,
     [optimisticAssets]
   );
-  const firstPublishedAssetPublicUrl =
-    firstPublishedAsset?.versions.at(0)?.publicUrl ?? null;
+  const firstPublishedAssetPublicUrl = firstPublishedAsset
+    ? getCurrentAssetPublicUrl(firstPublishedAsset)
+    : null;
   const filteredFolders = useMemo(() => {
     if (!searchQuery.trim()) {
       return visibleFolders;
@@ -3010,10 +3228,10 @@ export const FileManager = ({
               Publish to CDN
             </ContextMenuItem>
             <ContextMenuItem
-              disabled={!contextMenuAsset.versions.at(0)?.publicUrl}
+              disabled={!getCurrentAssetPublicUrl(contextMenuAsset)}
               onSelect={() =>
                 runGridContextAction(() =>
-                  copyAssetPublicUrl(contextMenuAsset.versions.at(0)?.publicUrl)
+                  copyAssetPublicUrl(getCurrentAssetPublicUrl(contextMenuAsset))
                 )
               }
             >
@@ -3443,7 +3661,7 @@ export const FileManager = ({
                           onPublish={() => publishAssetsToCdn([asset])}
                           onRename={() => requestRenameAsset(asset.id)}
                           previewUrl={previewUrl}
-                          publicUrl={asset.versions.at(0)?.publicUrl ?? null}
+                          publicUrl={getCurrentAssetPublicUrl(asset)}
                           publishDisabled={
                             !isAssetReady(asset) || isAssetPublished(asset)
                           }

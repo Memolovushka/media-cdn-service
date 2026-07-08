@@ -114,6 +114,75 @@ export const uploadAsset = async ({
   onProgress(progressComplete);
 };
 
+export const replaceAssetVersion = async ({
+  assetId,
+  expectedMimeType,
+  file,
+  onProgress,
+}: {
+  assetId: string;
+  expectedMimeType: string;
+  file: File;
+  onProgress: (value: number) => void;
+}) => {
+  if (file.size > maxUploadBytes) {
+    throw new Error(`File is larger than ${maxUploadMegabytes} MB`);
+  }
+
+  if (file.type !== expectedMimeType) {
+    throw new Error("Replacement file must keep the same MIME type");
+  }
+
+  const intentResponse = await fetch(`/api/assets/${assetId}/versions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      mimeType: file.type,
+      sizeBytes: file.size,
+    }),
+  });
+
+  if (!intentResponse.ok) {
+    throw new Error(await getErrorMessage(intentResponse));
+  }
+
+  const intent = (await intentResponse.json()) as UploadIntentResponse;
+  onProgress(progressIntentCreated);
+
+  const contentResponse = await fetch(intent.upload.url, {
+    method: intent.upload.method,
+    headers: {
+      "Content-Type": file.type,
+    },
+    body: file,
+  });
+
+  if (!contentResponse.ok) {
+    throw new Error(await getErrorMessage(contentResponse));
+  }
+
+  onProgress(progressContentUploaded);
+
+  const completeResponse = await fetch(
+    `/api/assets/${intent.assetId}/complete`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ versionId: intent.versionId }),
+    }
+  );
+
+  if (!completeResponse.ok) {
+    throw new Error(await getErrorMessage(completeResponse));
+  }
+
+  onProgress(progressComplete);
+};
+
 export const uploadFilesSequentially = async ({
   cdnEnabled,
   files,
