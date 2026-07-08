@@ -74,6 +74,43 @@ const getAuthErrorMessage = (error: unknown) => {
   return "Account update failed";
 };
 
+const getBillingErrorMessage = async (response: Response) => {
+  try {
+    const payload = (await response.json()) as {
+      code?: string;
+      error?: string;
+      message?: string;
+    };
+
+    return (
+      payload.message ?? payload.error ?? payload.code ?? response.statusText
+    );
+  } catch {
+    return response.statusText;
+  }
+};
+
+const openBillingUrl = async (path: string, body?: Record<string, unknown>) => {
+  const response = await fetch(`/api/auth${path}`, {
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "same-origin",
+    headers: body ? { "content-type": "application/json" } : undefined,
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getBillingErrorMessage(response));
+  }
+
+  const payload = (await response.json()) as { url?: string };
+
+  if (!payload.url) {
+    throw new Error("Billing provider did not return a checkout URL");
+  }
+
+  window.location.assign(payload.url);
+};
+
 export const AccountActions = ({
   billing,
   email,
@@ -93,6 +130,7 @@ export const AccountActions = ({
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [billingAction, setBillingAction] = useState<string | null>(null);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   useEffect(() => {
     setCommandPaletteShortcut(readCommandPaletteShortcut());
@@ -152,27 +190,35 @@ export const AccountActions = ({
 
   const startCheckout = (slug: string) => {
     setBillingAction(slug);
+    setBillingError(null);
     startTransition(async () => {
-      const checkoutClient = authClient as typeof authClient & {
-        checkout: (input: { slug: string }) => Promise<unknown>;
-      };
-
-      await checkoutClient.checkout({ slug });
-      setBillingAction(null);
+      try {
+        await openBillingUrl("/checkout", { redirect: false, slug });
+      } catch (checkoutError) {
+        setBillingError(
+          checkoutError instanceof Error
+            ? checkoutError.message
+            : "Checkout could not be opened"
+        );
+        setBillingAction(null);
+      }
     });
   };
 
   const openBillingPortal = () => {
     setBillingAction("portal");
+    setBillingError(null);
     startTransition(async () => {
-      const portalClient = authClient as typeof authClient & {
-        customer: {
-          portal: () => Promise<unknown>;
-        };
-      };
-
-      await portalClient.customer.portal();
-      setBillingAction(null);
+      try {
+        await openBillingUrl("/customer/portal", { redirect: false });
+      } catch (portalError) {
+        setBillingError(
+          portalError instanceof Error
+            ? portalError.message
+            : "Billing portal could not be opened"
+        );
+        setBillingAction(null);
+      }
     });
   };
 
@@ -260,6 +306,9 @@ export const AccountActions = ({
                   Checkout can open, but subscription sync is not active until
                   POLAR_WEBHOOK_SECRET is configured.
                 </p>
+              ) : null}
+              {billingError ? (
+                <p className="mt-2 text-destructive text-xs">{billingError}</p>
               ) : null}
             </div>
             <div className="rounded-md border bg-muted/20 p-3">
