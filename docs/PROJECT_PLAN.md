@@ -138,6 +138,7 @@ HTTP API:
 - 2026-07-08 next UI/UX plan continued: file manager now has a guided first-run path for new workspaces, walking through Workspace, Upload, Publish, and Copy URL with live CTA actions and per-workspace dismiss state.
 - 2026-07-08 next UI/UX plan continued: asset inspector now shows version history and supports Replace as a new immutable asset version while preserving old public CDN URLs.
 - 2026-07-08 next UI/UX plan continued: CDN controls now show a publish checklist and public asset health check for URL availability, content type, and immutable cache policy.
+- 2026-07-08 billing activation audit: production has Better Auth and Google secrets but no `POLAR_*` secrets yet; setup status now reports granular Polar readiness and `docs/BILLING_SETUP.md` documents the activation commands and webhook URL.
 
 ### Phase 1: Foundation
 
@@ -244,6 +245,7 @@ Acceptance criteria:
 - [x] Добавить account settings panel и sign out.
 - [x] Добавить смену пароля для email/password аккаунтов.
 - [x] Добавить production setup diagnostic endpoint `GET /api/setup/status`.
+- [x] Добавить granular billing/Polar diagnostics в `GET /api/setup/status`.
 - [x] Подтвердить production Worker deploy последнего commit после изменения env/bindings.
 - [x] Подтвердить Cloudflare bindings: `DB` D1 database и `MEDIA_BUCKET` R2 bucket.
 - [x] Применить/подтвердить D1 migrations на production DB.
@@ -316,8 +318,9 @@ Test plan:
 2. Continue next UI/UX plan: API token wizard and integration snippets.
 3. Activity filters and permission-aware states.
 4. Quota forecasting and large upload resilience.
-5. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
-6. Audit log UI.
+5. Activate production Polar secrets and verify billing checkout/webhook sync.
+6. Local setup/deploy documentation, including GitHub Actions deploy and Windows OpenNext caveat.
+7. Audit log UI.
 
 ## Production Auth/Setup Status
 
@@ -329,6 +332,13 @@ Current known state:
   - `bindings.DB=true`
   - `bindings.MEDIA_BUCKET=true`
   - `bindings.GOOGLE=true`
+  - `bindings.POLAR=false`
+- Confirmed production billing:
+  - `billing.polarAccessToken=false`
+  - `billing.polarProducts=false`
+  - `billing.polarCheckout=false`
+  - `billing.polarWebhook=false`
+  - `billing.ready=false`
 - Confirmed production database:
   - `database.ready=true`
   - `database.missingTables=[]`

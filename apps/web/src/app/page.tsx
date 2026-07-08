@@ -47,6 +47,34 @@ const getInitialViewMode = (view?: string) =>
 const getInitialRightPanelView = (panel?: string) =>
   panel === "activity" ? "activity" : "details";
 
+const getAccountBilling = ({
+  billingProducts,
+  memberships,
+  polarAccessToken,
+  polarWebhookSecret,
+  userBilling,
+}: {
+  billingProducts: ReturnType<typeof getBillingProductConfig>;
+  memberships: Array<{ workspaceId: string }>;
+  polarAccessToken?: string;
+  polarWebhookSecret?: string;
+  userBilling: Awaited<ReturnType<typeof getBillingPlan>>;
+}) => {
+  const checkoutConfigured = Boolean(
+    polarAccessToken && billingProducts.length
+  );
+
+  return {
+    checkoutConfigured,
+    plan: userBilling.plan,
+    planLabel: billingPlans[userBilling.plan].label,
+    status: userBilling.billingStatus,
+    webhookConfigured: Boolean(polarWebhookSecret),
+    workspaceCount: memberships.length,
+    workspaceLimit: userBilling.workspaceLimit,
+  };
+};
+
 const SetupRequired = ({ message }: { message: string }) => (
   <main className="flex min-h-svh items-center justify-center bg-background p-6">
     <Card className="w-full max-w-lg">
@@ -229,16 +257,13 @@ const Page = async ({ searchParams }: PageProps) => {
           <div className="flex shrink-0 flex-wrap gap-2">
             <ThemeToggle />
             <AccountActions
-              billing={{
-                configured: Boolean(
-                  ctx.env.POLAR_ACCESS_TOKEN && billingProducts.length
-                ),
-                plan: userBilling.plan,
-                planLabel: billingPlans[userBilling.plan].label,
-                status: userBilling.billingStatus,
-                workspaceCount: memberships.length,
-                workspaceLimit: userBilling.workspaceLimit,
-              }}
+              billing={getAccountBilling({
+                billingProducts,
+                memberships,
+                polarAccessToken: ctx.env.POLAR_ACCESS_TOKEN,
+                polarWebhookSecret: ctx.env.POLAR_WEBHOOK_SECRET,
+                userBilling,
+              })}
               email={session.user.email}
               products={billingProducts.map((product) => ({
                 label: billingPlans[product.plan].label,

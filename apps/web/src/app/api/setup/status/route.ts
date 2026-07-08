@@ -15,7 +15,13 @@ export const GET = async () => {
     const hasGoogleCredentials = Boolean(
       appEnv.GOOGLE_CLIENT_ID && appEnv.GOOGLE_CLIENT_SECRET
     );
-    const hasPolarConfig = Boolean(appEnv.POLAR_ACCESS_TOKEN);
+    const hasPolarAccessToken = Boolean(appEnv.POLAR_ACCESS_TOKEN);
+    const hasPolarProducts = Boolean(
+      appEnv.POLAR_PRODUCT_PRO_ID && appEnv.POLAR_PRODUCT_TEAM_ID
+    );
+    const hasPolarWebhookSecret = Boolean(appEnv.POLAR_WEBHOOK_SECRET);
+    const hasPolarCheckout = hasPolarAccessToken && hasPolarProducts;
+    const hasPolarConfig = hasPolarCheckout && hasPolarWebhookSecret;
 
     if (!hasDbBinding) {
       return Response.json({
@@ -25,6 +31,14 @@ export const GET = async () => {
           MEDIA_BUCKET: hasMediaBucketBinding,
           GOOGLE: hasGoogleCredentials,
           POLAR: hasPolarConfig,
+        },
+        billing: {
+          polarAccessToken: hasPolarAccessToken,
+          polarCheckout: hasPolarCheckout,
+          polarProducts: hasPolarProducts,
+          polarServer: appEnv.POLAR_SERVER ?? "sandbox",
+          polarWebhook: hasPolarWebhookSecret,
+          ready: hasPolarConfig,
         },
         database: {
           ready: false,
@@ -56,6 +70,14 @@ export const GET = async () => {
         MEDIA_BUCKET: hasMediaBucketBinding,
         GOOGLE: hasGoogleCredentials,
         POLAR: hasPolarConfig,
+      },
+      billing: {
+        polarAccessToken: hasPolarAccessToken,
+        polarCheckout: hasPolarCheckout,
+        polarProducts: hasPolarProducts,
+        polarServer: appEnv.POLAR_SERVER ?? "sandbox",
+        polarWebhook: hasPolarWebhookSecret,
+        ready: hasPolarConfig,
       },
       database: {
         ready: missingTables.length === 0,

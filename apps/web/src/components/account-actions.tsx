@@ -44,10 +44,11 @@ import { TooltipHint } from "@/components/tooltip-hint";
 
 interface AccountActionsProps {
   billing: {
-    configured: boolean;
+    checkoutConfigured: boolean;
     plan: string;
     planLabel: string;
     status: string;
+    webhookConfigured: boolean;
     workspaceCount: number;
     workspaceLimit: number;
   };
@@ -214,7 +215,7 @@ export const AccountActions = ({
                 </div>
                 <SparklesIcon className="size-4 shrink-0 text-primary" />
               </div>
-              {billing.configured ? (
+              {billing.checkoutConfigured ? (
                 <div className="grid gap-2">
                   <div className="grid grid-cols-2 gap-2">
                     {products.map((product) => (
@@ -254,6 +255,12 @@ export const AccountActions = ({
                   checkout.
                 </p>
               )}
+              {billing.checkoutConfigured && !billing.webhookConfigured ? (
+                <p className="mt-2 text-amber-700 text-xs dark:text-amber-300">
+                  Checkout can open, but subscription sync is not active until
+                  POLAR_WEBHOOK_SECRET is configured.
+                </p>
+              ) : null}
             </div>
             <div className="rounded-md border bg-muted/20 p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
